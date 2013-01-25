@@ -1,6 +1,7 @@
 (ns plumbing.clojure-core-test
   "tests stolen from clojure.core sequences.clj tests"
-  (:use plumbing.core clojure.test))
+  (:use plumbing.core clojure.test)
+  (:require plumbing.clojure-core))
 
 
 (deftest frequencies-test
