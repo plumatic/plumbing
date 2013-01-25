@@ -10,9 +10,9 @@
 
    A Graph is defined recursively as either:
      1. a keyword function (i.e., fn satisfying PFnk), or
-     2. a Clojure map from keywords to graphs.
+     2. a Clojure map from keywords to (sub)graphs.
 
-   This Graph is a declarative specification of a single keyword function that 
+   A Graph is a declarative specification of a single keyword function that 
    produces a map output, where each value in the output is produced by executing
    the corresponding keyword function in the Graph.  The inputs to the keyword 
    function are given by the outputs of other nodes in the graph with matching 

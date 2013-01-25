@@ -1,17 +1,16 @@
-# Plumbing and Graph: The Clojure utility belt
+# Plumbing and Graph: the Clojure utility belt
 
-This first release includes our ['Graph' library](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html), our plumbing.core library of very commonly used functions (the only thing we :use across our codebase), and a few other supporting namespaces.  
+This first release includes our '[Graph](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html)' library, our plumbing.core library of very commonly used functions (the only thing we :use across our codebase), and a few other supporting namespaces.  
 
 Check back here often, because we'll keep adding more useful namespaces and functions as we work through cleaning up and open-sourcing our stack of Clojure libraries.
 
 ## Graph: The Functional Swiss-Army Knife
 
-Functional programming works by composing smaller functions into bigger ones. Graph is a simple and *declarative* way to represent these compositions, which allows greater freedom to analyze, change, compose, and monitor them. Here's a simple example:
+Functional programming works by composing smaller functions into bigger ones. Graph is a simple and *declarative* way to represent these compositions, which allows greater freedom to analyze, change, compose, and monitor them. Here's a simple example of an ordinary function definition, and its Graph equivalent:
 
 ```clojure
 (defn stats 
-  "Take a map {:xs xs} and return a 
-   map of simple statistics on xs"
+  "Take a map {:xs xs} and return a map of simple statistics on xs"
   [{:keys [xs] :as m}]
   (assert (contains? m :xs))
   (let [n  (count xs)
@@ -34,7 +33,7 @@ Functional programming works by composing smaller functions into bigger ones. Gr
 
 A graph is just a map from keyword to keyword functions ([read more](#fnk)). We can "compile" this `stats-graph` graph to produce a function equivalent to the opaque `stats` fn  above:
 
-```clojure
+```closure
 (require '[plumbing.graph :as graph])
 (def stats-eager (graph/eager-compile stats-graph))
 
@@ -43,18 +42,18 @@ A graph is just a map from keyword to keyword functions ([read more](#fnk)). We 
 	:m2 (/ 25 2)
 	:v (/ 7 2)}
    (stats-eager {:xs [1 2 3 6]}))
-
   
 ;; Missing :xs key exception
 (thrown? Throwable (stats-eager {:ys [1 2 3]}))
 ```
 
-We can also modify and extend `stats-graph` using ordinary operations on maps.
+Unlike the opaque `stats` fn, however, we can modify and extend `stats-graph` using ordinary operations on maps:
 
 ```clojure
-(def extended-stats-graph
-  (assoc stats-graph
-    :sd (fnk [^double v] (Math/sqrt v))))
+(def extended-stats
+  (graph/eager-compile 
+    (assoc stats-graph
+      :sd (fnk [^double v] (Math/sqrt v)))))
 	
 (= {:n 4
     :m 3
@@ -64,61 +63,54 @@ We can also modify and extend `stats-graph` using ordinary operations on maps.
    (extended-stats-graph {:xs [1 2 3 6]}))	
 ```
 
-We can lazily compile stats-graph, so only needed values are computed, or parallel-compile it so functions that don't depend on one-another are done in separate threads.
+We can also lazily compile stats-graph, so only needed values are computed, or parallel-compile it so functions that don't depend on one-another are done in separate threads:
 
 ```clojure
 (def lazy-stats (graph/lazy-compile stats-graph))
 
-(deftest lazy-stats-test
-  (let [output (lazy-stats {:xs [1 2 3 6]})]
-    ;; Nothing has actually been computed yet
-    (is (= (/ 25 2) (:m2 output)))
-    ;; Now :n, :m, and :m2 have been computed, but :v is still behind a delay        
-    ))
+(def output (lazy-stats {:xs [1 2 3 6]}))
+;; Nothing has actually been computed yet
+(= (/ 25 2) (:m2 output))
+;; Now :n, :m, and :m2 have been computed, but :v is still behind a delay        
+
 
 (def par-stats (graph/par-compile stats-graph))
 
-(deftest par-stats-test
-  (let [output (lazy-stats {:xs [1 2 3 6]})]
-    ;; Nodes are being computed in futures, with :m and :m2 going in parallel
-    (is (= (/ 7 2) (:v output)))))
+(def par-output (par-stats {:xs [1 2 3 6]}))
+;; Nodes are being computed in futures, with :m and :m2 going in parallel
+(= (/ 7 2) (:v output)) 
 ```	
 
 We can ask stats-graph for information about its inputs and outputs (automatically computed from its definition):
 
-
 ```clojure
 (require '[plumbing.fnk.pfnk :as pfnk])
 
-(deftest stats-schema-test
-  ;; stats-graph takes a map with one required key, :xs
-  (is (= {:xs true}
-         (pfnk/input-schema stats-graph)))
+;; stats-graph takes a map with one required key, :xs
+(= {:xs true}
+   (pfnk/input-schema stats-graph))
   
-  ;; stats-graph outputs a map with four keys, :n, :m, :m2, and :v
-  (is (= {:n true :m true :m2 true :v true}
-         (pfnk/output-schema stats-graph))))
+;; stats-graph outputs a map with four keys, :n, :m, :m2, and :v
+(= {:n true :m true :m2 true :v true}
+   (pfnk/output-schema stats-graph))
 ```
 
-We can automatically profile each sub-function in 'stats' to see how long it takes to execute.
+We can automatically profile each sub-function in 'stats' to see how long it takes to execute:
 
 ```clojure
 (def profiled-stats (graph/eager-compile (graph/profiled ::profile-data stats-graph)))
-
-(deftest profiled-stats-test
-  (test-stats-fn profiled-stats))
   
 ;;; times in milliseconds for each step:
 (= {:n 1.001, :m 0.728, :m2 0.996, :v 0.069}
    (::profile-data (profiled-stats {:xs (range 10000)})))
 ```
 
-And so on.  For more examples and details, check out test/plumbing/graph_examples_test.clj.
+… and so on.  For more examples and details about Graph, check out test/plumbing/graph_examples_test.clj.
 
 
 <h2 id="fnk">Bring on (de)fnk</h2>
 
-Many of the functions we write take a single map argument and we have expectations about which keys must be present and which can are optional. We developed a new style of binding (read more here) to make this a lot easier and to check that input data has the right 'shape'. We call these keyword functions (`defnk`) and here's what one looks like:
+Many of the functions we write (in Graph and elsewhere) take a single map argument and we have expectations about which keys must be present and which can are optional. We developed a new style of binding (read more in the README.md under src/plumbing/fnk) to make this a lot easier and to check that input data has the right 'shape'. We call these keyword functions (defined by `defnk`) and here's what one looks like:
 
 ```clojure
 (use 'plumbing.core)
@@ -161,9 +153,9 @@ You can use this binding style in a `let` statement using `letk`
 or within an anonymous function by using `fnk`. 
 
 
-## Working with Maps
+## More good stuff
 
-The most useful tool for working with maps is `for-map`, which is `for` for building maps:
+Our favorite tool for building maps is `for-map`, which works like `for`:
 
 ```clojure
 (use 'plumbing.core)
@@ -171,6 +163,13 @@ The most useful tool for working with maps is `for-map`, which is `for` for buil
 	        :let [s (+ i j)]
 			:when (< s 6)] s [i j])
 	{0 [0 0], 1 [1 0], 2 [2 0], 3 [3 0], 4 [3 1], 5 [3 2]})
+```
+
+`safe-get` is like `get` but throws when the key doesn't exist:
+
+```clojure
+;; IllegalArgumentException Key :c not found in {:a 1, :b 2} 
+(thrown? Exception (safe-get {:a 1 :b 2}} :c)
 ```
 
 Another useful map function we use a lot is `map-vals`:
@@ -181,19 +180,8 @@ Another useful map function we use a lot is `map-vals`:
    {:a 1 :b 1})
 ```
 
-`safe-get` is `get` but throws when the key doesn't exist:
-
-```clojure
-;; IllegalArgumentException Key :c not found in {:a 1, :b 2} 
-(thrown? Exception (safe-get {:a 1 :b 2}} :c)
-```
-
-Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/src/plumbing/core.clj) for many other useful functions.
-
-## Pipe Control
-
 Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
-'penguin' operators. Here's a single-arrow example:
+'penguin' operators. Here's a few examples:
 
 ```clojure
 (use 'plumbing.core)
@@ -210,12 +198,8 @@ Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
 	{:a 1 :c 2})
 ```
 
-You can also make a function from a `->` or `->>` expression:
+Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/src/plumbing/core.clj) for many other useful functions.
 
-```clojure
-  (= ((fn-> (assoc :a 1)) {:b 1})
-     {:a 1 :b 1})
-```
 
 ## License
 

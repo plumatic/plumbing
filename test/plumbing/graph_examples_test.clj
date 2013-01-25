@@ -133,7 +133,7 @@
 (def par-stats (graph/par-compile stats-graph))
 
 (deftest par-stats-test
-  (let [output (lazy-stats {:xs [1 2 3 6]})]
+  (let [output (par-stats {:xs [1 2 3 6]})]
     ;; Nodes are being computed in futures, with :m and :m2 going in parallel
     (is (= (/ 7 2) (:v output)))))
 

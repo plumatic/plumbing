@@ -88,31 +88,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Seqs
 
-(deftest frequencies-fast-test
-  (is (= {\p 2, \s 4, \i 4, \m 1}
-         (frequencies-fast "mississippi")))
-  (is (= {1 3 2 2 3 1} 
-         (frequencies-fast [1 2 3 1 2 1])))
-  ;; We don't return the right thing on = but not .equals things,
-  ;; because of the difference between Java Maps and Clojure maps.
-  (is (= {1 1} 
-         (frequencies-fast [1 (BigInteger. "1")]))))
-
-(deftest distinct-fast-test
-  (is (= [1 2 3]
-         (distinct-fast [1 2 3])))
-  (is (= [1 2 3]
-         (distinct-fast [1 2 3 2 1 2 3 2 2])))
-  (is (= []
-         (distinct-fast []))))
-
-(defn are-fast-things-faster []
-  (let [s (apply concat (repeat 100 (range 10000)))]
-    (doseq [f [frequencies frequencies-fast distinct distinct-fast]]
-      (println f)
-      (dotimes [_ 5]
-        (time (doall (f s)))))))
-
 
 (deftest aconcat-test
   (is (= [1 2 3 4 5 6] (aconcat [[1 2 3] [4 5 6]]))))
@@ -137,10 +112,6 @@
   (is (= 1 (singleton [1])))
   (is (nil? (singleton [1 2]))))
 
-(deftest singleton!?-test
-  (is (= 1 (singleton!? [1])))
-  (is (thrown? Throwable (singleton!? [1 2]))))
-
 (deftest indexed-test
   (is (empty? (indexed nil)))
   (is (= [[0 :a] [1 :b] [2 :c]] (indexed [:a :b :c])))
@@ -150,6 +121,31 @@
   (is (empty? (positions odd? [2 4 6 8 10])))
   (is (= [0 1 2] (positions odd? [1 3 5 2 4 6])))
   (is (= [1 3 5] (take 3 (positions odd? (range))))))
+
+(deftest frequencies-fast-test
+  (is (= {\p 2, \s 4, \i 4, \m 1}
+         (frequencies-fast "mississippi")))
+  (is (= {1 3 2 2 3 1} 
+         (frequencies-fast [1 2 3 1 2 1])))
+  ;; We don't return the right thing on = but not .equals things,
+  ;; because of the difference between Java Maps and Clojure maps.
+  (is (= {1 1} 
+         (frequencies-fast [1 (BigInteger. "1")]))))
+
+(deftest distinct-fast-test
+  (is (= [1 2 3]
+         (distinct-fast [1 2 3])))
+  (is (= [1 2 3]
+         (distinct-fast [1 2 3 2 1 2 3 2 2])))
+  (is (= []
+         (distinct-fast []))))
+
+(defn are-fast-things-faster []
+  (let [s (apply concat (repeat 100 (range 10000)))]
+    (doseq [f [frequencies frequencies-fast distinct distinct-fast]]
+      (println f)
+      (dotimes [_ 5]
+        (time (doall (f s)))))))
 
 (deftest distinct-by-test
   (is (= [{:id 1 :data "a"}]
