@@ -106,6 +106,13 @@
   (is (= []
          (distinct-fast []))))
 
+(defn are-fast-things-faster []
+  (let [s (apply concat (repeat 100 (range 10000)))]
+    (doseq [f [frequencies frequencies-fast distinct distinct-fast]]
+      (println f)
+      (dotimes [_ 5]
+        (time (doall (f s)))))))
+
 
 (deftest aconcat-test
   (is (= [1 2 3 4 5 6] (aconcat [[1 2 3] [4 5 6]]))))
