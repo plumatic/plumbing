@@ -122,7 +122,7 @@
 
 (deftest lazy-stats-test
   (let [output (lazy-stats {:xs [1 2 3 6]})]
-    ;; Nothing has actually be computed yet
+    ;; Nothing has actually been computed yet
     (is (= (/ 25 2) (:m2 output)))
     ;; Now :n, :m, and :m2 have been computed, but :v is still behind a delay        
     ))

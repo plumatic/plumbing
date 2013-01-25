@@ -8,30 +8,18 @@
    Concretely, a Graph specification is just a Clojure (nested) map with keyword keys
    and keyword functions at the leaves.  
 
-   A 'graph' is defined recursively as either:
+   A Graph is defined recursively as either:
      1. a keyword function (i.e., fn satisfying PFnk), or
      2. a Clojure map from keywords to graphs.
 
+   This Graph is a declarative specification of a single keyword function that 
+   produces a map output, where each value in the output is produced by executing
+   the corresponding keyword function in the Graph.  The inputs to the keyword 
+   function are given by the outputs of other nodes in the graph with matching 
+   keywords (mimicking lexical scope in the case of nested maps), or failing that,
+   from keywords in the input map.
 
-   A graph node will only be passed *top-level* keys that it explicitly asks for,
-   either optional or required.  & and :as are neutered in this sense,
-   but this is needed to ensure well-defined topological order and allow,
-   e.g., proper introspection, parallelization, and the like.
-   (Does not apply to nested keys, since you can ask for the map anyway).
-   This is subject to change.
-
-   Implementation info.
-   
-   Design decision -- do everything at the leaves
-   Design decision -- support nested graphs, to allow subgraphs.
-   Optional keys, exposing vs ability to do &/:as, etc.
-   
-   The keyword functions must accept a single 
-   argument map with keyword keys and support the PFnk protocol, but need not be 
-   created by the *fnk macros in plumbing.core (although this is the simplest way 
-   to create them).
-
-   "
+   For more details and examples of Graphs, see test/plumbing/graph_examples_test.clj."
   (:require
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]

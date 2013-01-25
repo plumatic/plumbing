@@ -1,12 +1,29 @@
 # Plumbing and Graph: The Clojure utility belt
 
-Key functions and abstractions for building awesome things in Clojure. 
+This first release includes our ['Graph' library](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html), our plumbing.core library of very commonly used functions (the only thing we :use across our codebase), and a few other supporting namespaces.  
+
+Check back here often, because we'll keep adding more useful namespaces and functions as we work through cleaning up and open-sourcing our stack of Clojure libraries.
 
 ## Graph: The Functional Swiss-Army Knife
 
-Functional programming works by composing smaller functions into  bigger ones. Graph is a simple and *declarative* way to represent how computations compose. Here's a simple example:
+Functional programming works by composing smaller functions into bigger ones. Graph is a simple and *declarative* way to represent these compositions, which allows greater freedom to analyze, change, compose, and monitor them. Here's a simple example:
 
 ```clojure
+(defn stats 
+  "Take a map {:xs xs} and return a 
+   map of simple statistics on xs"
+  [{:keys [xs] :as m}]
+  (assert (contains? m :xs))
+  (let [n  (count xs)
+        m  (/ (sum identity xs) n)
+        m2 (/ (sum #(* % %) xs) n) 
+        v  (- m2 (* m m))]
+    {:n n   ; count   
+     :m m   ; mean 
+     :m2 m2 ; mean square
+     :v v   ; variance
+     }))
+
 (def stats-graph
   "A graph specifying the same computation as 'stats'"
   {:n  (fnk [xs]   (count xs))
@@ -15,7 +32,7 @@ Functional programming works by composing smaller functions into  bigger ones. G
    :v  (fnk [m m2] (- m2 (* m m)))})   
 ```
 
-A graph is just a map from keyword to annoymous keyword functions `fnk` ([read more](#fnk)). We can "compile" this graph to produce a function equivalent to the opaque example above:
+A graph is just a map from keyword to keyword functions ([read more](#fnk)). We can "compile" this `stats-graph` graph to produce a function equivalent to the opaque `stats` fn  above:
 
 ```clojure
 (require '[plumbing.graph :as graph])
@@ -32,7 +49,7 @@ A graph is just a map from keyword to annoymous keyword functions `fnk` ([read m
 (thrown? Throwable (stats-eager {:ys [1 2 3]}))
 ```
 
-We can also modify and extend stats-graph using ordinary operations on maps.
+We can also modify and extend `stats-graph` using ordinary operations on maps.
 
 ```clojure
 (def extended-stats-graph
@@ -47,15 +64,14 @@ We can also modify and extend stats-graph using ordinary operations on maps.
    (extended-stats-graph {:xs [1 2 3 6]}))	
 ```
 
-We can lazily compile stats-graph, so only needed values are computed, or parallel-compile it so functions that don't depend on one-another
-are done in separate threads.
+We can lazily compile stats-graph, so only needed values are computed, or parallel-compile it so functions that don't depend on one-another are done in separate threads.
 
 ```clojure
 (def lazy-stats (graph/lazy-compile stats-graph))
 
 (deftest lazy-stats-test
   (let [output (lazy-stats {:xs [1 2 3 6]})]
-    ;; Nothing has actually be computed yet
+    ;; Nothing has actually been computed yet
     (is (= (/ 25 2) (:m2 output)))
     ;; Now :n, :m, and :m2 have been computed, but :v is still behind a delay        
     ))
@@ -68,7 +84,7 @@ are done in separate threads.
     (is (= (/ 7 2) (:v output)))))
 ```	
 
-We can ask stats-graph for information about its inputs and outputs (automatically computed from the definition):
+We can ask stats-graph for information about its inputs and outputs (automatically computed from its definition):
 
 
 ```clojure
@@ -96,6 +112,8 @@ We can automatically profile each sub-function in 'stats' to see how long it tak
 (= {:n 1.001, :m 0.728, :m2 0.996, :v 0.069}
    (::profile-data (profiled-stats {:xs (range 10000)})))
 ```
+
+And so on.  For more examples and details, check out test/plumbing/graph_examples_test.clj.
 
 
 <h2 id="fnk">Bring on (de)fnk</h2>
@@ -135,12 +153,12 @@ Of course, you can bind multiple variables from an inner map and do multiple lev
 (defnk simple-nested-fnk [a [:b b1 [:c {d 3}]]] 
   (+ a b1 d))
   
-(= 4  (simple-nested-fnk {:a 1  :b {:b1 2 :c {:d 1}}}))   
+(= 4  (simple-nested-fnk {:a 1 :b {:b1 2 :c {:d 1}}}))   
 (= 5  (simple-nested-fnk {:a 1 :b {:b1 1 :c {}}}))
 ```
 
 You can use this binding style in a `let` statement using `letk` 
-or within an annoymous function by using `fnk`. 
+or within an anonymous function by using `fnk`. 
 
 
 ## Working with Maps
@@ -174,8 +192,8 @@ Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/sr
 
 ## Pipe Control
 
-Ever wanted to conditionally do steps in a `->>` or `->`, now you can with 
-penguin operators. Here's a single-arrow example:
+Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
+'penguin' operators. Here's a single-arrow example:
 
 ```clojure
 (use 'plumbing.core)
