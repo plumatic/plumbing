@@ -1,7 +1,6 @@
 (ns plumbing.core
   "Utility belt for Clojure in the wild"
   (:require
-   plumbing.clojure-core 
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
@@ -102,6 +101,25 @@
    (for [[k v] (partition 2 kvs)
          :when v]	 
      [k v])))
+
+(defn frequencies-fast
+  "Like clojure.core/frequencies, but faster.
+   Uses Java's equal/hash, so may produce incorrect results if
+   given values that are = but not .equal"
+  [xs]
+  (let [res (java.util.HashMap.)]
+    (doseq [x xs]
+      (.put res x (unchecked-inc (int (or (.get res x) 0)))))
+    (into {} res)))
+ 
+(defn distinct-fast 
+  "Like clojure.core/distinct, but faster.
+   Uses Java's equal/hash, so may produce incorrect results if
+   given values that are = but not .equal"
+  [xs] 
+  (let [s (java.util.HashSet.)] 
+    (filter #(when-not (.contains s %) (.add s %) true) xs)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Seqs

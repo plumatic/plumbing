@@ -88,6 +88,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Seqs
 
+(deftest frequencies-fast-test
+  (is (= {\p 2, \s 4, \i 4, \m 1}
+         (frequencies-fast "mississippi")))
+  (is (= {1 3 2 2 3 1} 
+         (frequencies-fast [1 2 3 1 2 1])))
+  ;; We don't return the right thing on = but not .equals things,
+  ;; because of the difference between Java Maps and Clojure maps.
+  (is (= {1 1} 
+         (frequencies-fast [1 (BigInteger. "1")]))))
+
+(deftest distinct-fast-test
+  (is (= [1 2 3]
+         (distinct-fast [1 2 3])))
+  (is (= [1 2 3]
+         (distinct-fast [1 2 3 2 1 2 3 2 2])))
+  (is (= []
+         (distinct-fast []))))
+
+
 (deftest aconcat-test
   (is (= [1 2 3 4 5 6] (aconcat [[1 2 3] [4 5 6]]))))
 
