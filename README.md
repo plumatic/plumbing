@@ -2,50 +2,6 @@
 
 Key functions and abstractions for building awesome things in Clojure. 
 
-## Bring on (de)fnk
-
-Many of the functions we write take a single map argument and we have expectations about which keys must be present and which can are optional. We developed a new style of binding (read more here) to make this a lot easier and to check that input data has the right 'shape'. We call these keyword functions (`defnk`) and here's what one looks like:
-
-```clojure
-(use 'plumbing.core)
-(defnk simple-fnk [a b c] 
-  (+ a b c))
-  
-(= 6  (simple-fnk {:a 1 :b 2 :c 3}))
-;; Below throws: Key :c not found in (:a :b)
-(thrown? Throwable (simple-fnk {:a 1 :b 2})) 
-```
-
-You can declare a key as optional and provide a default like this:
-```clojure
-(defnk simple-opt-fnk [a b {c 1}] 
-  (+ a b c))
-  
-(= 4  (simple-opt-fnk {:a 1 :b 2}))   
-```
-
-You can do nested map bindings like this:
-```clojure
-(defnk simple-nested-fnk [a [:b b1] c] 
-  (+ a b1 c))
-  
-(= 6  (simple-nested-fnk {:a 1 :b {:b1 2} :c 3}))   
-;; Below throws: Expected a map at key-path [:b], got type class java.lang.Long
-(thrown? Throwable (simple-nested-fnk {:a 1 :b 1 :c 3})) 
-```
-
-Of course, you can bind multiple variables from an inner map and do multiple levels of nesting:
-```clojure
-(defnk simple-nested-fnk [a [:b b1 [:c {d 3}]]] 
-  (+ a b1 d))
-  
-(= 4  (simple-nested-fnk {:a 1  :b {:b1 2 :c {:d 1}}}))   
-(= 5  (simple-nested-fnk {:a 1 :b {:b1 1 :c {}}}))
-```
-
-You can use this binding style in a `let` statement using `letk` 
-or within an annoymous function by using `fnk`. 
-
 ## Graph: The Functional Swiss-Army Knife
 
 Functional programming works by composing smaller functions into  bigger ones. Graph is a simple and *declarative* way to represent how computations compose. Here's a simple example:
@@ -59,7 +15,7 @@ Functional programming works by composing smaller functions into  bigger ones. G
    :v  (fnk [m m2] (- m2 (* m m)))})   
 ```
 
-A graph is just a map from keyword to annoymous keyword functions `fnk` (see above). We can "compile" this graph to produce a function equivalent to the opaque example above:
+A graph is just a map from keyword to annoymous keyword functions `fnk` ([read more](#fnk)). We can "compile" this graph to produce a function equivalent to the opaque example above:
 
 ```clojure
 (require '[plumbing.graph :as graph])
@@ -142,6 +98,51 @@ We can automatically profile each sub-function in 'stats' to see how long it tak
 ```
 
 
+<h2 id="fnk">Bring on (de)fnk</h2>
+
+Many of the functions we write take a single map argument and we have expectations about which keys must be present and which can are optional. We developed a new style of binding (read more here) to make this a lot easier and to check that input data has the right 'shape'. We call these keyword functions (`defnk`) and here's what one looks like:
+
+```clojure
+(use 'plumbing.core)
+(defnk simple-fnk [a b c] 
+  (+ a b c))
+  
+(= 6  (simple-fnk {:a 1 :b 2 :c 3}))
+;; Below throws: Key :c not found in (:a :b)
+(thrown? Throwable (simple-fnk {:a 1 :b 2})) 
+```
+
+You can declare a key as optional and provide a default like this:
+```clojure
+(defnk simple-opt-fnk [a b {c 1}] 
+  (+ a b c))
+  
+(= 4  (simple-opt-fnk {:a 1 :b 2}))   
+```
+
+You can do nested map bindings like this:
+```clojure
+(defnk simple-nested-fnk [a [:b b1] c] 
+  (+ a b1 c))
+  
+(= 6  (simple-nested-fnk {:a 1 :b {:b1 2} :c 3}))   
+;; Below throws: Expected a map at key-path [:b], got type class java.lang.Long
+(thrown? Throwable (simple-nested-fnk {:a 1 :b 1 :c 3})) 
+```
+
+Of course, you can bind multiple variables from an inner map and do multiple levels of nesting:
+```clojure
+(defnk simple-nested-fnk [a [:b b1 [:c {d 3}]]] 
+  (+ a b1 d))
+  
+(= 4  (simple-nested-fnk {:a 1  :b {:b1 2 :c {:d 1}}}))   
+(= 5  (simple-nested-fnk {:a 1 :b {:b1 1 :c {}}}))
+```
+
+You can use this binding style in a `let` statement using `letk` 
+or within an annoymous function by using `fnk`. 
+
+
 ## Working with Maps
 
 The most useful tool for working with maps is `for-map`, which is `for` for building maps:
@@ -169,7 +170,7 @@ Another useful map function we use a lot is `map-vals`:
 (thrown? Exception (safe-get {:a 1 :b 2}} :c)
 ```
 
-Check out [`plumbing.core`]() for many other useful functions.
+Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/src/plumbing/core.clj) for many other useful functions.
 
 ## Pipe Control
 
