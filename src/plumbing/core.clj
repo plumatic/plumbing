@@ -1,7 +1,6 @@
 (ns plumbing.core
   "Utility belt for Clojure in the wild"
   (:require
-   plumbing.clojure-core 
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
@@ -140,12 +139,6 @@
     (when-not (next xs)
       (first xs))))
 
-(defn singleton!?
-  "Like singleton, but throws when xs has size > 1"
-  [xs & [msg]]
-  (assert (= (count (take 2 xs)) 1) msg)
-  (first xs))
-
 (defn indexed
   "Returns [idx x] for x in seqable s"
   [s]
@@ -155,6 +148,24 @@
   "Returns indices idx of sequence s where (f (nth s idx))"
   [f s]
   (keep-indexed (fn [i x] (when (f x) i)) s))
+
+(defn frequencies-fast
+  "Like clojure.core/frequencies, but faster.
+   Uses Java's equal/hash, so may produce incorrect results if
+   given values that are = but not .equal"
+  [xs]
+  (let [res (java.util.HashMap.)]
+    (doseq [x xs]
+      (.put res x (unchecked-inc (int (or (.get res x) 0)))))
+    (into {} res)))
+ 
+(defn distinct-fast 
+  "Like clojure.core/distinct, but faster.
+   Uses Java's equal/hash, so may produce incorrect results if
+   given values that are = but not .equal"
+  [xs] 
+  (let [s (java.util.HashSet.)] 
+    (filter #(when-not (.contains s %) (.add s %) true) xs)))
 
 (defn distinct-by
   "Returns elements of xs which return unique

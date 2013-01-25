@@ -1,14 +1,16 @@
 ## Motivation
 
-As part of our first open source release, we're contemplating introducing `fnk` and `defnk` macros with different destructuring syntax than the rest of Clojure.   Before we publicly release libraries built on/for these macros, we want your feedback to ensure that they will be tools other Clojure programmers will find useful rather than annoying (or worse, divisive).
+As part of our first open source release, we're contemplating introducing `fnk` and `defnk` macros with different destructuring syntax than the rest of Clojure.  
 
-Below, we've collected some background on the rational behind introducing `fnk`, together with a proposed syntax and several alternatives.  Any and all input on these ideas would be much appreciated -- you can leave them in the comments below (??), or email them to jason@getprismatic.com.
+Below, we've collected some background on the rational behind introducing `fnk`, together with a proposed syntax and several alternatives.  Any and all input on these ideas would be much appreciated.
+
+For more documentation and examples of graph and fnk, we encourage checking out test/plumbing/fnk/fnk_examples_test.clj and test/plumbing/graph_examples_test.clj.
 
 ### Background
 
 We're very excited to begin sharing the Clojure infrastructure that powers Prismatic.  Our goals for 2013 include releasing open-source libraries for storage, machine learning, deployment, production services, and more for the Clojure community to (hopefully) use, contribute to, and build upon. 
 
-Our first release will be [Graph], a library for declaratively specifying the composition structure of complex functions, along with other portions of our low-level "plumbing" library that support it. 
+Our first release is plumbing.[Graph], a library for declaratively specifying the composition structure of complex functions, along with other portions of our low-level "plumbing" library that support it. 
 
 [[Insert graphical graph for univariate stats.]]
 
@@ -27,9 +29,6 @@ This example shows a simple Graph that expresses the computation of univariate s
 We cannot simply implement `(fnk [xs n] …)` with `(fn [{:keys [xs n]}])` for two reasons. First, arglist metadata is not supported by Clojure's current function-defining macros (`defn` puts it on the var, but neither `defn` nor `fn` puts it on the fn itself).  Second, while Clojure does offer excellent destructuring support (including for maps) out of the box, it turns out to be somewhat verbose for the cases commonly encountered in Graph.  
 
 Thus, we are exploring the definition of a new family keyword functions (`fnk` and `defnk`) that use a new destructuring syntax focused around (nested) maps with keyword keys, and also provide explicit metadata about a function's input and output *schemata*. 
-
-<!--The key observation behind Graph is that if you allow functions to take named arguments, then a simple map of functions can be interpreted as a declarative specification of a larger composite function (where functions in the map can take arguments from the outputs of previous functions, or from outside the graph).  To put this observation into practice, we require a clean way to specify functions that take named arguments out of nested maps with keyword keys, and expose this information to the outside world (i.e, via metadata) so that the structure of the composition can be extracted, checked, and reasoned about.
--->
 
 Our `fnk` experiment has been running internally for more than a year now, and we've found `fnk` to be quite useful for not only for defining Graphs, but also for many other situations involving maps with keyword keys.  Across our current codebase, about 5% of function definitions use a variant of `fnk` over `fn`.
 
