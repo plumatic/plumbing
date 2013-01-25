@@ -3,7 +3,9 @@
   (:require
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
-   [plumbing.graph :as graph]))
+   [plumbing.graph :as graph]
+   [plumbing.map :as map]
+   ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Motivation
@@ -436,43 +438,139 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Finally!  Fun stuff with Graphs
+;;; More fun stuff with Graphs
 
-;; exploiting the declarative nature of graphs
-;;   profile
-;;   testing a graph by mocking out
-;;   resource compilation and shutdown
-;;   instance-ing and nesting
-;;   prototype non-compiled instance
+;; In the above examples, we've already seen a number of interesting 
+;; things we can do with Graphs that we could not do with ordinary
+;; (opaque) function compositions, including:
+;;  - automatic computation of input and output schemas
+;;  - automatic lazy and parallel compilations
+;;  - easy extension with normal map operations (assoc, etc.)
+;;  - automatic profiling of individual node execution times
 
+;; Here we explore a few more interesting ideas centered around
+;; defining, executing, monitoring, and testing production services.
+;; These are techniques we already use in our real production services,
+;; and we plan to release our real implementations soon (we wouldn't
+;; recommend using the simple test implementations here for that purpose).
 
-;; All metadata lives at the leaves (on the fnks), so you can always
-;; modify a graph (including structurally) without knowing anything about
-;; the internals of the implementation
+;; While the basic machinery in this setting is the same as above, its 
+;; use is rather different.  In particular, each service is defined by a 
+;; Graph that executes once on service startup, with each node building 
+;; a resource (such as a storage system, cache, thread pool, web server, etc)
+;; that can be in turn used by other resources.  The output of this
+;; graph is a map of resources that can be introspected for debugging
+;; while the service runs, and on shutdown can be used to cleanly close
+;; out all components in the correct order (the inverse of startup).
 
-(def g2
+;; In this case, a very simple approach would be to have each node function
+;; return a map with two possible keys:
+;;   - :resource is the actual resource that should be passed into other 
+;;     nodes,
+;;   - :shutdown is a shutdown hook to cleanly shut down this resource.
+
+;; Under this simple scheme, we can define functions to start up and 
+;; shutdown a service in just 20 lines of code.
+
+(defn resource-transform [g]
+  (assoc (map/map-leaves 
+          (fn [node-fn]
+            (pfnk/fn->fnk
+             (fn [m]
+               (let [r (node-fn m)]
+                 (when-let [shutdown (:shutdown r)]
+                   (swap! (::shutdown-hooks m) conj shutdown))
+                 (assert (contains? r :resource))
+                 (:resource r)))
+             [(assoc (pfnk/input-schema node-fn) ::shutdown-hooks true)
+              (pfnk/output-schema node-fn)]))                         
+          g)
+    ::shutdown-hooks (fnk [] (atom nil))))
+
+(defn start-service [graph params]  
+  ((graph/eager-compile (resource-transform graph)) params))
+
+(defn shutdown-service [m]
+  (doseq [f @(::shutdown-hooks m)]
+    (f)))
+
+;; Now we'll have to get a bit imaginative, since we don't have much 
+;; in the way of interesting resources available on our classpath
+;; at the moment.  We can start with simple resources like this one:
+
+(defnk schedule-work 
+  "Cron for clojure fns. Schedule a single fn with a pool to run every rate seconds."
+  [work-fn rate]
+  (let [pool (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)]
+    (.scheduleAtFixedRate pool work-fn (long 0) (long rate) java.util.concurrent.TimeUnit/SECONDS)
+    {:resource nil
+     :shutdown #(.shutdown pool)}))
+
+;; and then we can build up more complex resources as Graphs from these
+;; components (getting a bit silly for the sake of brevity):
+
+(def expiring-cache
+  (graph/graph 
+   :atom (fnk [] {:resource (atom nil)})
+   :prune (fnk [atom max-age {prune-rate 1}]
+               (schedule-work 
+                {:work-fn (fn [] (swap! atom (fn [m]
+                                               (let [cutoff (- (millis) (* 1000 max-age))]
+                                                 (for-map [[k [v ts]] m
+                                                           :when (> ts cutoff)]
+                                                   k [v ts])))))
+                 :rate prune-rate}))))
+
+(defn ec-get [ec k f]
+  (letk [[atom] ec]
+    (if-let [[_ [v]] (find @atom k)]
+      v
+      (let [v (f k)]
+        (swap! atom assoc k [v (millis)])
+        v))))
+  
+
+;; and finally we can build up services from these components
+
+(def pointless-service
   (graph/graph
-   :x (fnk [a] (inc a))
-   :y (fnk [x] (* 2 x))
-   :z (fnk [x] (dec x))))
+   :cache expiring-cache
+   :sql-query (fnk []
+                ;; pretend this gives a database query fn
+                (throw (RuntimeException.)))
+   :web-server (fnk [cache sql-query]
+                 ;; pretend this is a real webserver, not just a fn.
+                 {:resource (fn [q] (ec-get cache q sql-query))})))
 
-(def g3
-  (assoc g2
-    :x (fnk [z] (* 3 z))
-    :z (fnk [b] (- b))))
+;; and we can start and stop these services, and mock out components
 
-(= (graph/run g3 {:b 3})
-   {:z -3
-    :x -9
-    :y -18})
+(defn test-pointless-service [graph params]
+  (let [svc-map (start-service 
+                 (assoc graph
+                   :sql-query (fnk mock-sql [] {:resource inc}))
+                 params)
+        web-server (:web-server svc-map)]
+    
+    (is (= 3 (web-server 2)))
+    (is (= 11 (web-server 10)))
+    (is (= #{2 10} (-> svc-map :cache :atom deref keys set)))
+    (Thread/sleep 3000)
+    (is (= #{} (-> svc-map :cache :atom deref keys set)))
+    
+    (shutdown-service svc-map)))
 
+(deftest ^:slow pointless-service-test
+  (test-pointless-service pointless-service {:max-age 1}))
 
+;; To make this sort of composition useful on a large scale, we also
+;; need a way to provide contextual arguments to subgraphs, 
+;; via a version of comp-partial.  We do this extensively in our 
+;; real services, but are still working on cleaning this mechanism
+;; up and preparing it for release.  
 
-;; TODO: build up simple resource shit with shutdown
-
-;; TODO: show composition of resources and hierarchical graphs
-
-
+;; Stay tuned for future releases that will include our library
+;; of useful resources and subgraphs, utilities for starting, stopping,
+;; and managing services based on Graph, and more.
 
 
 
