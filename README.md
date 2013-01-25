@@ -1,21 +1,24 @@
-# Plumbing and Graph: The Clojure utility belt
+# Plumbing and Graph: The Clojure Utility Belt
 
 Key functions and abstractions for building awesome things in Clojure. 
 
 ## Graph: The Functional Swiss-Army Knife
 
-Functional programming works by composing smaller functions into  bigger ones. Graph is a simple and *declarative* way to represent how computations compose. Here's a simple example:
+Graph is a simple and *declarative* way to describe how functions compose in a larger computation. Here's a simple example:
 
 ```clojure
 (def stats-graph
-  "A graph specifying the same computation as 'stats'"
+  "A graph specifying the computation of univariate statistics"
   {:n  (fnk [xs]   (count xs))
    :m  (fnk [xs n] (/ (sum identity xs) n))
    :m2 (fnk [xs n] (/ (sum #(* % %) xs) n))
    :v  (fnk [m m2] (- m2 (* m m)))})   
 ```
 
-A graph is just a map from keyword to annoymous keyword functions `fnk` ([read more](#fnk)). We can "compile" this graph to produce a function equivalent to the opaque example above:
+
+A graph is just a map from keyword to annoymous keyword functions `fnk` ([learn more](#fnk)). This graph represents the steps in taking a sequence of numbers (`xs`) and  producing univariate statistics on those numbers (e.g., the mean `m` and the variance `v`).  The names of arguments to each `fnk` represent other graph steps that must happen before the step executes. For instance, in the above, to execute `:v`, you must execute the `:m` and `:m2` steps (mean and second moment respectively).
+
+We can "compile" this graph to produce a single function, which also checks the map represents a valid graph:
 
 ```clojure
 (require '[plumbing.graph :as graph])
@@ -32,7 +35,7 @@ A graph is just a map from keyword to annoymous keyword functions `fnk` ([read m
 (thrown? Throwable (stats-eager {:ys [1 2 3]}))
 ```
 
-We can also modify and extend stats-graph using ordinary operations on maps.
+If we want to add another step to `stats-graph` computation, we can do so simply using ordinary operations on maps:
 
 ```clojure
 (def extended-stats-graph
@@ -47,8 +50,7 @@ We can also modify and extend stats-graph using ordinary operations on maps.
    (extended-stats-graph {:xs [1 2 3 6]}))	
 ```
 
-We can lazily compile stats-graph, so only needed values are computed, or parallel-compile it so functions that don't depend on one-another
-are done in separate threads.
+A graph only encodes the structure of computation and there are many compilation strategies. We can do a lazy compilation so only values  which are requested are computed. Since a graph encodes dependency, we can also do parallel-compile so functions that don't depend on one-another are done in separate threads.
 
 ```clojure
 (def lazy-stats (graph/lazy-compile stats-graph))
