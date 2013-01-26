@@ -1,11 +1,10 @@
-<<<<<<< HEAD
 # Plumbing and Graph: the Clojure utility belt
 
-This first release includes our '[Graph](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html)' library, our plumbing.core library of very commonly used functions (the only thing we :use across our codebase), and a few other supporting namespaces.  
+This first release includes our '[Graph](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html)' library, our `plumbing.core` library of very commonly used functions (the only thing we `:use` across our codebase), and a few other supporting namespaces.  
 
-Check back here often, because we'll keep adding more useful namespaces and functions as we work through cleaning up and open-sourcing our stack of Clojure libraries.
+Check back often, because we'll keep adding more useful namespaces and functions as we work through cleaning up and open-sourcing our stack of Clojure libraries.
 
-## Graph: The Functional Swiss-Army Knife
+## Graph: the Functional Swiss-Army Knife
 
 Graph is a simple and *declarative* way to specify a structured computation, which is easy to analyze, change, compose, and monitor. Here's a simple example of an ordinary function definition, and its Graph equivalent:
 
@@ -20,23 +19,24 @@ Graph is a simple and *declarative* way to specify a structured computation, whi
         v  (- m2 (* m m))]
     {:n n   ; count   
      :m m   ; mean 
-     :m2 m2 ; mean square
+     :m2 m2 ; mean-square
      :v v   ; variance
      }))
 
+(use 'plumbing.core)
 (def stats-graph
-  "A graph specifying the computation of univariate statistics"
+  "A graph specifying the same computation as 'stats'"
   {:n  (fnk [xs]   (count xs))
    :m  (fnk [xs n] (/ (sum identity xs) n))
    :m2 (fnk [xs n] (/ (sum #(* % %) xs) n))
    :v  (fnk [m m2] (- m2 (* m m)))})   
 ```
 
-A Graph is just a map from keywords to keyword functions ([learn more](#fnk)).  In this case, `stats-graph` represents the steps in taking a sequence of numbers (`xs`) and producing univariate statistics on those numbers (i.e., the mean `m` and the variance `v`).  The names of arguments to each `fnk` can refer to other steps that must happen before the step executes. For instance, in the above, to execute `:v`, you must execute the `:m` and `:m2` steps (mean and second moment respectively).
+A Graph is just a map from keywords to keyword functions ([learn more](#fnk)).  In this case, `stats-graph` represents the steps in taking a sequence of numbers (`xs`) and producing univariate statistics on those numbers (i.e., the mean `m` and the variance `v`).  The names of arguments to each `fnk` can refer to other steps that must happen before the step executes. For instance, in the above, to execute `:v`, you must first execute the `:m` and `:m2` steps (mean and mean-square respectively).
 
-We can "compile" this graph to produce a single function (equivalent to `stats`), which also checks the map represents a valid graph:
+We can "compile" this Graph to produce a single function (equivalent to `stats`), which also checks that the map represents a valid Graph:
 
-```closure
+```clojure
 (require '[plumbing.graph :as graph])
 (def stats-eager (graph/eager-compile stats-graph))
 
@@ -53,7 +53,7 @@ We can "compile" this graph to produce a single function (equivalent to `stats`)
 Unlike the opaque `stats` fn, however, we can modify and extend `stats-graph` using ordinary operations on maps:
 
 ```clojure
-(def extended-stats
+(def extended-stats  
   (graph/eager-compile 
     (assoc stats-graph
       :sd (fnk [^double v] (Math/sqrt v)))))
@@ -66,7 +66,7 @@ Unlike the opaque `stats` fn, however, we can modify and extend `stats-graph` us
    (extended-stats-graph {:xs [1 2 3 6]}))	
 ```
 
-A Graph encodes the structure of a compuation, but not how it happens, allowing for many execution strategies. For example, we can do a lazy compilation of a graph so step values are computed as needed. Or, we can parallel-compile the Graph so that independent step functions are run in separate threads.
+A Graph encodes the structure of a compuation, but not how it happens, allowing for many execution strategies. For example, we can do a lazy compilation of a Graph so step values are computed as needed. Or, we can parallel-compile the Graph so that independent step functions are run in separate threads:
 
 ```clojure
 (def lazy-stats (graph/lazy-compile stats-graph))
@@ -79,12 +79,12 @@ A Graph encodes the structure of a compuation, but not how it happens, allowing 
 
 (def par-stats (graph/par-compile stats-graph))
 
-(def par-output (par-stats {:xs [1 2 3 6]}))
+(def output (par-stats {:xs [1 2 3 6]}))
 ;; Nodes are being computed in futures, with :m and :m2 going in parallel
 (= (/ 7 2) (:v output)) 
 ```	
 
-We can ask stats-graph for information about its inputs and outputs (automatically computed from its definition):
+We can also ask a Graph for information about its inputs and outputs (automatically computed from its definition):
 
 ```clojure
 (require '[plumbing.fnk.pfnk :as pfnk])
@@ -98,7 +98,7 @@ We can ask stats-graph for information about its inputs and outputs (automatical
    (pfnk/output-schema stats-graph))
 ```
 
-We can automatically profile each sub-function in 'stats' to see how long it takes to execute:
+We can also have higher-order functions on Graphs to wrap the behavior on each step. For instance, we can automatically profile each sub-function in 'stats' to see how long it takes to execute:
 
 ```clojure
 (def profiled-stats (graph/eager-compile (graph/profiled ::profile-data stats-graph)))
@@ -108,12 +108,12 @@ We can automatically profile each sub-function in 'stats' to see how long it tak
    (::profile-data (profiled-stats {:xs (range 10000)})))
 ```
 
-… and so on.  For more examples and details about Graph, check out test/plumbing/graph_examples_test.clj.
+… and so on.  For more examples and details about Graph, check out the [graph examples test](https://github.com/Prismatic/plumbing/blob/master/test/plumbing/graph_examples_test.clj).
 
+<a name="fnk"/>
+## Bring on (de)fnk 
 
-<h2 id="fnk">Bring on (de)fnk</h2>
-
-Many of the functions we write (in Graph and elsewhere) take a single map argument and we have expectations about which keys must be present and which can are optional. We developed a new style of binding (read more in the README.md under src/plumbing/fnk) to make this a lot easier and to check that input data has the right 'shape'. We call these keyword functions (defined by `defnk`) and here's what one looks like:
+Many of the functions we write (in Graph and elsewhere) take a single map argument and we have expectations about which keys must be present and which can are optional. We developed a new style of binding ([read more here](https://github.com/Prismatic/plumbing/tree/master/src/plumbing/fnk)) to make this a lot easier and to check that input data has the right 'shape'. We call these 'keyword functions' (defined by `defnk`) and here's what one looks like:
 
 ```clojure
 (use 'plumbing.core)
@@ -125,7 +125,7 @@ Many of the functions we write (in Graph and elsewhere) take a single map argume
 (thrown? Throwable (simple-fnk {:a 1 :b 2})) 
 ```
 
-You can declare a key as optional and provide a default like this:
+You can declare a key as optional and provide a default:
 ```clojure
 (defnk simple-opt-fnk [a b {c 1}] 
   (+ a b c))
@@ -133,7 +133,7 @@ You can declare a key as optional and provide a default like this:
 (= 4  (simple-opt-fnk {:a 1 :b 2}))   
 ```
 
-You can do nested map bindings like this:
+You can do nested map bindings:
 ```clojure
 (defnk simple-nested-fnk [a [:b b1] c] 
   (+ a b1 c))
@@ -158,7 +158,9 @@ or within an anonymous function by using `fnk`.
 
 ## More good stuff
 
-Our favorite tool for building maps is `for-map`, which works like `for`:
+There's a whole lot of functions in `plumbing.core` which we can't live without. Here are a few of our favorites.
+
+When we build maps, we often use `for-map`, which works like `for` but for maps:
 
 ```clojure
 (use 'plumbing.core)
@@ -175,7 +177,7 @@ Our favorite tool for building maps is `for-map`, which works like `for`:
 (thrown? Exception (safe-get {:a 1 :b 2}} :c)
 ```
 
-Another useful map function we use a lot is `map-vals`:
+Another frequently used map function is `map-vals`:
 
 ```clojure
 ;; return k -> (f v) for [k, v] in map
