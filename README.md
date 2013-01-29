@@ -1,4 +1,4 @@
-<img src="https://raw.github.com/wiki/prismatic/plumbing/images/prismatic-swiss-army-knife.png" alt="prismatic/plumbing logo" title="prismatic/plumbing logo" align="right" width="300" />
+<img src="https://raw.github.com/wiki/prismatic/plumbing/images/prismatic-swiss-army-knife.png" alt="prismatic/plumbing logo" title="prismatic/plumbing logo" align="right" width="350" />
 
 # Plumbing and Graph: the Clojure utility belt
 
