@@ -2,7 +2,7 @@
 
 <img src="https://raw.github.com/wiki/prismatic/plumbing/images/prismatic-swiss-army-knife.png" alt="prismatic/plumbing logo" title="prismatic/plumbing logo" align="right" width="250" />
 
-This first release includes our '[Graph](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html)' library, our `plumbing.core` library of very commonly used functions (the only thing we `:use` across our codebase), and a few other supporting namespaces.  
+This first release includes our '[Graph](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.  
 
 Leiningen dependency (Clojars): [prismatic/plumbing "0.0.1"]  
 **This is an alpha release.  We  are using it internally in production, but the API and organizational structure are subject to change.  Comments and suggestions are much appreciated.**
@@ -68,10 +68,10 @@ Unlike the opaque `stats` fn, however, we can modify and extend `stats-graph` us
     :m2 (/ 25 2)
     :v (/ 7 2)
     :sd (Math/sqrt 3.5)}
-   (extended-stats-graph {:xs [1 2 3 6]}))	
+   (extended-stats {:xs [1 2 3 6]}))	
 ```
 
-A Graph encodes the structure of a compuation, but not how it happens, allowing for many execution strategies. For example, we can do a lazy compilation of a Graph so step values are computed as needed. Or, we can parallel-compile the Graph so that independent step functions are run in separate threads:
+A Graph encodes the structure of a computation, but not how it happens, allowing for many execution strategies. For example, we can compile a Graph lazily so that step values are computed as needed.  Or, we can parallel-compile the Graph so that independent step functions are run in separate threads:
 
 ```clojure
 (def lazy-stats (graph/lazy-compile stats-graph))
@@ -85,7 +85,7 @@ A Graph encodes the structure of a compuation, but not how it happens, allowing 
 (def par-stats (graph/par-compile stats-graph))
 
 (def output (par-stats {:xs [1 2 3 6]}))
-;; Nodes are being computed in futures, with :m and :m2 going in parallel
+;; Nodes are being computed in futures, with :m and :m2 going in parallel after :n
 (= (/ 7 2) (:v output)) 
 ```	
 
@@ -110,7 +110,7 @@ We can also have higher-order functions on Graphs to wrap the behavior on each s
   
 ;;; times in milliseconds for each step:
 (= {:n 1.001, :m 0.728, :m2 0.996, :v 0.069}
-   (::profile-data (profiled-stats {:xs (range 10000)})))
+   @(::profile-data (profiled-stats {:xs (range 10000)})))
 ```
 
 … and so on.  For more examples and details about Graph, check out the [graph examples test](https://github.com/Prismatic/plumbing/blob/master/test/plumbing/graph_examples_test.clj).  Also, stay tuned for a ClojureScript version of Graph, coming soon.
@@ -118,14 +118,14 @@ We can also have higher-order functions on Graphs to wrap the behavior on each s
 <a name="fnk"/>
 ## Bring on (de)fnk 
 
-Many of the functions we write (in Graph and elsewhere) take a single map argument and we have expectations about which keys must be present and which can are optional. We developed a new style of binding ([read more here](https://github.com/Prismatic/plumbing/tree/master/src/plumbing/fnk)) to make this a lot easier and to check that input data has the right 'shape'. We call these 'keyword functions' (defined by `defnk`) and here's what one looks like:
+Many of the functions we write (in Graph and elsewhere) take a single (nested) map argument with keyword keys and have expectations about which keys must be present and which are optional. We developed a new style of binding ([read more here](https://github.com/Prismatic/plumbing/tree/master/src/plumbing/fnk)) to make this a lot easier and to check that input data has the right 'shape'. We call these 'keyword functions' (defined by `defnk`) and here's what one looks like:
 
 ```clojure
 (use 'plumbing.core)
 (defnk simple-fnk [a b c] 
   (+ a b c))
   
-(= 6  (simple-fnk {:a 1 :b 2 :c 3}))
+(= 6 (simple-fnk {:a 1 :b 2 :c 3}))
 ;; Below throws: Key :c not found in (:a :b)
 (thrown? Throwable (simple-fnk {:a 1 :b 2})) 
 ```
@@ -135,7 +135,7 @@ You can declare a key as optional and provide a default:
 (defnk simple-opt-fnk [a b {c 1}] 
   (+ a b c))
   
-(= 4  (simple-opt-fnk {:a 1 :b 2}))   
+(= 4 (simple-opt-fnk {:a 1 :b 2}))   
 ```
 
 You can do nested map bindings:
@@ -143,43 +143,46 @@ You can do nested map bindings:
 (defnk simple-nested-fnk [a [:b b1] c] 
   (+ a b1 c))
   
-(= 6  (simple-nested-fnk {:a 1 :b {:b1 2} :c 3}))   
+(= 6 (simple-nested-fnk {:a 1 :b {:b1 2} :c 3}))   
 ;; Below throws: Expected a map at key-path [:b], got type class java.lang.Long
 (thrown? Throwable (simple-nested-fnk {:a 1 :b 1 :c 3})) 
 ```
 
 Of course, you can bind multiple variables from an inner map and do multiple levels of nesting:
 ```clojure
-(defnk simple-nested-fnk [a [:b b1 [:c {d 3}]]] 
+(defnk simple-nested-fnk2 [a [:b b1 [:c {d 3}]]] 
   (+ a b1 d))
   
-(= 4  (simple-nested-fnk {:a 1 :b {:b1 2 :c {:d 1}}}))   
-(= 5  (simple-nested-fnk {:a 1 :b {:b1 1 :c {}}}))
+(= 4 (simple-nested-fnk2 {:a 1 :b {:b1 2 :c {:d 1}}}))   
+(= 5 (simple-nested-fnk2 {:a 1 :b {:b1 1 :c {}}}))
 ```
 
-You can use this binding style in a `let` statement using `letk` 
+You can also use this binding style in a `let` statement using `letk` 
 or within an anonymous function by using `fnk`. 
 
 
 ## More good stuff
 
-There's a whole lot of functions in `plumbing.core` which we can't live without. Here are a few of our favorites.
+There are a bunch of functions in `plumbing.core` that we can't live without. Here are a few of our favorites.
 
 When we build maps, we often use `for-map`, which works like `for` but for maps:
 
 ```clojure
 (use 'plumbing.core)
-(= (for-map [i (range 4) j (range 4) 
-	        :let [s (+ i j)]
-			:when (< s 6)] s [i j])
-	{0 [0 0], 1 [1 0], 2 [2 0], 3 [3 0], 4 [3 1], 5 [3 2]})
+(= (for-map [i (range 3) 
+             j (range 3) 
+	         :let [s (+ i j)]
+			 :when (< s 3)] 
+	  [i j] 
+	  s)
+   {[0 0] 0, [0 1] 1, [0 2] 2, [1 0] 1, [1 1] 2, [2 0] 2})
 ```
 
 `safe-get` is like `get` but throws when the key doesn't exist:
 
 ```clojure
 ;; IllegalArgumentException Key :c not found in {:a 1, :b 2} 
-(thrown? Exception (safe-get {:a 1 :b 2}} :c)
+(thrown? Exception (safe-get {:a 1 :b 2} :c))
 ```
 
 Another frequently used map function is `map-vals`:
@@ -195,17 +198,17 @@ Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
 
 ```clojure
 (use 'plumbing.core)
-(=  (let [add-b? false]
-	   (-> {:a 1}
-		   (merge {:c 2})
-		   (?> add-b? assoc :b 2)))
-	{:a 1 :c 2})
+(= (let [add-b? false]
+     (-> {:a 1}
+         (merge {:c 2})
+         (?> add-b? assoc :b 2)))
+   {:a 1 :c 2})
 
-(=  (let [inc-all? true]
-	   (-> (range 10)
-		   (filter even?)
-		   (?>> inc-all? map inc)))
-	{:a 1 :c 2})
+(= (let [inc-all? true]
+     (->> (range 10)
+          (filter even?)
+          (?>> inc-all? map inc)))
+	[1 3 5 7 9])
 ```
 
 Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/src/plumbing/core.clj) for many other useful functions.

@@ -165,7 +165,7 @@
 
 ;;; times in milliseconds for each step:
 ;; (= {:n 1.001, :m 0.728, :m2 0.996, :v 0.069}
-;;    (::profile-data (profiled-stats {:xs (range 10000)}))
+;;    @(::profile-data (profiled-stats {:xs (range 10000)}))
 
 
 ;; These examples just scratch the surface of what we can do with Graph.
