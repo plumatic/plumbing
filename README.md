@@ -1,6 +1,6 @@
-# Plumbing and Graph: the Clojure utility belt
+<img src="https://raw.github.com/wiki/prismatic/plumbing/images/prismatic-swiss-army-knife.png" alt="prismatic/plumbing logo" title="prismatic/plumbing logo" align="right" width="300" />
 
-<img src="https://raw.github.com/wiki/prismatic/plumbing/images/prismatic-swiss-army-knife.png" alt="prismatic/plumbing logo" title="prismatic/plumbing logo" align="right" width="250" />
+# Plumbing and Graph: the Clojure utility belt
 
 This first release includes our '[Graph](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html)' library, our `plumbing.core` library of very commonly used functions (the only thing we `:use` across our codebase), and a few other supporting namespaces.  
 
