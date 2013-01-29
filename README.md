@@ -5,7 +5,7 @@
 This first release includes our '[Graph](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html)' library, our `plumbing.core` library of very commonly used functions (the only thing we `:use` across our codebase), and a few other supporting namespaces.  
 
 Leiningen dependency (Clojars): [prismatic/plumbing "0.0.1"]  
-** This is an alpha release.  We  are using it internally in production, but the API and organizational structure are subject to change.  Comments and suggestions are much appreciated. **
+**This is an alpha release.  We  are using it internally in production, but the API and organizational structure are subject to change.  Comments and suggestions are much appreciated.**
 
 Check back often, because we'll keep adding more useful namespaces and functions as we work through cleaning up and open-sourcing our stack of Clojure libraries.  
 
