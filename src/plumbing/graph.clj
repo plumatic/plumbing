@@ -125,7 +125,7 @@
 
 (defn lazy-compile 
   "Compile graph specification g to a corresponding fnk that returns a
-   plumbing.lazymap of the node result fns on a given input.  This fnk returns
+   lazymap of the node result fns on a given input.  This fnk returns
    the lazymap immediately, and node values are computed and cached as needed
    as values are extracted from the lazymap.  Besides this lazy behavior,
    the lazymap can be used interchangeably with an ordinary Clojure map."
@@ -142,7 +142,7 @@
    compilations later.
 
    Compile graph specification g to a corresponding fnk that returns a
-   plumbing.lazymap of the node result fns on a given input.  This fnk returns
+   lazymap of the node result fns on a given input.  This fnk returns
    the lazymap immediately, and node values are computed and cached in parallel
    starting immediately (and attempts to extract values from the lazymap will
    block until each value is computed).  Besides this lazy behavior,
