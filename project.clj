@@ -3,4 +3,5 @@
   :license {:name "Eclipse Public License - v 1.0"
             :url "http://www.eclipse.org/legal/epl-v10.html"
             :distribution :repo}
-  :url "https://github.com/Prismatic/plumbing")
+  :url "https://github.com/Prismatic/plumbing"
+  :dependencies [[de.kotka/lazymap "3.1.0" :exclusions [org.clojure/clojure]]])

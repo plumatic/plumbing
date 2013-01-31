@@ -217,5 +217,3 @@ Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/sr
 ## License
 
 Copyright (C) 2013 Prismatic.  Distributed under the Eclipse Public License, the same as Clojure.
-
-This project also includes a modified version of de.kotka/lazymap, which is Copyright 2008-2011 (c) Meikel Brandmeyer and distributed under a MIT license.

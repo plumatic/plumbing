@@ -21,11 +21,11 @@
 
    For more details and examples of Graphs, see test/plumbing/graph_examples_test.clj."
   (:require
+   [lazymap.core :as lazymap]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.core :as plumbing]
-   [plumbing.map :as map]
-   [plumbing.lazymap :as lazymap]))
+   [plumbing.map :as map]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
