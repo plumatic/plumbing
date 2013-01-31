@@ -4,7 +4,7 @@ As part of our first open source release, we're contemplating introducing `fnk` 
 
 Below, we've collected some background on the rational behind introducing `fnk`, together with a proposed syntax and several alternatives.  Any and all input on these ideas would be much appreciated.
 
-For more documentation and examples of graph and fnk, we encourage checking out test/plumbing/fnk/fnk_examples_test.clj and test/plumbing/graph_examples_test.clj.
+For more documentation and examples of graph and fnk, we encourage checking out `test/plumbing/fnk/fnk_examples_test.clj` and `test/plumbing/graph_examples_test.clj`.
 
 ### Background
 
@@ -15,10 +15,10 @@ Our first release is plumbing.[Graph], a library for declaratively specifying th
 [[Insert graphical graph for univariate stats.]]
 
 ```clojure
-    {:n  (fnk [xs] (count xs))
-     :m  (fnk [xs n] (/ (sum xs) n))
-     :m2 (fnk [xs n] (/ (sum #(* % %) xs) n))
-     :v  (fnk [m m2] (- m2 (* m m)))}
+{:n  (fnk [xs] (count xs))
+ :m  (fnk [xs n] (/ (sum xs) n))
+ :m2 (fnk [xs n] (/ (sum #(* % %) xs) n))
+ :v  (fnk [m m2] (- m2 (* m m)))}
 ```
      
 This example shows a simple Graph that expresses the computation of univariate statistics of a sequence of input numbers `xs` in four steps.  Dependencies between steps are expressed by argument and keyword names  (e.g., the variance `v` is computed from the mean `m` and mean-square `m2`).   The details of Graph are not vital for this discussion (see the [blog post](Graph) if you're interested), except for the following two high-level constraints on the implementation of `fnk`:
@@ -52,40 +52,48 @@ Our primary design goal was to make keyword map destructuring, including nested 
 
  * Functions take a single map argument, and bare symbols in the top-level binding represent required keys of this map: 
 
-       (defnk foo [x y] 
-          (+ x y))
+    ```clojure
+    (defnk foo [x y] 
+      (+ x y))
 
-       (= (foo {:x 1 :y 2}) 3)
+    (= (foo {:x 1 :y 2}) 3)
 
-       (thrown? Exception (foo {:x 1})) ;; y is required
+    (thrown? Exception (foo {:x 1})) ;; y is required
+    ```
 
  * Optional keys with defaults are given as maps:
 
-       (defnk foo [x y {z 10}] 
-          (+ x y z))
+    ```clojure
+    (defnk foo [x y {z 10}] 
+      (+ x y z))
 
-       (= (foo {:x 1 :y 2)) 13)
+    (= (foo {:x 1 :y 2)) 13)
 
-       (= (foo {:x 1 :y 2 :z 3)) 6)
+    (= (foo {:x 1 :y 2 :z 3)) 6)
+    ```
 
  * Nested bindings are introduced with a vector (to match top-level bindings), but begin with the keyword to bind from:
 
-       (defnk foo [x [:sub c {d 10}]] (+ x c d))
-       
-       (= (foo {:x 1 :sub {:c 2}}) 13)
+    ```clojure
+    (defnk foo [x [:sub c {d 10}]] (+ x c d))
+
+    (= (foo {:x 1 :sub {:c 2}}) 13)
+    ```
  
  * `:as` and `&` are allowed in terminal binding positions, with same meaning as ordinary Clojure destructuring:
  
-       (defnk foo [x & y :as z] [x y z])
+    ```clojure
+    (defnk foo [x & y :as z] [x y z])
 
-       (= (foo {:x 10 :y 20}) [10 {:y 20} {:x 10 :y 20}])
+    (= (foo {:x 10 :y 20}) [10 {:y 20} {:x 10 :y 20}])
+    ````
    
   
 Advantages:
 
  * Common case of flat required keys with no defaults is as simple as can be
  * Nested bindings are as minimal as possible
- * Notation is internally consistent: [] always indicates map binding, {} optional args
+ * Notation is internally consistent: `[]` always indicates map binding, `{}` optional args
  * Key name repetition is eliminated for required keys and default values.
 
 Known disadvantages: 
@@ -93,53 +101,60 @@ Known disadvantages:
  * Different from existing Clojure destructuring
  * No sequence binding
  * Disparity between outer binding and nested bindings (which begin with keyword)
- * Renaming a key is a bit verbose -- [:a :as b]
+ * Renaming a key is a bit verbose -- `[:a :as b]`
   
 
 ### Alternatives
 
 Let's take a simple example that includes most features of the above proposal, and compare with several alternative possibilities: 
 
-     (defnk foo [x {y 1} [:z :as zalt] [:sub c]] ;; above proposal
-        [x y zalt c]) 
+```clojure
+(defnk foo [x {y 1} [:z :as zalt] [:sub c]] ;; above proposal
+   [x y zalt c]) 
 
-     (= (foo {:x 5 :z 10 :sub {:c 20}}) [5 1 10 20])          
+(= (foo {:x 5 :z 10 :sub {:c 20}}) [5 1 10 20])
+```
 
 **Potential alternative 1:** exising Clojure syntax (see above).
 
-     (defn foo [{x :x y :y zalt :z {c :c} :sub :or {y 1} :as m}]  ;; existing syntax
-        (assert (and (contains? m :x) (contains? (:sub m) :c)))
-        [x y zalt c])
+```clojure
+(defn foo [{x :x y :y zalt :z {c :c} :sub :or {y 1} :as m}]  ;; existing syntax
+   (assert (and (contains? m :x) (contains? (:sub m) :c)))
+   [x y zalt c])
+```
 
   * Advantages: already exists, known to everyone, consistent
   * Disadvantages: verbose if you only care about map bindings, especially if you want required keys, default values, or nested bindings, all of which we use quite frequently.
   * Neutral: for Graph, we also have to modify `fn` (or create our own version) to record metadata about arglists and extract required or optional keys.
 
-**Potential alternative 2:** an earlier version of fnk used [] for map bindings, and within a binding, {} to introduce sub-bindings and renamings, and [] for default values.  
+**Potential alternative 2:** an earlier version of fnk used `[]` for map bindings, and within a binding, `{}` to introduce sub-bindings and renamings, and `[]` for default values.  
 
-     (defnk-2 foo [x [y 1] {zalt :z [c] :sub}] ;; alternative 2
-        [x y zalt c]) 
+```clojure
+(defnk-2 foo [x [y 1] {zalt :z [c] :sub}] ;; alternative 2
+   [x y zalt c]) 
 
-     (= (foo {:x 5 :z 10 :sub {:c 20}}) [5 1 10 20])
+(= (foo {:x 5 :z 10 :sub {:c 20}}) [5 1 10 20])
+```
   
  * Advantage: Nested binding completely uniform with top-level (due to extra level of syntax)
  * Disadvantage: Each nested binding requires two levels of syntax
  * Disadvantage: [] used for two things (map binding and default values)
      
-**Potential alternative 3:** like primary proposal, but use #{} literals for map binding (rather than []) because map bindings are unordered (and to differentiate from existing syntax).  It's not clear how to best support nested binding keys, `:as:` and `&` in this unordered setting, but something like this might work:
+**Potential alternative 3:** like primary proposal, but use `#{}` literals for map binding (rather than `[]`) because map bindings are unordered (and to differentiate from existing syntax).  It's not clear how to best support nested binding keys, `:as:` and `&` in this unordered setting, but something like this might work:
 
-     (defnk-3 foo #{x {y 1} #{:z ^:as zalt} #{:sub c}}  ;; alternative 3
-        [x y zalt c])
-
+```clojure
+(defnk-3 foo #{x {y 1} #{:z ^:as zalt} #{:sub c}}  ;; alternative 3
+   [x y zalt c])
+```
   
  * Advantage: Set literal for binding conveys un-ordered nature of bindings
- * Advangage: Set literal also avoids any possibility for confusion with existing destructuring/defn
- * Disadvantage: #{} is not so pretty
- * Disadvantage: No obvious clean way to support :as and &, or enforce that the keyword comes first in nested binding, unless we change these to use metadata or add additional syntax.
+ * Advangage: Set literal also avoids any possibility for confusion with existing destructuring/`defn`
+ * Disadvantage: `#{}` is not so pretty
+ * Disadvantage: No obvious clean way to support `:as` and `&`, or enforce that the keyword comes first in nested binding, unless we change these to use metadata or add additional syntax.
  
-## Addendum: underlying metadata representation for fnk
+## Addendum: underlying metadata representation for `fnk`
 
-For the purposes of Graph, a `fnk` is just a fn of a single map argument, which also responds to protocol fn (io-schemata f) that returns a pair of an input schema and an output schema.  
+For the purposes of Graph, a `fnk` is just a fn of a single map argument, which also responds to protocol fn `(io-schemata f)` that returns a pair of an input schema and an output schema.  
 
 An input schema is a nested map where keys are keywords and leaves are true or false, to indicate optional or required keys.  (Ultimately, it might be useful to put more sophisticated type information at the leaves).  Similarly, an output schema is a nested map where all the leaves are true (representing guaranteed elements of the return value).
 
