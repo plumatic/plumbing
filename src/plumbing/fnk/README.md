@@ -12,14 +12,14 @@ We're very excited to begin sharing the Clojure infrastructure that powers Prism
 
 Our first release is plumbing.[Graph], a library for declaratively specifying the composition structure of complex functions, along with other portions of our low-level "plumbing" library that support it. 
 
-[[Insert graphical graph for univariate stats.]]
-
 ```clojure
 {:n  (fnk [xs] (count xs))
  :m  (fnk [xs n] (/ (sum xs) n))
  :m2 (fnk [xs n] (/ (sum #(* % %) xs) n))
  :v  (fnk [m m2] (- m2 (* m m)))}
 ```
+
+<img src="http://prismatic.squarespace.com/storage/graph_stats_graph.png" alt="A graphical depiction of this example graph" style="display:block; margin-left:auto; margin-right: auto; "align="center">
      
 This example shows a simple Graph that expresses the computation of univariate statistics of a sequence of input numbers `xs` in four steps.  Dependencies between steps are expressed by argument and keyword names  (e.g., the variance `v` is computed from the mean `m` and mean-square `m2`).   The details of Graph are not vital for this discussion (see the [blog post](Graph) if you're interested), except for the following two high-level constraints on the implementation of `fnk`:
 
