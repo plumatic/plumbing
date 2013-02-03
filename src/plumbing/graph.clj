@@ -108,11 +108,16 @@
              (let [f (abstract-compile v make-map assoc-f)]
                (schema/assert-iae (not (contains? inner k))                                  
                                   "Inner graph key %s duplicated" k)
-               (assoc-f inner k #(f (select-keys inner (keys (pfnk/input-schema f)))))))
+               (assoc-f inner k f)))
            (make-map m)
            g)
           (keys m)))
        (pfnk/io-schemata g)))))
+
+(defn restricted-call 
+  "Call fnk f on the subset of keys its input schema explicitly asks for"
+  [f in-m]
+  (f (select-keys in-m (keys (pfnk/input-schema f)))))
 
 (defn eager-compile 
   "Compile graph specification g to a corresponding fnk that returns an
@@ -121,7 +126,7 @@
   (abstract-compile
    g
    (fn [m] m)
-   (fn [m k f] (assoc m k (f)))))
+   (fn [m k f] (assoc m k (restricted-call f m)))))
 
 (defn lazy-compile 
   "Compile graph specification g to a corresponding fnk that returns a
@@ -133,7 +138,7 @@
   (abstract-compile
    g
    (fn [m] (into (lazymap/lazy-hash-map) m))
-   (fn [m k f] (lazymap/delay-assoc m k (delay (f))))))
+   (fn [m k f] (lazymap/delay-assoc m k (delay (restricted-call f m))))))
 
 ;; TODO: move out.
 (defn par-compile [g]
@@ -150,7 +155,7 @@
   (abstract-compile
    g
    (fn [m] (into (lazymap/lazy-hash-map) m))
-   (fn [m k f] (lazymap/delay-assoc m k (future (f))))))
+   (fn [m k f] (lazymap/delay-assoc m k (future (restricted-call f m))))))
 
 
 (defn run 
