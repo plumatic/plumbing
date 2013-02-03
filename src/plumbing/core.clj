@@ -102,6 +102,17 @@
          :when v]	 
      [k v])))
 
+(defn ensure-unique-keys
+  "throws IllegalArgumentException if a flat sequence of alternating
+    key values for a map has duplicate keys. 
+   (clojure.core (apply hash-map kvs)) no longer checks this"
+  [kvs]
+  (when-let [dupe-keys (->> kvs (partition 2)
+                            frequencies
+                            (filter (fn [[k c]] (> c 1)))
+                            seq)]
+    (throw (IllegalArgumentException. (str "Duplicate keys: " (pr-str (map first dupe-keys)))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Seqs
 
