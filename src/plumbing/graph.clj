@@ -79,6 +79,7 @@
      :2-x-plus-2 (fnk [x-plus-1] (* 2 x-plus-1)))"
   [& nodes]
   (assert (even? (count nodes)))
+  (plumbing/ensure-unique-keys nodes)
   (->graph (partition 2 nodes)))
 
 
