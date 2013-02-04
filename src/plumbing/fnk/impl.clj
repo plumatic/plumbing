@@ -24,7 +24,7 @@
                              frequencies
                              (filter #(> (val %) 1))
                              seq)]
-    (schema/assert-iae (empty? repeated-things) "Got multiply bound symbols/keys: %s" repeated-things)))
+    (schema/assert-iae (empty? repeated-things) "Got repeated items (expected distinct): %s" repeated-things)))
 
 ;;; Core fnk utilities
 

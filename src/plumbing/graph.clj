@@ -24,6 +24,7 @@
    [lazymap.core :as lazymap]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
+   [plumbing.fnk.impl :as fnk-impl]
    [plumbing.core :as plumbing]
    [plumbing.map :as map]))
 
@@ -79,8 +80,9 @@
      :2-x-plus-2 (fnk [x-plus-1] (* 2 x-plus-1)))"
   [& nodes]
   (assert (even? (count nodes)))
-  (plumbing/ensure-unique-keys nodes)
-  (->graph (partition 2 nodes)))
+  (let [partitioned (partition 2 nodes)]
+    (fnk-impl/assert-distinct (map first partitioned))
+    (->graph partitioned)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
