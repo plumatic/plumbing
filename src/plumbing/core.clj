@@ -29,15 +29,20 @@
            (reset! m-atom# (assoc! ~m-sym ~key-expr ~val-expr))))
        (persistent! @m-atom#))))
 
-(defn map-vals
-  "Build map k -> (f v) for [k v] in map m"
-  [f m]
-  (for-map [[k v] m] k (f v)))
+(defn map-juxt [fk fv m]
+  "Build map (fk k) -> (fv v) for [k v] in map m"
+  (persistent!
+   (reduce-kv (fn [t k v]
+                (assoc! t (fk k) (fv v)))
+              (transient {}) m)))
 
-(defn map-keys
+(defn map-keys [f m]
   "Build map (f k) -> v for [k v] in map m"
-  [f m]
-  (for-map [[k v] m] (f k) v))
+  (map-juxt f identity m))
+
+(defn map-vals [f m]
+  "Build map k -> (f v) for [k v] in map m"
+  (map-juxt identity f m))
 
 (defn map-from-keys
   "Build map k -> (f k) for keys in ks"
