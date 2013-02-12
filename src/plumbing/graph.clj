@@ -174,7 +174,60 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Operations on graphs
+;;; Higher-order functions on graphs
+
+(defn check-comp-partial! 
+  "Check that instance-fn is a valid fn to comp-partial with graph g."
+  [g instance-fn]
+  (let [is (pfnk/input-schema g)
+        os (pfnk/output-schema instance-fn)]
+    (schema/assert-iae (map? os) "instance-fn must have output metadata")
+    (let [extra-ks (remove #(contains? is %) (keys os))]
+      (schema/assert-iae (empty? extra-ks) "instance-fn provides unused keys: %s" (vec extra-ks)))
+    (doseq [[k s] os]
+      (schema/assert-iae (schema/satisfies-schema? (get is k) os)
+                         "instance-fn output schema for %s (%s) doesn't satisfy input schema %s" k os is))))
+
+(defn comp-partial
+  "Experimental.
+
+   An extension of pfnk/comp-partial that supplies new parameters to a subgraph, 
+   useful in composing hierarchical graphs.
+
+   g is a graph, and instance-fn is a fnk that takes arguments from the surrounding
+   context and produces new parameters that are fed into g.  Works by comp-partialing
+   all leafs that expects any parameter produced by instance-fn with instance-fn, 
+   so beware of expensive instance-fns, or those that expect caching of some sort
+   (i.e., attempt to generate shared state).
+
+   Throws an error if any parameter supplied by instance-fn is not used by at least
+   one node in g."
+  [g instance-fn]
+  (if (fn? g) 
+    (pfnk/comp-partial g instance-fn)
+   (let [os (pfnk/output-schema instance-fn)]
+     (check-comp-partial! g instance-fn)
+     (->graph
+      (map/map-leaves
+       (fn [node-fn]
+         (if (some os (keys (pfnk/input-schema node-fn)))
+           (pfnk/comp-partial node-fn instance-fn)
+           node-fn))
+       g)))))
+
+(defmacro instance
+  "Experimental.
+  
+   Convenience macro for comp-partial, used to supply inline parameters to a 
+   subgraph (or fnk).
+
+   Example:
+   (= {:x 21} 
+      (run (instance {:x (fnk [a] (inc a))} [z] {:a (* z 2)}) 
+           {:z 10}))"
+  [g bind m] 
+  `(comp-partial ~g (plumbing/fnk ~bind ~m)))
+
 
 (defn profiled 
   "Modify graph spec g, producing a new graph spec with a new top-level key

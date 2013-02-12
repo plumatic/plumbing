@@ -101,6 +101,21 @@
   (is (= 100 (:x100 ((lazy-compile (chain-graph 100)) {:x0 0})))))
 
 
+(deftest instance-test
+    ;; on a fnk, instance should just return a fnk.
+  (is (= 21 ((instance (fnk [x] (inc x)) [y] {:x (* y 2)}) {:y 10})))
+  
+  (let [raw-g {:x (fnk [a] (* a 2))
+               :y (fnk [x] (+ x 1))}
+        inst-g (instance raw-g [z] {:a (+ z 5)})]
+    (is (= {:z true} (pfnk/input-schema inst-g)))
+    (is (= {:x true :y true} (select-keys (pfnk/output-schema inst-g) [:x :y])))
+    
+    (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y])))
+    
+    (is (thrown? Exception (instance raw-g [z] {:q 22})))))
+
+
 (deftest ^:slow profiled-test
   (let [approx-= (fn [x y] (< (Math/abs (- x y)) 5))
         times {:a 100 :b 200 :c 400}
