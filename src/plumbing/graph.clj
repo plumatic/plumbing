@@ -49,8 +49,7 @@
           graph (->> (if-not (map? graph-nodes)
                        (map first graph-nodes)
                        (->> canonical-nodes
-                            (plumbing/map-vals 
-                             (comp schema/required-toplevel-keys pfnk/input-schema))
+                            (plumbing/map-vals (comp keys pfnk/input-schema))
                             map/topological-sort
                             reverse))
                      (mapcat #(find canonical-nodes %))
