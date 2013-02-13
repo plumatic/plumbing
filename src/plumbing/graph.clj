@@ -225,8 +225,9 @@
    (= {:x 21} 
       (run (instance {:x (fnk [a] (inc a))} [z] {:a (* z 2)}) 
            {:z 10}))"
-  [g bind m] 
-  `(comp-partial ~g (plumbing/fnk ~bind ~m)))
+  ([g m] `(instance ~g [] ~m))
+  ([g bind m] 
+     `(comp-partial ~g (plumbing/fnk ~bind ~m))))
 
 
 (defn profiled 
