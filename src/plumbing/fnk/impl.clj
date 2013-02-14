@@ -128,4 +128,5 @@
               (do (schema/assert-iae (map? arg1#) "fnk called with odd args and no initial map")
                   (~name? (apply assoc arg1# more#))))))
      [input-schema
-      (schema/make-output-schema (last body) (eval (:output-schema (meta bind) true)))])))
+      (schema/make-output-schema (last body) (eval (:output-schema (meta bind) true)))]
+     (:output-metadata (meta bind) {}))))

@@ -285,7 +285,12 @@
           (swap! call-count inc))
      {:a 4 :c 3 :d {:d1 4 :d3 17 :d4 {:d41 18 :d42 :foo}}})
     (is (= @call-count 3))
-    (is (thrown? Throwable ((fnk [a] a) {:b 3})))))
+    (is (thrown? Throwable ((fnk [a] a) {:b 3})))
+    
+    (let [f (fnk ^{:output-schema {:a true :b {:b1 true}} :output-metadata {:foo :bar}} [] 
+                 (hash-map :a 1 :b {:b1 2}))]
+      (is (= (pfnk/output-schema f) {:a true :b {:b1 true}}))
+      (is (= (pfnk/output-metadata f) {:foo :bar})))))
 
 ;; TODO: test plumbing.fnk.comp-partial.
 

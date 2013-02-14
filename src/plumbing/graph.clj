@@ -247,7 +247,8 @@
                   res))
               [(assoc (pfnk/input-schema f)
                  profile-key true)
-               (pfnk/output-schema f)]))
+               (pfnk/output-schema f)]
+              (pfnk/output-metadata f)))
            (->graph g))
      profile-key (plumbing/fnk [] (atom {})))))
 
