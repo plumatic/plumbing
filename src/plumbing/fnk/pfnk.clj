@@ -8,9 +8,7 @@
 (defprotocol PFnk
   "Protocol for keyword functions and their specifications, e.g., fnks and graphs."  
   (io-schemata [this]
-    "Return a pair of [input-schema output-schema], as specified in plumbing.fnk.schema.")
-  (output-metadata [this]
-    "Experimental.  Return an optional map of additional metadata about the PFnk output."))
+    "Return a pair of [input-schema output-schema], as specified in plumbing.fnk.schema."))
 
 (defn input-schema [x] (first (io-schemata x)))
 (defn output-schema [x] (second (io-schemata x)))
@@ -22,25 +20,19 @@
     (let [schemata (get (meta this) ::io-schemata)]
       (when-not (= (count schemata) 2)
         (throw (RuntimeException. (format "Missing or malformed io-schemata metadata in %s" (meta this)))))
-      schemata))
-  (output-metadata [this]
-    (get (meta this) ::output-metadata {})))
+      schemata)))
 
 
 (defn fn->fnk 
   "Make a keyword function into a PFnk, by associating input and output schema metadata,
    and optional output metadata."
-  ([f io-schemata]
-     (fn->fnk f io-schemata {}))
-  ([f [input-schema output-schema :as io] output-metadata]
-     (vary-meta f assoc 
-                ::io-schemata io
-                ::output-metadata output-metadata)))
+  [f [input-schema output-schema :as io]]
+  (vary-meta f assoc 
+             ::io-schemata io))
 
 (defn comp-partial 
   "Return a new pfnk representing the composition #(f (merge % (other %)))"
   [f other] 
   (fn->fnk
    (fn [m] (f (merge m (other m))))
-   (schema/compose-schemata (io-schemata f) (io-schemata other))
-   (output-metadata f)))
+   (schema/compose-schemata (io-schemata f) (io-schemata other))))

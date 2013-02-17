@@ -270,8 +270,8 @@
   (let [call-count (atom 0)
         om {:a 1 :c 3 :d 4 :e 17 :g 22}]
     ((fnk [a]
-          (is (= a 1))
-          (swap! call-count inc))
+       (is (= a 1))
+       (swap! call-count inc))
      {:a 1})
     ((fnk [a {b 2} c d {e 5} :as m & more]
           (is (= [a b c d e] [4 2 3 4 17]))
@@ -287,10 +287,9 @@
     (is (= @call-count 3))
     (is (thrown? Throwable ((fnk [a] a) {:b 3})))
     
-    (let [f (fnk ^{:output-schema {:a true :b {:b1 true}} :output-metadata {:foo :bar}} [] 
+    (let [f (fnk ^{:output-schema {:a true :b {:b1 true}}} [] 
                  (hash-map :a 1 :b {:b1 2}))]
-      (is (= (pfnk/output-schema f) {:a true :b {:b1 true}}))
-      (is (= (pfnk/output-metadata f) {:foo :bar})))))
+      (is (= (pfnk/output-schema f) {:a true :b {:b1 true}})))))
 
 ;; TODO: test plumbing.fnk.comp-partial.
 

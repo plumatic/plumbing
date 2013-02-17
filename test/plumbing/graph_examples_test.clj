@@ -478,11 +478,12 @@
             (pfnk/fn->fnk
              (fn [m]
                (let [r (node-fn m)]
-                 (when-let [shutdown (:shutdown (pfnk/output-metadata node-fn))]
-                   (swap! (::shutdown-hooks m) conj (partial shutdown r)))
-                 r))
+                 (when-let [shutdown (:shutdown r)]
+                   (swap! (::shutdown-hooks m) conj shutdown))
+                 (assert (contains? r :resource))
+                 (:resource r)))   
              [(assoc (pfnk/input-schema node-fn) ::shutdown-hooks true)
-              (pfnk/output-schema node-fn)]))                         
+              (pfnk/output-schema node-fn)]))
           g)
     ::shutdown-hooks (fnk [] (atom nil))))
 
@@ -499,16 +500,18 @@
 
 (defnk schedule-work 
   "Cron for clojure fns. Schedule a single fn with a pool to run every rate seconds."
-  ^{:output-metadata {:shutdown #(do (println "SDSDSDS!!") (.shutdown %))}} [work-fn rate]
-  (doto (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)
-    (.scheduleAtFixedRate  work-fn (long 0) (long rate) java.util.concurrent.TimeUnit/SECONDS)))
+  [work-fn rate]
+  (let [pool (java.util.concurrent.Executors/newSingleThreadScheduledExecutor)]
+    (.scheduleAtFixedRate pool work-fn (long 0) (long rate) java.util.concurrent.TimeUnit/SECONDS)
+    {:resource nil
+     :shutdown #(.shutdown pool)}))
 
 ;; and then we can build up more complex resources as Graphs from these
 ;; components (getting a bit silly for the sake of brevity):
 
 (def expiring-cache
   (graph/graph 
-   :atom (fnk [] (atom nil))
+   :atom (fnk [] {:resource  (atom nil)})
    :prune (fnk [atom max-age {prune-rate 1}]
                (schedule-work 
                 {:work-fn (fn [] (swap! atom (fn [m]
@@ -537,14 +540,14 @@
                 (throw (RuntimeException.)))
    :web-server (fnk [cache sql-query]
                  ;; pretend this is a real webserver, not just a fn.
-                    (fn [q] (ec-get cache q sql-query)))))
+                 {:resource (fn [q] (ec-get cache q sql-query))})))
 
 ;; and we can start and stop these services, and mock out components
 
 (defn test-pointless-service [graph params]
   (let [svc-map (start-service 
                  (assoc graph
-                   :sql-query (fnk mock-sql [] inc))
+                   :sql-query (fnk mock-sql [] {:resource inc}))
                  params)
         web-server (:web-server svc-map)]
     

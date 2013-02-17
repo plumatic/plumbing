@@ -309,8 +309,7 @@
    Fn accepts a single explicit map i.e., (f {:foo :bar})
    Explicit top-level map structure will be recorded in output spec, or
    to capture implicit structure use ^{:output-schema output-schema-spec} 
-   metadata on the binding form.  Similarly, ^{:output-metadata m} will
-   produce output metadata on the resulting fnk."
+   metadata on the binding form."
   [& args]
   (let [[name? [bind & body]] (if (symbol? (first args))
                                 [(first args) (next args)]
