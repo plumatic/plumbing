@@ -5,7 +5,7 @@
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.graph :as graph]
    [plumbing.map :as map]
-   ))
+   [plumbing.resource :as resource]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Motivation
