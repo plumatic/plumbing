@@ -68,6 +68,14 @@
   (io-schemata [g]
     (plumbing/safe-get (meta (->graph g)) ::io-schemata)))
 
+(defn- split-nodes [s]
+  (loop [in s out []]
+    (if-let [[f & r] (seq in)]
+      (if (keyword? f)
+        (recur (next r) (conj out [f (first r)]))
+        (recur r (into out f)))
+      out)))
+
 (defn graph
   "An ordered constructor for graphs, which enforces that the Graph is provided
    in a vaid topological ordering.  This is a sanity check, and also enforces
@@ -76,10 +84,12 @@
 
    (graph
      :x-plus-1   (fnk [x] (inc x))
-     :2-x-plus-2 (fnk [x-plus-1] (* 2 x-plus-1)))"
+     :2-x-plus-2 (fnk [x-plus-1] (* 2 x-plus-1)))
+
+   in addition, an 'inline' graph can be provided in place of a key-value
+   sequence, which will be merged into the graph at this position."
   [& nodes]
-  (assert (even? (count nodes)))
-  (let [partitioned (partition 2 nodes)]
+  (let [partitioned (split-nodes nodes)]
     (fnk-impl/assert-distinct (map first partitioned))
     (->graph partitioned)))
 
