@@ -24,11 +24,9 @@
 
 
 (defn fn->fnk 
-  "Make a keyword function into a PFnk, by associating input and output schema metadata,
-   and optional output metadata."
+  "Make a keyword function into a PFnk, by associating input and output schema metadata."
   [f [input-schema output-schema :as io]]
-  (vary-meta f assoc 
-             ::io-schemata io))
+  (vary-meta f assoc ::io-schemata io))
 
 (defn comp-partial 
   "Return a new pfnk representing the composition #(f (merge % (other %)))"
