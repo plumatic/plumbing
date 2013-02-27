@@ -121,7 +121,7 @@
   [is os]
   (reduce
    (fn [res [k ov]]
-     (if-let [iv (res k)]
+     (if-let [[_ iv] (find res k)]
        (do (assert-satisfies-schema iv ov)
            (dissoc res k))
        res))

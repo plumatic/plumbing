@@ -61,6 +61,14 @@
           [{:c true :d true}
            {:b {:b1 true}}])))
   
+  (is (= [{:a true :e false :c true :d true}
+          {:x true}]
+         (compose-schemata
+          [{:a true :b {:b1 true} :c false :e false :f false}
+           {:x true}]
+          [{:c true :d true}
+           {:b {:b1 true} :c true :f true}])))
+  
   (is (thrown? Exception 
                (compose-schemata
                 [{:a true :b {:b1 true} :c true}
