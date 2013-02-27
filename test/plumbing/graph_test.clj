@@ -100,7 +100,8 @@
     (is (= (:x l) 43))
     (is (= [:x :y] @a)))
   ;; lazy about error checking
-  (is (= 5 (:z ((lazy-compile (graph :x (fnk [a]) :y (fnk [b] (inc b)) :z (fnk [y] (inc y)))) {:b 3})))))
+  (is (= 5 (:z ((lazy-compile (graph :x (fnk [a]) :y (fnk [b] (inc b)) :z (fnk [y] (inc y)))) {:b 3}))))
+  (is (thrown? Exception (:x ((lazy-compile (graph :x (fnk [a]) :y (fnk [b] (inc b)) :z (fnk [y] (inc y)))) {:b 3})))))
 
 (defn chain-graph [n]
   (for-map [i (range n)]
