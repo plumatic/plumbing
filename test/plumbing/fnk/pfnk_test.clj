@@ -17,6 +17,12 @@
              (out {:a 1 :c 4 :d 5})))
       (is (= {:a true :d true :q false}
              (input-schema out)))))
+  
+  (let [in2 (fnk [[:a a1] b] (+ a1 b))]
+    (let [out (comp-partial in2 (fnk [x] {:a {:a1 x} :b (inc x)}))]
+      (is (= 3 (out {:x 1})))
+      (is (= {:x true} (input-schema out))))
+    (is (thrown? Exception (comp-partial in2 (fnk [x] {:a x :b (inc x)})))))
    
   (is (= 10 ((comp-partial (fnk [x {y 2} z] (+ x y z)) (fnk [] {:x 7})) 
              {:z 1})))

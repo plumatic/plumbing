@@ -126,7 +126,15 @@
     
     (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y])))
     
-    (is (thrown? Exception (instance raw-g [z] {:q 22})))))
+    (is (thrown? Exception (instance raw-g [z] {:q 22}))))
+  
+  (let [raw-g {:x (fnk [[:a a1]] (* a1 2))
+               :y (fnk [x] (+ x 1))}]
+    (let [inst-g (instance raw-g [z] {:a {:a1 (+ z 5)}})]
+      (is (= {:z true} (pfnk/input-schema inst-g)))
+      (is (= {:x true :y true} (select-keys (pfnk/output-schema inst-g) [:x :y])))    
+      (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y]))))    
+    (is (thrown? Exception (instance raw-g [z] {:a z})))))
 
 
 (deftest ^:slow profiled-test
