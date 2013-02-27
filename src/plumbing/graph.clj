@@ -102,15 +102,16 @@
    specification to a fnk that returns a Clojure map of the graph node values.  
    (make-map m) converts an initial Clojure map m to the return type of the fnk, 
    and (assoc-f m k f) associates the value given by (f) under key k to map m."
-  [g make-map assoc-f]
+  [g check-input? make-map assoc-f]
   (let [g (->graph g)
         req-ks (schema/required-toplevel-keys (pfnk/input-schema g))]
     (pfnk/fn->fnk
      (fn [m]
-       (let [missing-keys (seq (remove #(contains? m %) req-ks))]
-         (schema/assert-iae (empty? missing-keys)
-                            "Missing top-level keys in graph input: %s"
-                            (set missing-keys)))
+       (when check-input?
+        (let [missing-keys (seq (remove #(contains? m %) req-ks))]
+          (schema/assert-iae (empty? missing-keys)
+                             "Missing top-level keys in graph input: %s"
+                             (set missing-keys))))
        (apply
         dissoc
         (reduce
@@ -125,12 +126,12 @@
 
 (defn simple-hierarchical-compile
   "Hierarchical extension of simple-nonhierarchical-compile."
-  [g make-map assoc-f]
+  [g check-input? make-map assoc-f]
   (if (fn? g)
     g
     (simple-flat-compile
-     (plumbing/map-vals #(simple-hierarchical-compile % make-map assoc-f) g)
-     make-map assoc-f)))
+     (plumbing/map-vals #(simple-hierarchical-compile % check-input? make-map assoc-f) g)
+     check-input? make-map assoc-f)))
 
 (defn restricted-call 
   "Call fnk f on the subset of keys its input schema explicitly asks for"
@@ -143,6 +144,7 @@
   [g]
   (simple-hierarchical-compile
    g
+   true
    (fn [m] m)
    (fn [m k f] (assoc m k (restricted-call f m)))))
 
@@ -151,10 +153,13 @@
    lazymap of the node result fns on a given input.  This fnk returns
    the lazymap immediately, and node values are computed and cached as needed
    as values are extracted from the lazymap.  Besides this lazy behavior,
-   the lazymap can be used interchangeably with an ordinary Clojure map."
+   the lazymap can be used interchangeably with an ordinary Clojure map.
+   Required inputs to the graph are checked lazily, so you can omit input
+   keys not required by unneeded output keys."
   [g]
   (simple-hierarchical-compile
    g
+   false
    (fn [m] (into (lazymap/lazy-hash-map) m))
    (fn [m k f] (lazymap/delay-assoc m k (delay (restricted-call f m))))))
 
@@ -172,6 +177,7 @@
    the lazymap can be used interchangeably with an ordinary Clojure map."
   (simple-hierarchical-compile
    g
+   true
    (fn [m] (into (lazymap/lazy-hash-map) m))
    (fn [m k f] (lazymap/delay-assoc m k (future (restricted-call f m))))))
 
