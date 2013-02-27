@@ -5,20 +5,30 @@
 
 
 (deftest graph-construction-test
-  ;; io-schemata work correctly for flat graphs
+  ;; io-schemata works correctly for flat graphs
   (is (= [{:x true :z true :q false :y false :r false} 
           {:foo {:foox true :fooy true} :bar true}]
          (pfnk/io-schemata 
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
                  :bar (fnk [foo z {q 4} {r 1}] [foo z])))))
 
-  ;; io-schemata work correctly for nested graphs
+  ;; io-schemata works correctly for nested graphs
   (is (= [{:x true :q false :y false} 
           {:foo {:foox true :fooy true} :bar {:a true :baz {:foo true}}}]
          (pfnk/io-schemata 
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
                  :bar {:a (fnk [foo] (inc foo))
                        :baz {:foo (fnk [x] x)}}))))
+  
+  ;; io-schemata works correctly for inline graphs
+  (is (= [{:x true :q false :y false :b true} 
+          {:foo {:foox true :fooy true} :a true :baz {:foo true} :z true}]
+         (pfnk/io-schemata 
+          (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
+                 (graph 
+                  :a (fnk [foo] (inc foo))
+                  :baz {:foo (fnk [x] x)})
+                 :z (fnk [a b])))))
   
   (let [g {:foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
            :bar {:a (fnk [foo] (inc foo))
@@ -88,7 +98,9 @@
     (is (empty? @a))
     (is (= (:y l) 44))
     (is (= (:x l) 43))
-    (is (= [:x :y] @a))))
+    (is (= [:x :y] @a)))
+  ;; lazy about error checking
+  (is (= 5 (:z ((lazy-compile (graph :x (fnk [a]) :y (fnk [b] (inc b)) :z (fnk [y] (inc y)))) {:b 3})))))
 
 (defn chain-graph [n]
   (for-map [i (range n)]
