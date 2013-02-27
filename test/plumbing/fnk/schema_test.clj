@@ -39,16 +39,18 @@
   (is (= {:a {:a1 true} :b true}
          (make-output-schema `{:a (+ 1 1) :b (- 1 1)} {:a [:a1]}))))
 
-(deftest satisfies-schema?-test
-  (are [yes? x y] (= yes? (satisfies-schema? x y))
-       true {:x true} {:x 2 :y 3}
-       true {:x true :z false} {:x 2 :y 3}
-       true {:x true :z true} {:x 2 :y 3 :z 1}
-       false {:x true :z true} {:x 2 :y 3}
-
-       true {:x {:y true :z false}} {:x {:y 1}}
-       false {:x {:y true :z false}} {:x 1}
-       false {:x {:y true :z false}} {:x {:z 1}}))
+(deftest assert-satisfies-schema-test
+  (doseq [[yes? x y]
+          (partition 3 [true {:x true} {:x 2 :y 3}
+                        true {:x true :z false} {:x 2 :y 3}
+                        true {:x true :z true} {:x 2 :y 3 :z 1}
+                        false {:x true :z true} {:x 2 :y 3}                        
+                        true {:x {:y true :z false}} {:x {:y 1}}
+                        false {:x {:y true :z false}} {:x 1}
+                        false {:x {:y true :z false}} {:x {:z 1}}])]
+    (if-not yes? 
+      (is (thrown? Exception (assert-satisfies-schema x y))) 
+      (is (do (assert-satisfies-schema x y) true)))))
 
 (deftest compose-schemata-test
   (is (= [{:a true :c true :d true}

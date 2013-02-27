@@ -184,8 +184,7 @@
     (let [extra-ks (remove #(contains? is %) (keys os))]
       (schema/assert-iae (empty? extra-ks) "instance-fn provides unused keys: %s" (vec extra-ks)))
     (doseq [[k s] os]
-      (schema/assert-iae (schema/satisfies-schema? (get is k) os)
-                         "instance-fn output schema for %s (%s) doesn't satisfy input schema %s" k os is))))
+      (schema/assert-satisfies-schema (get is k) os))))
 
 (defn comp-partial
   "Experimental.

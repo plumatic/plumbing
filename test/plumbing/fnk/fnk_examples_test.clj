@@ -36,9 +36,9 @@
 ;; plumbing.fnk.schema has library functions for building, composing,
 ;; and checking schemata
 
-(deftest satisfies-schema-test 
-  (is (false? (schema/satisfies-schema? input-schema-1 output-schema-2)))
-  (is (schema/satisfies-schema? input-schema-1 output-schema-1)))
+(deftest assert-satisfies-schema-test 
+  (is (thrown? Exception (schema/assert-satisfies-schema input-schema-1 output-schema-2)))
+  (is (do (schema/assert-satisfies-schema input-schema-1 output-schema-1) true)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -93,7 +93,7 @@
 
 ;;; Combining inputs and outputs.
 
-(defn satisfies-schema?
+(defn assert-satisfies-schema
   "Does this value satisfy this schema?
    schema may be an input or output schema, and value may be an output schema or actual value.
 
@@ -101,17 +101,17 @@
    (satisfies-schema? {:a {:a1 true :b1 false} :b false} {:a {:a1 9 :a3 17}})
    (not (satisfies-schema? {:a {:a1 true :a2 false} :b false} {:b 999}))
    (not (satisfies-schema? {:a {:a1 true :a2 false} :b false} {:a {:a2 4242})))"
-  [schema value]
-  (when-not (map? schema)
+  [schema value & [keyseq]]
+  (when-not (map? schema) ;; sanity check
     (assert-iae (or (true? schema) (false? schema)) "Schema leaf is not true or false: %s" schema))
-  (or (not (map? schema))
-      (and (map? value)
-           (every? (fn [[ik iv]]                
-                     (assert-iae (keyword? ik) "Schema has non-keyword: %s" ik)
-                     (or (false? iv)
-                         (when-let [[_ ov] (find value ik)]
-                           (satisfies-schema? iv ov))))
-                   schema))))
+  (when (map? schema)
+    (assert-iae (map? value) "Not a map %s keyseq: %s" value keyseq)
+    (doseq [[ik iv] schema]
+      (assert-iae (keyword? ik) "Schema has non-keyword: %s" ik)
+      (when-not (false? iv)
+        (if-let [[_ ov] (find value ik)]
+          (assert-satisfies-schema iv ov (conj (or keyseq []) ik))
+          (assert-iae false "Failed on keyseq: %s. Value is missing. \n%s \n%s" (conj (or keyseq []) ik) schema value))))))
 
 
 (defn filter-and-match-schemata
@@ -122,9 +122,7 @@
   (reduce
    (fn [res [k ov]]
      (if-let [iv (res k)]
-       (do (assert-iae (satisfies-schema? iv ov)                       
-                       "Output schema %s under key %s does not satisfy input schema %s"
-                       ov k iv)
+       (do (assert-satisfies-schema iv ov)
            (dissoc res k))
        res))
    is
@@ -139,6 +137,8 @@
   [(union-input-schemata (filter-and-match-schemata i2 o1) i1)
    o2])
 
+()
+
 (defn sequence-schemata
   "Given pairs of input and output schemata for fnks f1 and f2, and a keyword k,
    return a pair of input and output schemata for #(let [v1 (f1 %)] (assoc v1 k (f2 (merge-disjoint % v1))))"
@@ -150,9 +150,9 @@
     [(reduce
       (fn [in [new-in-k new-in-v]]
         (if (contains? o1 new-in-k)
-          (do (assert-iae (satisfies-schema? new-in-v (o1 new-in-k))
-                          "Schema %s not satisfied by %s" new-in-v (o1 new-in-k))
-              in)
+          (do 
+            (assert-satisfies-schema new-in-v (o1 new-in-k))
+            in)
           (assoc in new-in-k (union-input-schemata (in new-in-k) new-in-v))))
       i1
       i2)
