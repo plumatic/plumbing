@@ -119,10 +119,11 @@
    if any matching sub-schema from os cannot satisfy the corresponding input
    schema in is."
   [is os]
+
   (reduce
    (fn [res [k ov]]
      (if-let [[_ iv] (find res k)]
-       (do (assert-satisfies-schema iv ov)
+       (do (assert-satisfies-schema iv ov [k])
            (dissoc res k))
        res))
    is
