@@ -32,12 +32,16 @@
 (defn map-vals
   "Build map k -> (f v) for [k v] in map m"
   [f m]
-  (for-map [[k v] m] k (f v)))
+  (if (map? m)
+    (persistent! (reduce-kv (fn [out-m k v] (assoc! out-m k (f v))) (transient {}) m))
+    (for-map [[k v] m] k (f v))))
 
 (defn map-keys
   "Build map (f k) -> v for [k v] in map m"
   [f m]
-  (for-map [[k v] m] (f k) v))
+  (if (map? m)
+    (persistent! (reduce-kv (fn [out-m k v] (assoc! out-m (f k) v)) (transient {}) m))
+    (for-map [[k v] m] (f k) v)))
 
 (defn map-from-keys
   "Build map k -> (f k) for keys in ks"

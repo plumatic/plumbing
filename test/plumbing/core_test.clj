@@ -25,10 +25,14 @@
 
 (deftest map-vals-test
   (is (= (map-vals inc {:a 0 :b 0})
+	 {:a 1 :b 1}))
+  (is (= (map-vals inc [[:a 0] [:b 0]])
 	 {:a 1 :b 1})))
 
 (deftest map-keys-test
   (is (= (map-keys str {:a 1 :b 1})
+	 {":a" 1 ":b" 1}))
+  (is (= (map-keys str [[:a 1] [:b 1]])
 	 {":a" 1 ":b" 1})))
 
 (deftest map-from-keys-test
