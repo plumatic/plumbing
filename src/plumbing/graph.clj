@@ -130,7 +130,8 @@
   (if (fn? g)
     g
     (simple-flat-compile
-     (plumbing/map-vals #(simple-hierarchical-compile % check-input? make-map assoc-f) g)
+     (for [[k sub-g] (->graph g)]
+       [k (simple-hierarchical-compile sub-g check-input? make-map assoc-f)])
      check-input? make-map assoc-f)))
 
 (defn restricted-call 
