@@ -45,6 +45,13 @@
   (is (thrown? Exception (graph :foo (fnk [x {y 1}]) :y (fnk [y])))) ;; even self-cycles  
   )
 
+(deftest plain-schemaless-functions-test
+  (let [g (graph :a identity
+                 :b (fnk [x] (inc x)))]
+    (is (= {:a {:foo "bar" :x 1} :b 2}
+           (run g {:foo "bar" :x 1}))
+        "a graph should function correctly with both fnks and schemaless functions")))
+
 (deftest eager-compile-test
   (let [a (atom [])
         g (graph 

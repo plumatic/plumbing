@@ -261,7 +261,6 @@
 
 (deftest graph?-test
   (is (graph? stats-graph))
-  (is (not (graph? {:a (fn [x] (inc x))})))
   (is (not (graph? {:a 42})))
   (is (not (graph? {"a" (fnk [x] (inc x))}))))
 

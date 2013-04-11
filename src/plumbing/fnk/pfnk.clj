@@ -17,7 +17,7 @@
 (extend-type clojure.lang.Fn
   PFnk
   (io-schemata [this] 
-    (let [schemata (get (meta this) ::io-schemata)]
+    (let [schemata (get (meta this) ::io-schemata [nil true])]
       (when-not (= (count schemata) 2)
         (throw (RuntimeException. (format "Missing or malformed io-schemata metadata in %s" (meta this)))))
       schemata)))
