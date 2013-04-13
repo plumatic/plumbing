@@ -52,6 +52,25 @@
            (run g {:foo "bar" :x 1}))
         "a graph should function correctly with both fnks and schemaless functions")))
 
+(deftest input-output-duplicate-key-test
+  (let [g (graph :x (comp inc :x)
+                 :y #(:x %))]
+    (is (= {:x 2 :y 1}
+           (run g {:x 1}))
+        "a schemaless function should always be called with the input map"))
+  (let [g (graph :x (comp inc :x)
+                 :y (comp dec :x)
+                 :z (fnk [x y] [x y]))]
+    (is (= {:x 2 :y 0 :z [2 0]}
+           (run g {:x 1}))
+        "a fnk should be called with its keys' output values"))
+  (let [g (graph :id #(get % :id)
+                 :name (fnk [first-name last-name]
+                         (str first-name " " last-name)))]
+    (is (= {:id 99 :name "Matilda Wormwood"}
+           (run g {:id 99 :first-name "Matilda" :last-name "Wormwood"}))
+        "you should be able to duplicate an input key in the output map")))
+
 (deftest eager-compile-test
   (let [a (atom [])
         g (graph 

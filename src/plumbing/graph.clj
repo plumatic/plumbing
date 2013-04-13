@@ -112,16 +112,13 @@
           (schema/assert-iae (empty? missing-keys)
                              "Missing top-level keys in graph input: %s"
                              (set missing-keys))))
-       (apply
-        dissoc
-        (reduce
-         (fn [inner [k node-f]]
-           (schema/assert-iae (not (contains? inner k))
-                              "Inner graph key %s duplicated" k)
-           (assoc-f inner k m node-f))
-         (make-map m)
-         g)
-        (keys m)))
+       (let [[result dissoc-key-map]
+             (reduce (fn [[inner dissoc-key-map] [k node-f]]
+                       [(assoc-f inner k m node-f)
+                        (dissoc dissoc-key-map k)])
+                     [(make-map m) m]
+                     g)]
+         (apply dissoc result (keys dissoc-key-map))))
      (pfnk/io-schemata g))))
 
 (defn simple-hierarchical-compile
