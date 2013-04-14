@@ -261,10 +261,34 @@
 
 (deftest graph?-test
   (is (graph? stats-graph))
-  (is (not (graph? {:a (fn [x] (inc x))})))
   (is (not (graph? {:a 42})))
   (is (not (graph? {"a" (fnk [x] (inc x))}))))
 
+;; You can also include non-fnk functions in a graph, in which case they
+;; always act solely on the input map and never depend on any particular
+;; keys being present. Keywords can also be used as functions in this way.
+
+(deftest schemaless-functions-test
+  (let [g (graph/->graph {:id (comp str :id)
+                          :handle :handle
+                          :name (fnk [first-name last-name]
+                                     (str first-name " " last-name))})]
+    (is (= {:id "1234" :handle "matilda" :name "Matilda Wormwood"}
+           (graph/run g
+                      {:id 1234
+                       :handle "matilda"
+                       :first-name "Matilda"
+                       :last-name "Wormwood"})))))
+
+;; If a fnk uses a key that exists both in the input and output, the output
+;; value is used as its argument.
+
+(deftest fnks-act-on-output-test
+  (let [g (graph/->graph {:x (comp inc :x)
+                          :y (comp dec :x)
+                          :z (fnk [x y] [x y])})]
+    (is (= {:x 2 :y 0 :z [2 0]}
+           (graph/run g {:x 1 :y "unused"})))))
 
 ;; The entire Graph itself specifies a fnk from input parameters to a map
 ;; of results, just like the example 'stats' fn written explicitly with 

@@ -43,7 +43,9 @@
    (an error will be thrown if the order is not valid).  Values in the input 
    sequence are also converted to canonical graphs via recursive calls to ->graph."
   [graph-nodes]
-  (if (or (fn? graph-nodes) (= graph-nodes (::self (meta graph-nodes))))
+  (if (or (keyword? graph-nodes)
+          (fn? graph-nodes)
+          (= graph-nodes (::self (meta graph-nodes))))
     graph-nodes
     (let [canonical-nodes (plumbing/map-vals ->graph graph-nodes)
           graph (->> (if-not (map? graph-nodes)
@@ -112,31 +114,31 @@
           (schema/assert-iae (empty? missing-keys)
                              "Missing top-level keys in graph input: %s"
                              (set missing-keys))))
-       (apply
-        dissoc
-        (reduce
-         (fn [inner [k node-f]]
-           (schema/assert-iae (not (contains? inner k))
-                              "Inner graph key %s duplicated" k)
-           (assoc-f inner k node-f))
-         (make-map m)
-         g)
-        (keys m)))
+       (let [[result dissoc-key-map]
+             (reduce (fn [[inner dissoc-key-map] [k node-f]]
+                       [(assoc-f inner k m node-f)
+                        (dissoc dissoc-key-map k)])
+                     [(make-map m) m]
+                     g)]
+         (apply dissoc result (keys dissoc-key-map))))
      (pfnk/io-schemata g))))
 
 (defn simple-hierarchical-compile
   "Hierarchical extension of simple-nonhierarchical-compile."
   [g check-input? make-map assoc-f]
-  (if (fn? g)
+  (if (or (keyword? g) (fn? g))
     g
     (simple-flat-compile
      (plumbing/map-vals #(simple-hierarchical-compile % check-input? make-map assoc-f) g)
      check-input? make-map assoc-f)))
 
 (defn restricted-call 
-  "Call fnk f on the subset of keys its input schema explicitly asks for"
-  [f in-m]
-  (f (select-keys in-m (keys (pfnk/input-schema f)))))
+  "Call fnk f on the subset of keys its input schema explicitly asks for.
+   In the case of a function with no input schema, (f x) is returned."
+  [f in-m x]
+  (if-let [input-schema (pfnk/input-schema f)]
+    (f (select-keys in-m (keys input-schema)))
+    (f x)))
 
 (defn eager-compile 
   "Compile graph specification g to a corresponding fnk that returns an
@@ -146,7 +148,7 @@
    g
    true
    (fn [m] m)
-   (fn [m k f] (assoc m k (restricted-call f m)))))
+   (fn [m k x f] (assoc m k (restricted-call f m x)))))
 
 (defn lazy-compile 
   "Compile graph specification g to a corresponding fnk that returns a
@@ -161,7 +163,7 @@
    g
    false
    (fn [m] (into (lazymap/lazy-hash-map) m))
-   (fn [m k f] (lazymap/delay-assoc m k (delay (restricted-call f m))))))
+   (fn [m k x f] (lazymap/delay-assoc m k (delay (restricted-call f m x))))))
 
 ;; TODO: move out.
 (defn par-compile [g]
@@ -179,7 +181,7 @@
    g
    true
    (fn [m] (into (lazymap/lazy-hash-map) m))
-   (fn [m k f] (lazymap/delay-assoc m k (future (restricted-call f m))))))
+   (fn [m k x f] (lazymap/delay-assoc m k (future (restricted-call f m x))))))
 
 
 (defn run 
