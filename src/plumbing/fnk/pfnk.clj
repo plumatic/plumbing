@@ -22,6 +22,10 @@
         (throw (RuntimeException. (format "Missing or malformed io-schemata metadata in %s" (meta this)))))
       schemata)))
 
+(extend-type clojure.lang.Keyword
+  PFnk
+  (io-schemata [this] [nil true]))
+
 
 (defn fn->fnk 
   "Make a keyword function into a PFnk, by associating input and output schema metadata."

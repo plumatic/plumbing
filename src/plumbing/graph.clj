@@ -43,7 +43,9 @@
    (an error will be thrown if the order is not valid).  Values in the input 
    sequence are also converted to canonical graphs via recursive calls to ->graph."
   [graph-nodes]
-  (if (or (fn? graph-nodes) (= graph-nodes (::self (meta graph-nodes))))
+  (if (or (keyword? graph-nodes)
+          (fn? graph-nodes)
+          (= graph-nodes (::self (meta graph-nodes))))
     graph-nodes
     (let [canonical-nodes (plumbing/map-vals ->graph graph-nodes)
           graph (->> (if-not (map? graph-nodes)
@@ -124,7 +126,7 @@
 (defn simple-hierarchical-compile
   "Hierarchical extension of simple-nonhierarchical-compile."
   [g check-input? make-map assoc-f]
-  (if (fn? g)
+  (if (or (keyword? g) (fn? g))
     g
     (simple-flat-compile
      (plumbing/map-vals #(simple-hierarchical-compile % check-input? make-map assoc-f) g)

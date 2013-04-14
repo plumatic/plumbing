@@ -52,6 +52,13 @@
            (run g {:foo "bar" :x 1}))
         "a graph should function correctly with both fnks and schemaless functions")))
 
+(deftest keywords-as-functions-test
+  (let [g (graph :x :x
+                 :y (comp inc :x))]
+    (is (= {:x 1 :y 2}
+           (run g {:x 1}))
+        "a graph should accept keywords as node functions")))
+
 (deftest input-output-duplicate-key-test
   (let [g (graph :x (comp inc :x)
                  :y #(:x %))]
