@@ -4,4 +4,5 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"
             :distribution :repo}
   :url "https://github.com/Prismatic/plumbing"
-  :dependencies [[de.kotka/lazymap "3.1.0" :exclusions [org.clojure/clojure]]])
+  :dependencies [[org.clojure/clojure "1.5.1"]
+                 [de.kotka/lazymap "3.1.0" :exclusions [org.clojure/clojure]]])
