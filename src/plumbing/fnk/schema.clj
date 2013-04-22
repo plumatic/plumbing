@@ -145,7 +145,7 @@
    return a pair of input and output schemata for #(let [v1 (f1 %)] (assoc v1 k (f2 (merge-disjoint % v1))))"
   [[i1 o1] [k [i2 o2]]]
   (let [o2 {k o2}]
-    (assert-iae (not (contains? i1 k)) "Duplicate key output %s for input %s from input %s" k i2 i1)
+    (assert-iae (not (contains? i1 k)) "Duplicate key output (possibly due to a misordered graph) %s for input %s from input %s" k i2 i1)
     (assert-iae (not (contains? i2 k)) "Node outputs a key %s in its inputs %s" k i2)
     (assert-iae (not (contains? o1 k)) "Node outputs a duplicate key %s given inputs %s" k i1)
     [(reduce
