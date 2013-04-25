@@ -8,6 +8,8 @@
 
 ;;; Helpers
 
+(def +none+ ::none)
+
 (defn safe-get 
   "Like (get m k), but throws if k is not present in m."
   [m k key-path]
@@ -110,22 +112,72 @@
      (distinct (concat outer-bound-syms inner-bound-syms)) 
      (merge outer-input-schema input-schema)]))
 
+(defn keyword-fnk-form
+  [name? map-sym final-body]
+  `(fn ~name?
+     [~map-sym]
+     (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
+     ~final-body))
+
+(defn extract-positional-args
+  "If possible, generate the argument vector for the positional-fn, which has
+  one symbol for each top-level key in the fnk binding vector, in order."
+  [bind]
+  (when (not-any? #(contains? #{'& :as} %) bind)
+    (for [arg bind]
+      (cond (symbol? arg) arg
+            (map? arg) (ffirst arg)
+            (vector? arg) (symbol (name (first arg)))  ;; NOTE(lbarrett): I removed a gensym here. Is that really safe?
+            :else (throw (RuntimeException. (format "bad binding: %s" arg)))))))
+
+;; handle nested bindings as usual, top-level is positional.
+(defn positional-bind-form
+  "Generate the binding form to handle a single element of the fnk binding
+   vector when called positionally"
+  [body-expr [bs binding]]
+  (cond (symbol? binding)
+        (do (assert (= binding bs)) body-expr)
+
+        (map? binding)
+        (let [[bs* ov] (first binding)]
+          (assert (= bs* bs))
+          `(let [~bs (if (identical? ~+none+ ~bs) ~ov ~bs)]
+             ~body-expr))
+
+        (vector? binding)
+        (let [[k & more] binding]
+          (first (letk* (vec more) bs [body-expr])))
+
+        :else (throw (RuntimeException. (format "bad binding: %s" binding)))))
+
+(defn positional-fnk-form
+  "Generate the form for a positional fn version of a fnk."
+  [name? bind body]
+  `(fn ~@(when name? [(symbol (str name? "-positional"))])
+     ~(mapv first bind)
+     ~(reduce
+        positional-bind-form
+        `(do ~@body)
+        bind)))
+
 ;; TODO: saving body form could enable more efficient graph compilations (like direct 'let' or positional fns)
-(defn fnk* 
+(defn fnk*
   "Take an optional name, binding form, and body for a fnk, and make an IFn/PFnk for these arguments"
   [name? bind body]
   (let [map-sym (gensym)
         [final-body _ input-schema] (letk* bind map-sym body)
-        name? (or name? (gensym "fnk"))]
-    (pfnk/fn->fnk
-     `(fn ~name?
-         ([~map-sym]
-            (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
-            ~final-body)
-         ([arg1# & more#] ;; allow splatting args like (f :a 1) rather than (f {:a 1}).  TODO: deprecate?
-            (if (odd? (count more#))
-              (~name? (apply hash-map arg1# more#))
-              (do (schema/assert-iae (map? arg1#) "fnk called with odd args and no initial map")
-                  (~name? (apply assoc arg1# more#))))))
-     [input-schema
-      (schema/make-output-schema (last body) (eval (:output-schema (meta bind) true)))])))
+        name? (or name? (gensym "fnk"))
+        keyword-form (keyword-fnk-form name? map-sym final-body)
+        schema [input-schema
+                (schema/make-output-schema (last body)
+                                           (eval (:output-schema (meta bind) true)))]]
+    (if-let [positional-args (extract-positional-args bind)]
+      ;; If we can make a positional form, do so
+      (pfnk/fn->fnk
+        keyword-form
+        schema
+        (positional-fnk-form name? (map vector positional-args bind) body)
+        (mapv keyword positional-args))
+      (pfnk/fn->fnk
+        keyword-form
+        schema))))

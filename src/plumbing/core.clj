@@ -291,10 +291,10 @@
 
 (defmacro letk
   "Keyword let.  Accepts an interleaved sequence of binding forms and map forms like:
-   (letk [[a {b 2} [:e f g] c d {e 4} :as m & more] a-map ...] & body)
-   a, c, d, and e are required keywords, and letk will barf if not in a-map.
+   (letk [[a {b 2} [:f g h] c d {e 4} :as m & more] a-map ...] & body)
+   a, c, d, and f are required keywords, and letk will barf if not in a-map.
    b and e are optional, and will be bound to default values if not present.
-   f and g are required keys in the map found under :e.
+   g and h are required keys in the map found under :f.
    m will be bound to the entire map (a-map).
    more will be bound to all the unbound keys (ie (dissoc a-map :a :b :c :d :e)).
    :as and & are both optional, but must be at the end in the specified order if present."

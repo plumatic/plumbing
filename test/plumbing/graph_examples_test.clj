@@ -379,6 +379,17 @@
     (is (= [1 10 {:a 1 :b 10}]
            (:x ((graph/eager-compile {:x x-fn}) {:a 1 :b 10 :c 100}))))))
 
+(deftest graph-ampersand-test
+  (let [x-fn (fnk [a {b 2} & m]
+                  [a b m])]
+    ;; When called directly, the & binding gets the leftover inputs
+    (is (= [1 2 {:c 3 :d 4}]
+           (x-fn {:a 1 :c 3 :d 4})))
+
+    ;; When called in a graph, it only gets what it asked for -- :a and :b
+    (is (= [1 2 {}]
+           (:x ((graph/eager-compile {:x x-fn}) {:a 1 :c 100}))))))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -479,19 +490,19 @@
              (fn [m]
                (let [r (node-fn m)]
                  (when-let [shutdown (:shutdown r)]
-                   (swap! (::shutdown-hooks m) conj shutdown))
+                   (swap! (:shutdown-hooks m) conj shutdown))
                  (assert (contains? r :resource))
-                 (:resource r)))   
-             [(assoc (pfnk/input-schema node-fn) ::shutdown-hooks true)
+                 (:resource r)))
+             [(assoc (pfnk/input-schema node-fn) :shutdown-hooks true)
               (pfnk/output-schema node-fn)]))
           g)
-    ::shutdown-hooks (fnk [] (atom nil))))
+         :shutdown-hooks (fnk [] (atom nil))))
 
 (defn start-service [graph params]  
   ((graph/eager-compile (resource-transform graph)) params))
 
 (defn shutdown-service [m]
-  (doseq [f @(::shutdown-hooks m)]
+  (doseq [f @(:shutdown-hooks m)]
     (f)))
 
 ;; Now we'll have to get a bit imaginative, since we don't have much 
