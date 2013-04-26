@@ -103,19 +103,18 @@
   [g arg-keywords]
   (positional-compile/positional-flat-compile (->graph g) arg-keywords))
 
-(defn positional-compile
-  "An efficient eager compilation for a graph where all leaf fnks are positional-fnks,
-   which generates an ordinary fn that takes args from arg-keywords in order (where suffixes
-   of optional args can be omitted), and returns a map of the outputs as usual.
-   Currently :as and & in node bindings is not supported, and nested subgraphs dont
-   work either."
+(defn eager-compile
+  "Compile graph specification g to a corresponding fnk that is optimized for
+  speed. Wherever possible, fnks are called positionally, to reduce the
+  overhead of creating and destructuring maps, and the return value is a
+  record, which is much faster to create and access than a map."
   ([g]
-   (positional-compile g nil))
+   (eager-compile g nil))
   ([g arg-keywords]
    (if (fn? g)
      g
      (let [g (for [[k sub-g] (->graph g)]
-               [k (positional-compile sub-g)])]
+               [k (eager-compile sub-g)])]
        (positional-flat-compile g arg-keywords)))))
 
 (defn simple-flat-compile
@@ -159,12 +158,6 @@
   "Call fnk f on the subset of keys its input schema explicitly asks for"
   [f in-m]
   (f (select-keys in-m (keys (pfnk/input-schema f)))))
-
-(defn eager-compile
-  "Compile graph specification g to a corresponding fnk that returns an
-   ordinary Clojure map of the node result fns on a given input."
-  [g]
-  (positional-compile g))
 
 (defn old-eager-compile
   "Compile graph specification g to a corresponding fnk that returns an

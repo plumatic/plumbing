@@ -12,32 +12,31 @@
 ;; https://github.com/Prismatic/plumbing/issues/6
 ;; TODO: generate .invokePrim for primitive hinted fns.
 
-(def positional? pfnk/positional-fn)
+(def positional? (comp boolean pfnk/positional-fn))
 
-(defn positional-call-form
-  [f f-sym arg-form-map]
-  (let [input-schema (pfnk/input-schema f)]
-    `(~f-sym
-       ~@(map (comp arg-form-map) (pfnk/positional-args f)))))
+(defn positional-args-form
+  [f arg-form-map]
+  (map arg-form-map (pfnk/positional-args f)))
 
-(defn keyword-call-form
-  [f f-sym arg-form-map]
-  `(~f-sym (into {} (remove #(identical? fnk-impl/+none+ (second %))
-                            ~arg-form-map))))
+(defn keyword-args-form
+  [arg-form-map]
+  [`(into {} (remove #(identical? fnk-impl/+none+ (second %))
+                     ~arg-form-map))])
 
-(defn efficient-call-form
-  "Generate the most efficient available call for a function."
-  [f f-sym arg-form-map]
-  (if (positional? f)
-    (positional-call-form f f-sym arg-form-map)
-    (keyword-call-form f f-sym arg-form-map)))
-
-(defn efficient-fn
-  "Get the most efficient available version of a function."
-  [f]
-  (if (positional? f)
-    (pfnk/positional-fn f)
-    f))
+(defn efficient-fn-info
+  [g]
+  (for-map [[kw f] g]
+           kw
+           (let [sym (-> kw name gensym)
+                 args-form (if (positional? f)
+                             (partial positional-args-form f)
+                             keyword-args-form)]
+             {:sym sym
+              :efficient-call (fn [arg-form-map]
+                                `(~sym ~@(args-form arg-form-map)))
+              :efficient-fn (if (positional? f)
+                              (pfnk/positional-fn f)
+                              f)})))
 
 (defn def-graph-record
   "Define a record for the output of a graph."
@@ -61,16 +60,19 @@
 
 (defn generate-positional-body-expr
   "Generate the body expression for a graph with positional calls to node functions"
-  [g g-fn-syms g-value-syms]
+  [g g-fn-info g-value-syms]
   (let [record-type (def-graph-record g)]
-    `(let ~(->> (for [[k f] g]
+    `(let ~(->>
+             (for [[k f] g
+                   :let [call-fn (-> g-fn-info (get k) :efficient-call)
+                         arg-forms (for-map [[arg-kw _] (pfnk/input-schema f)]
+                                            arg-kw (get g-value-syms arg-kw))]]
                   [(get g-value-syms k)
-                   (efficient-call-form f (get g-fn-syms k)
-                                        (for-map [[arg-kw _] (pfnk/input-schema f)]
-                                                 arg-kw (get g-value-syms arg-kw)))])
+                   (call-fn arg-forms)])
              (apply concat)
              vec)
-       (new ~record-type ~@(->> g pfnk/output-schema keys (map g-value-syms) vec)))))
+       (new ~record-type
+            ~@(->> g pfnk/output-schema keys (map g-value-syms) vec)))))
 
 (defn validate-positional-args
   "Take a graph input schema and provided seq of arg ks, validate that it
@@ -109,8 +111,14 @@
   ((eval `(fn [~(->> bindings (map first) vec)] ~form))
      (map second bindings)))
 
+(defn eval-bound-fn-info
+  [form fn-info]
+  (eval-bound form
+              (for [[_ {:keys [sym efficient-fn]} info] fn-info]
+                          [sym efficient-fn])))
+
 (defn generate-graph-form
-  [g arg-keywords fn-syms]
+  [g arg-keywords fn-info]
   (let [record-type-name (def-graph-record g)
         missing-args (missing-positional-args (pfnk/input-schema g) arg-keywords)
         value-syms (into {} (for [[kw _] (apply merge (pfnk/io-schemata g))]
@@ -120,18 +128,16 @@
        ~(mapv value-syms arg-keywords)
        (let ~(vec (interleave (map value-syms missing-args)
                               (repeat fnk-impl/+none+)))
-         ~(generate-positional-body-expr g fn-syms value-syms)))))
+         ~(generate-positional-body-expr g fn-info value-syms)))))
 
 (defn positional-flat-compile
   "Positional compile for a flat (non-nested) graph."
   [g arg-keywords]
   (let [arg-keywords (or arg-keywords (-> g pfnk/input-schema keys))
         _ (validate-positional-args (pfnk/input-schema g) arg-keywords)
-        fn-syms (into {} (for [[kw _] g] [kw (-> kw name gensym)]))
-        graph-form (generate-graph-form g arg-keywords fn-syms)
-        positional-fn (eval-bound graph-form
-                                  (for [[kw f] g] [(fn-syms kw)
-                                                   (efficient-fn f)]))]
+        fn-info (efficient-fn-info g)
+        graph-form (generate-graph-form g arg-keywords fn-info)
+        positional-fn (eval-bound-fn-info graph-form fn-info)]
     (pfnk/fn->fnk
       (positional-fn->keyword-fn positional-fn arg-keywords)
       (pfnk/io-schemata g)

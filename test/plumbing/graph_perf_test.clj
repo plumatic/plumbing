@@ -242,12 +242,12 @@
   ;; to the function implementation
   (let [solar-rad-as-graph (graph/old-eager-compile solar-rad-from-temp)
         solar-rad-pos-graph (pfnk/positional-fn
-                              (graph/positional-compile
+                              (graph/eager-compile
                                 solar-rad-from-temp-positional
                                 [:lat :alt :tmin :tmax :doy]))
 
         solar-rad-pos-graph-th (pfnk/positional-fn
-                                 (graph/positional-compile
+                                 (graph/eager-compile
                                    solar-rad-from-temp-positional-typehinted
                                    [:lat :alt :tmin :tmax :doy :kRs :a :s]))]
     (println "As graph")
@@ -271,10 +271,10 @@
   (require '[plumbing.timing :as timing])
   (defn bench []
     (let [solar-rad-as-graph (graph/old-eager-compile solar-rad-from-temp)
-          solar-rad-pos-graph (graph/positional-compile
+          solar-rad-pos-graph (graph/eager-compile
                                solar-rad-from-temp-positional
                                [:lat :alt :tmin :tmax :doy])
-          solar-rad-pos-graph-th (graph/positional-compile
+          solar-rad-pos-graph-th (graph/eager-compile
                                   solar-rad-from-temp-positional-typehinted
                                   [:lat :alt :tmin :tmax :doy  :kRs :a :s])]
       (timing/microbenchmark
