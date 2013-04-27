@@ -12,43 +12,17 @@
 ;; https://github.com/Prismatic/plumbing/issues/6
 ;; TODO: generate .invokePrim for primitive hinted fns.
 
-(def positional? (comp boolean pfnk/positional-fn))
-
-(defn positional-args-form
-  [f arg-form-map]
-  (map arg-form-map (pfnk/positional-args f)))
-
-(defn keyword-args-form
-  [arg-form-map]
-  [`(into {} (remove #(identical? fnk-impl/+none+ (second %))
-                     ~arg-form-map))])
-
-(defn efficient-fn-info
-  [g]
-  (for-map [[kw f] g]
-           kw
-           (let [sym (-> kw name gensym)
-                 args-form (if (positional? f)
-                             (partial positional-args-form f)
-                             keyword-args-form)]
-             {:sym sym
-              :efficient-call (fn [arg-form-map]
-                                `(~sym ~@(args-form arg-form-map)))
-              :efficient-fn (if (positional? f)
-                              (pfnk/positional-fn f)
-                              f)})))
-
 (defn def-graph-record
-  "Define a record for the output of a graph."
+  "Define a record for the output of a graph. It is usable as a function to be
+  as close to a map as possible. Return the typename."
   [g]
   (let [record-type-name (gensym "graph-record")]
+    ;; NOTE: This eval is needed because we want to define a record based on
+    ;; information (a graph) that's only available at runtime.
     (eval `(defrecord ~record-type-name ~(->> g
                                            pfnk/output-schema
                                            keys
-                                           (map (comp symbol name))
-                                           vec)
-             ;; NOTE(leon): I wanted this record to be usable as a map, and one
-             ;; of the main use cases is as a function, so I implemented IFn.
+                                           (mapv (comp symbol name)))
              IFn
              (invoke [this# k#]
                (get this# k#))
@@ -58,47 +32,51 @@
                (apply get this# args#))))
     record-type-name))
 
-(defn generate-positional-body-expr
-  "Generate the body expression for a graph with positional calls to node functions"
-  [g g-fn-info g-value-syms]
-  (let [record-type (def-graph-record g)]
-    `(let ~(->>
-             (for [[k f] g
-                   :let [call-fn (-> g-fn-info (get k) :efficient-call)
-                         arg-forms (for-map [[arg-kw _] (pfnk/input-schema f)]
-                                            arg-kw (get g-value-syms arg-kw))]]
-                  [(get g-value-syms k)
-                   (call-fn arg-forms)])
-             (apply concat)
-             vec)
-       (new ~record-type
-            ~@(->> g pfnk/output-schema keys (map g-value-syms) vec)))))
+(defn fn-binding-and-call
+  "Compute both the binding needed to inject a function into a form and a
+  let-binding form that will call the function and store the value."
+  [g-value-syms [kw f]]
+  (let [sym (-> kw name (str "-fn") gensym)
+        arg-forms (map-from-keys g-value-syms (keys (pfnk/input-schema f)))
+        [f arg-forms] (fnk-impl/efficient-call-forms f arg-forms)]
+    [[sym f] [(g-value-syms kw) (cons sym arg-forms)]]))
 
-(defn validate-positional-args
-  "Take a graph input schema and provided seq of arg ks, validate that it
-  contains all required keys and only valid input keys."
-  [input-schema arg-ks]
-  ;; Args are sane.
-  (assert (apply distinct? ::dummy arg-ks))  ;; Dummy in case arg-ks is empty.
-  (let [arg-ks (set arg-ks)]
-    ;; No missing required args.
-    (doseq [[k required] input-schema]
-      (schema/assert-iae (or (false? required) (contains? arg-ks k))
-                         "Missing required arg key %s" k))
-    ;; All args valid.
-    (doseq [arg-k arg-ks]
-      (schema/assert-iae (contains? input-schema arg-k)))))
+(defn graph-let-bindings
+  "Compute the bindings for functions and intermediates needed to form the body
+  of a positional graph, E.g.
+    [`[[f-3 ~some-function]] `[[intermediate-3 (f-3 intermediate-1 intermediate-2)]]]"
+  [g g-value-syms]
+  (->> g
+       (map (partial fn-binding-and-call g-value-syms))
+       (apply map vector)))
 
 (defn missing-positional-args
   "Get unused positional arguments."
   [input-schema arg-ks]
   (->> arg-ks
-    (reduce dissoc input-schema)
-    keys
-    set))
+       (reduce dissoc input-schema)
+       keys
+       set))
+
+(defn validate-positional-args
+  "Given a graph input schema and provided seq of arg ks, validate that it
+  contains all required keys and only valid input keys."
+  [input-schema arg-ks]
+  (when arg-ks
+    ;; Args are sane.
+    (schema/assert-iae (apply distinct? ::dummy arg-ks)
+                       "Invalid positional args %s contain duplicates"
+                       arg-ks)
+    (let [missing-args (remove (comp false? input-schema)
+                               (missing-positional-args input-schema arg-ks))
+          extra-args (remove (partial contains? input-schema) arg-ks)]
+      (schema/assert-iae (and (empty? missing-args) (empty? extra-args))
+        "Invalid positional args %s missing %s, with extra %s"
+        arg-ks missing-args extra-args))
+    arg-ks))
 
 (defn positional-fn->keyword-fn
-  "Construct a keyword function that calls a positional function appropriately."
+  "Construct a keyword function that calls a positional function."
   [positional-fn positional-args]
   (fn [args-map]
     (into {}
@@ -108,37 +86,41 @@
 (defn eval-bound
   "Evaluate a form with some symbols bound into some values."
   [form bindings]
-  ((eval `(fn [~(->> bindings (map first) vec)] ~form))
+  ((eval `(fn [~(->> bindings (mapv first))] ~form))
      (map second bindings)))
 
-(defn eval-bound-fn-info
-  [form fn-info]
-  (eval-bound form
-              (for [[_ {:keys [sym efficient-fn]} info] fn-info]
-                          [sym efficient-fn])))
-
-(defn generate-graph-form
-  [g arg-keywords fn-info]
-  (let [record-type-name (def-graph-record g)
-        missing-args (missing-positional-args (pfnk/input-schema g) arg-keywords)
-        value-syms (into {} (for [[kw _] (apply merge (pfnk/io-schemata g))]
-                              [kw (-> kw name gensym)]))]
-    `(fn
-       positional-graph#
+(defn graph-form
+  "Construct the form (and bindings needed for it to eval) for a positional
+  graph body."
+  [g arg-keywords]
+  (let [value-syms (->> g pfnk/io-schemata (apply merge) keys
+                        (map-from-keys (comp gensym name)))
+        missing-arg-bindings (-> g
+                                 pfnk/input-schema
+                                 (missing-positional-args arg-keywords)
+                                 (->> (map value-syms))
+                                 (interleave (repeat fnk-impl/+none+))
+                                 vec)
+        output-values (->> g pfnk/output-schema keys (mapv value-syms))
+        [needed-bindings value-bindings] (graph-let-bindings g value-syms)
+        record-type (def-graph-record g)]
+    [`(fn
+       positional-graph#  ;; Name it just for kicks.
        ~(mapv value-syms arg-keywords)
-       (let ~(vec (interleave (map value-syms missing-args)
-                              (repeat fnk-impl/+none+)))
-         ~(generate-positional-body-expr g fn-info value-syms)))))
+       (let ~(into missing-arg-bindings (apply concat value-bindings))
+         (new ~record-type ~@output-values)))
+     needed-bindings]))
 
 (defn positional-flat-compile
   "Positional compile for a flat (non-nested) graph."
   [g arg-keywords]
-  (let [arg-keywords (or arg-keywords (-> g pfnk/input-schema keys))
-        _ (validate-positional-args (pfnk/input-schema g) arg-keywords)
-        fn-info (efficient-fn-info g)
-        graph-form (generate-graph-form g arg-keywords fn-info)
-        positional-fn (eval-bound-fn-info graph-form fn-info)]
-    (pfnk/fn->fnk
+  (let [arg-keywords (or (validate-positional-args (pfnk/input-schema g)
+                                                   arg-keywords)
+                         (-> g pfnk/input-schema keys))
+        ;; NOTE: This eval is needed because we want to make a let structure
+        ;; based on information (a graph) that's only available at runtime.
+        positional-fn (apply eval-bound (graph-form g arg-keywords))]
+    (fnk-impl/fn->positional-fnk
       (positional-fn->keyword-fn positional-fn arg-keywords)
       (pfnk/io-schemata g)
       positional-fn

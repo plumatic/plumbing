@@ -4,6 +4,7 @@
    [plumbing.core :only [fnk]])
   (:require
    [plumbing.graph :as graph]
+   [plumbing.fnk.impl :as fnk-impl]
    [plumbing.fnk.pfnk :as pfnk]))
 
 (def ^:const kelvin 273.15)
@@ -241,12 +242,12 @@
   ;; simple profiling, comparing the graph implemention
   ;; to the function implementation
   (let [solar-rad-as-graph (graph/old-eager-compile solar-rad-from-temp)
-        solar-rad-pos-graph (pfnk/positional-fn
+        solar-rad-pos-graph (fnk-impl/positional-fn
                               (graph/eager-compile
                                 solar-rad-from-temp-positional
                                 [:lat :alt :tmin :tmax :doy]))
 
-        solar-rad-pos-graph-th (pfnk/positional-fn
+        solar-rad-pos-graph-th (fnk-impl/positional-fn
                                  (graph/eager-compile
                                    solar-rad-from-temp-positional-typehinted
                                    [:lat :alt :tmin :tmax :doy :kRs :a :s]))]

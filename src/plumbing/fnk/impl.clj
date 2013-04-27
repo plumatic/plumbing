@@ -2,6 +2,7 @@
   "Core utilities for parsing our 'fnk'-style binding syntax and generating bodies.
    Documented and tested through the actual 'letk','fnk', and 'defnk' macros in plumbing.core."
   (require 
+   [clojure.set :as set]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]))
 
@@ -127,11 +128,21 @@
     (for [arg bind]
       (cond (symbol? arg) arg
             (map? arg) (ffirst arg)
-            (vector? arg) (symbol (name (first arg)))  ;; NOTE(lbarrett): I removed a gensym here. Is that really safe?
+            ;; Returns a keyword if we'll need to gensym for bindings like in
+            ;; [:y z] where we don't want to bind anything to y.
+            (vector? arg) (first arg)
             :else (throw (RuntimeException. (format "bad binding: %s" arg)))))))
 
+(defn gensym-positional-arg-if-needed
+  "If a positional argument is a keyword, that means we should gensym a symbol
+  for it to avoid collisions."
+  [arg]
+  (if (keyword? arg)
+    (gensym (name arg))
+    arg))
+
 ;; handle nested bindings as usual, top-level is positional.
-(defn positional-bind-form
+(defn positional-arg-bind-form
   "Generate the binding form to handle a single element of the fnk binding
    vector when called positionally"
   [body-expr [bs binding]]
@@ -141,7 +152,7 @@
         (map? binding)
         (let [[bs* ov] (first binding)]
           (assert (= bs* bs))
-          `(let [~bs (if (identical? ~+none+ ~bs) ~ov ~bs)]
+          `(let [~bs (if (identical? +none+ ~bs) ~ov ~bs)]
              ~body-expr))
 
         (vector? binding)
@@ -156,11 +167,38 @@
   `(fn ~@(when name? [(symbol (str name? "-positional"))])
      ~(mapv first bind)
      ~(reduce
-        positional-bind-form
+        positional-arg-bind-form
         `(do ~@body)
         bind)))
 
-;; TODO: saving body form could enable more efficient graph compilations (like direct 'let' or positional fns)
+(defn fn->positional-fnk
+  "Generate a fnk that has a positional form for calling efficiently."
+  [f [input-schema output-schema :as io] positional-f positional-args]
+  (vary-meta (pfnk/fn->fnk f io) assoc
+             ::io-schemata io
+             ::positional-info [positional-f positional-args]))
+
+(defn positional-fn
+  "Get the positional form of a fnk, if it has one."
+  [fnk]
+  (when-let [[positional-f positional-args] (get (meta fnk) ::positional-info)]
+    positional-f))
+
+(defn efficient-call-forms
+  "Get [f arg-forms] needed to call a function most efficiently. This returns a
+  vector, not a list, to avoid accidental use in eval. The arg-forms need to be
+  evaluated, but in general functions (closures) can't be eval'ed. E.g. try:
+    (eval `(~(let [x 1] (fn [y] (+ y x))) 2))"
+  [fnk arg-form-map]
+  (if-let [[positional-f positional-args] (get (meta fnk) ::positional-info)]
+    (do
+      (schema/assert-iae (set/superset? (set (keys arg-form-map))
+                                        (set positional-args))
+                         "Trying to call fn that takes args %s with args %s"
+                         positional-args arg-form-map)
+      [positional-f (map arg-form-map positional-args)])
+    [fnk [`(into {} (remove #(identical? +none+ (second %)) ~arg-form-map))]]))
+
 (defn fnk*
   "Take an optional name, binding form, and body for a fnk, and make an IFn/PFnk for these arguments"
   [name? bind body]
@@ -172,11 +210,15 @@
                 (schema/make-output-schema (last body)
                                            (eval (:output-schema (meta bind) true)))]]
     (if-let [positional-args (extract-positional-args bind)]
-      ;; If we can make a positional form, do so
-      (pfnk/fn->fnk
+      ;; If we can make a positional form, do so.
+      (fn->positional-fnk
         keyword-form
         schema
-        (positional-fnk-form name? (map vector positional-args bind) body)
+        (positional-fnk-form name?
+                             (map vector
+                                  (map gensym-positional-arg-if-needed positional-args)
+                                  bind)
+                             body)
         (mapv keyword positional-args))
       (pfnk/fn->fnk
         keyword-form
