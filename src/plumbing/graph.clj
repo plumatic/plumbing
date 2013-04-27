@@ -25,9 +25,9 @@
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]
+   [plumbing.graph.positional :as graph-positional]
    [plumbing.core :as plumbing]
-   [plumbing.map :as map]
-   [plumbing.positional-compile :as positional-compile]))
+   [plumbing.map :as map]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -101,7 +101,7 @@
 (defn positional-flat-compile
   "Positional compile for a flat (non-nested) graph."
   [g arg-keywords]
-  (positional-compile/positional-flat-compile (->graph g) arg-keywords))
+  (graph-positional/positional-flat-compile (->graph g) arg-keywords))
 
 (defn eager-compile
   "Compile graph specification g to a corresponding fnk that is optimized for

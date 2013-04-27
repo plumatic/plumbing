@@ -1,4 +1,4 @@
-(ns plumbing.positional-compile
+(ns plumbing.graph.positional
   "A compilation method for graphs that avoids maps for speed."
   (:use plumbing.core)
   (:require
