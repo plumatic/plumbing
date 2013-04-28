@@ -1,6 +1,26 @@
 (ns plumbing.fnk.impl
-  "Core utilities for parsing our 'fnk'-style binding syntax and generating bodies.
-   Documented and tested through the actual 'letk','fnk', and 'defnk' macros in plumbing.core."
+  "Core utilities for parsing our 'fnk'-style binding syntax.
+   Documented and tested through the actual 'letk','fnk', and 'defnk'
+   macros in plumbing.core.
+
+   The core entry points into this namespace are 'letk*' and 'fnk*',
+   which parse the new binding syntax and generate fnk bodies,
+   respectively.
+
+   For efficiency, two different methods of generating fnk bodies are
+   used.  If the fnk takes a fixed set of arguments (i.e., no & or
+   :as), then a 'positional' version of the fnk that is called like an
+   ordinary Clojure fn (e.g., (f a b) rather than (f {:a a :b b}) is
+   generated as an implementation detail, and stored in metadata of
+   the actual keyword fnk (which is just a thin wrapper around the
+   positional version).  If '& or :as are used, no such positional
+   function is generated.
+
+   The advantage of these 'positional' functions is that they can be
+   accessed using 'efficient-call-forms' or 'positional-fn' to call
+   the fnk without incurring the overhead of producing and then
+   destructuring a top-level map.  See plumbing.graph.positional for
+   an example use."
   (require
    [clojure.set :as set]
    [plumbing.fnk.schema :as schema]
@@ -30,19 +50,22 @@
 ;;; Parsing new fnk binding style
 
 (defn- parse-letk-binding
-  "Parse a binding form into required [sym k] bindings (here sym~=k), optional [sym v] bindings,
-   nested {sym binding-form} bindings, and possible :as and & symbols."
+  "Parse a binding form into required [sym k] bindings (here sym~=k),
+   optional [sym v] bindings, nested {sym binding-form} bindings, and
+   possible :as and & symbols."
   [binding-form]
   (schema/assert-iae (vector? binding-form) "Binding form is not vector: %s" binding-form)
   (let [[binding-form more-sym] (if (= (last (butlast binding-form)) '&)
                                   [(drop-last 2 binding-form)
                                    (doto (last binding-form)
-                                     (-> symbol? (schema/assert-iae "Argument to & not a symbol: %s" binding-form)))]
+                                     (-> symbol? (schema/assert-iae "Argument to & not a symbol: %s"
+                                                                    binding-form)))]
                                   [binding-form nil])
         [bindings as-sym]       (if (= (last (butlast binding-form)) :as)
                                   [(drop-last 2 binding-form)
                                    (doto (last binding-form)
-                                     (-> symbol? (schema/assert-iae "Argument to :as not a symbol: %s" binding-form)))]
+                                     (-> symbol? (schema/assert-iae "Argument to :as not a symbol: %s"
+                                                                    binding-form)))]
                                   [binding-form (gensym "map")])
         [optional more]     ((juxt filter remove) map? bindings)
         optional            (for [opt optional]
@@ -90,9 +113,9 @@
 (defn letk*
   "Take a letk/fnk binding form, a form that generates a map to bind from, and a body, and
    return a triple [output-form bound-syms input-schema], where:
-     output-form is the final output form that executes body in the scope of the provided bindings,
-     bound-syms is the set of symbols bound, which must be unique, and
-     input-schema is the input schema imposed on the map-form by the binding."
+   -  output-form is the final output form that executes body in the scope of the provided bindings,
+   -  bound-syms is the set of symbols bound, which must be unique, and
+   -  input-schema is the input schema imposed on the map-form by the binding."
   [binding-form map-form body & [key-path]]
   (let [{:keys [nested,] :as parsed-binding} (parse-letk-binding binding-form)
 
@@ -133,31 +156,51 @@
         (let [[k & more] binding]
           (first (letk* (vec more) (symbol (name k)) [body-expr])))
 
-        :else (throw (RuntimeException. (format "bad binding: %s" binding)))))
+        :else (throw (IllegalArgumentException. (format "bad binding: %s" binding)))))
 
 
-(defn positional-info [f]
-  (get (meta f) ::positional-info))
+(defn positional-info
+  "If fnk has a positional function implementation, return the pair
+   [positional-fn positional-arg-ks] such that if positional-arg-ks is [:a :b :c],
+   calling (positional-fn a b c) is equivalent to calling (fnk {:a a :b b :c c}),
+   but faster.  Optional values to fnk can be simulated by passing +none+ as the
+   value, i.e., (positional-fn +none+ b +none) is like (fnk {:b b})."
+  [fnk]
+  (get (meta fnk) ::positional-info))
 
 (defn efficient-call-forms
-  "Get [f arg-forms] needed to call a function most efficiently. This returns a
-  vector, not a list, to avoid accidental use in eval. The arg-forms need to be
-  evaluated, but in general functions (closures) can't be eval'ed. E.g. try:
-    (eval `(~(let [x 1] (fn [y] (+ y x))) 2))"
+  "Get [f arg-forms] that can be used to call a fnk most efficiently, using the
+   positional version if available, or otherwise the raw fnk.  arg-form-map
+   is a map from keywords representing arguments to fnk to *forms* that evaluate
+   to the corresponding arguments.
+
+   The basic idea is that (eval (cons f arg-forms)) would yield code for an
+   efficient call to fnk.  However, this form is not returned directly, because
+   in most cases the literal function f cannot be directly evaluated due to
+   a quirk in Clojure -- e.g., try (eval `(~(let [x 1] (fn [y] (+ y x))) 2)).
+
+   For examples of how this is used, see 'positional-fn' below, or the positional
+   compilation in plumbing.graph.positional."
   [fnk arg-form-map]
   (if-let [[positional-f positional-args] (positional-info fnk)]
-    (do
-      (schema/assert-iae (set/superset? (set (keys arg-form-map))
-                                        (set positional-args))
-                         "Trying to call fn that takes args %s with args %s"
-                         positional-args arg-form-map)
-      [positional-f (map arg-form-map positional-args)])
+    (do (schema/assert-iae (set/superset? (set (keys arg-form-map))
+                                          (set positional-args))
+                           "Trying to call fn that takes args %s with args %s"
+                           positional-args arg-form-map)
+        [positional-f (map arg-form-map positional-args)])
     [fnk [`(into {} (remove #(identical? +none+ (second %)) ~arg-form-map))]]))
 
 (defn positional-fn
   "Given argument order in arg-ks, produce an ordinary fn that can be called
-   with arguments in this order.  arg-ks must include all required keys of fnk.
-   Can only be applied to fnks with a positional form."
+   with arguments in this order. arg-ks must include all required keys of fnk.
+
+   Example: (= ((positional-fn fnk 1 2) [:b :a]) (fnk {:a 2 :b 1}))
+
+   Can only be applied to fnks with a positional form, and should yield
+   a function that is significantly faster than calling fnk directly by
+   avoiding the construction and destructuring of the outer map.  Uses 'eval',
+   so while the produced function is fast, the actual production of the
+   positional-fn is generally relatively slow."
   [fnk arg-ks]
   (schema/assert-iae (apply distinct? ::dummy arg-ks)
                      "Invalid positional args %s contain duplicates" arg-ks)
@@ -178,9 +221,19 @@
     ((eval `(fn [f#] (fn ~arg-syms (f# ~@pos-args))))
      pos-fn)))
 
-(defn positional-fnk*
-  "Take an optional name, binding form, and body for a fnk, and make an IFn/PFnk for these arguments
-   which takes arguments in the order provided by the input-schema in io-schemata."
+(defn positional-fnk-form
+  "Takes an optional name, io-schemata, and a positional fn body that can
+   reference the symbol versions of keywords in (first io-schemata), and
+   produces a form generating a IFn/PFnk that can be called as a keyword function,
+   and has metadata containing the positional function for efficient compilation
+   as described in 'efficient-call-forms' and 'positional-fn' above, with
+   argument order the same as in (first io-schemata).   Example:
+
+   (def f (eval (i/positional-fnk-form 'foo [{:x true :y false} true]
+                   [`(+ ~'x (if (= ~'y i/+none+) 5 ~'y))])))
+
+   (= [6 3] [(f {:x 1}) (f {:x 1 :y 2})])
+   (= [6 3] [((i/positional-fn f [:x]) 1) ((i/positional-fn f [:y :x]) 2 1)])"
   [name? [input-schema :as io-schemata] body]
   (let [[opt-ks req-ks] ((juxt filter remove) #(false? (input-schema %)) (keys input-schema))
         pos-args (mapv (comp symbol name) (keys input-schema))]
@@ -197,8 +250,18 @@
 
 ;;; Generating fnk bodies
 
-(defn fnk*
-  "Take an optional name, binding form, and body for a fnk, and make an IFn/PFnk for these arguments"
+(defn fnk-form
+  "Take an optional name, binding form, and body for a fnk, and make an
+   IFn/PFnk for these arguments.
+
+   For efficiency, two different methods of generating fnk bodies are
+   used.  If the fnk takes a fixed set of arguments (i.e., no & or
+   :as), then a 'positional' version of the fnk that is called like an
+   ordinary Clojure fn (e.g., (f a b) rather than (f {:a a :b b}) is
+   generated as an implementation detail, and stored in metadata of
+   the actual keyword fnk (which is just a thin wrapper around the
+   positional version).  If '& or :as are used, no such positional
+   function is generated."
   [name? bind body]
   (let [map-sym (gensym)
         [fnk-body _ input-schema] (letk* bind map-sym body)
@@ -206,7 +269,7 @@
                 (schema/make-output-schema (last body)
                                            (eval (:output-schema (meta bind) true)))]]
     (if (not-any? #{'& :as} bind) ;; If we can make a positional fnk form, do it.
-      (positional-fnk*
+      (positional-fnk-form
        name?
        schema
        [(reduce

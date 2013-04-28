@@ -102,7 +102,8 @@
   "Compile graph specification g to a corresponding fnk that is optimized for
   speed. Wherever possible, fnks are called positionally, to reduce the
   overhead of creating and destructuring maps, and the return value is a
-  record, which is much faster to create and access than a map."
+  record, which is much faster to create and access than a map.  Compilation
+  is relatively slow, however, due to calls to 'eval'."
   [g]
   (if (fn? g)
     g
@@ -152,9 +153,11 @@
   [f in-m]
   (f (select-keys in-m (keys (pfnk/input-schema f)))))
 
-(defn old-eager-compile
+(defn interpreted-eager-compile
   "Compile graph specification g to a corresponding fnk that returns an
-   ordinary Clojure map of the node result fns on a given input."
+   ordinary Clojure map of the node result fns on a given input.  The
+   compilation is must faster than 'eager-compile', but the compiled fn
+   will typically be much slower."
   [g]
   (simple-hierarchical-compile
    g
@@ -216,6 +219,13 @@
     (doseq [[k s] os]
       (schema/assert-satisfies-schema (get is k) s))))
 
+(defn comp-partial-fn
+  "Return a new pfnk representing the composition #(f (merge % (other %)))"
+  [f other]
+  (pfnk/fn->fnk
+   (fn [m] (f (merge m (other m))))
+   (schema/compose-schemata (pfnk/io-schemata f) (pfnk/io-schemata other))))
+
 (defn comp-partial
   "Experimental.
 
@@ -232,14 +242,14 @@
    one node in g."
   [g instance-fn]
   (if (fn? g)
-    (pfnk/comp-partial g instance-fn)
+    (comp-partial-fn g instance-fn)
    (let [os (pfnk/output-schema instance-fn)]
      (check-comp-partial! g instance-fn)
      (->graph
       (map/map-leaves
        (fn [node-fn]
          (if (some os (keys (pfnk/input-schema node-fn)))
-           (pfnk/comp-partial node-fn instance-fn)
+           (comp-partial-fn node-fn instance-fn)
            node-fn))
        g)))))
 

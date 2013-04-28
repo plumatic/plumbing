@@ -2,7 +2,7 @@
   "Explaining input and output schemata, fnk syntax, and their relationships
    by example."
   (:use clojure.test plumbing.core)
-  (:require 
+  (:require
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]))
 
@@ -36,7 +36,7 @@
 ;; plumbing.fnk.schema has library functions for building, composing,
 ;; and checking schemata
 
-(deftest assert-satisfies-schema-test 
+(deftest assert-satisfies-schema-test
   (is (thrown? Exception (schema/assert-satisfies-schema input-schema-1 output-schema-2)))
   (is (do (schema/assert-satisfies-schema input-schema-1 output-schema-1) true)))
 
@@ -45,9 +45,9 @@
 ;;; Fnk
 
 ;; For our purposes, a keyword function is an ordinary clojure fn? that
-;; accepts a nested map with keyword keys as input, whose 'leaves' are 
+;; accepts a nested map with keyword keys as input, whose 'leaves' are
 ;; arbitrary values (including maps with non-keyword keys), and returns
-;; an arbitrary value.  
+;; an arbitrary value.
 
 ;; In addition, a keyword function must respond to the pfnk/io-schemata
 ;; call, returning a pair of an input schema and output schema.
@@ -72,13 +72,13 @@
   (is (= [{:a true :b true :o false}
           {:x true}]
          (pfnk/io-schemata f)))
-  
+
   ;; we can also ask for just the input-schema or output-schema
   (is (= {:a true :b true :o false}
          (pfnk/input-schema f)))
   (is (= {:x true}
          (pfnk/output-schema f)))
-  
+
   ;; a keyword function should throw if required keys not given.
   (is (thrown? Throwable (f {:a 3}))))
 
@@ -87,7 +87,7 @@
 
 
 ;; As a shortcut for defining keyword functions, we've defined macros
-;; 'fnk' and 'defnk' with a different destructuring syntax than 
+;; 'fnk' and 'defnk' with a different destructuring syntax than
 ;; 'fn' and 'defn', and which automatically infer input and output
 ;; schemata.  For more details and rationale for this syntax, see
 ;; plumbing.fnk/readme.md.
@@ -99,7 +99,7 @@
   {:x (+ a b o)})
 
 ;; This fnk automatically throws if required keys aren't present,
-;; and infers its input schema from the binding form and output 
+;; and infers its input schema from the binding form and output
 ;; schema from the literal map in its body.
 
 (deftest a-simple-fnk-test
@@ -119,7 +119,7 @@
   (is (= true
          (pfnk/output-schema a-simple-fnk2))))
 
-;; For these cases, we can provide explicit metadata to hint the 
+;; For these cases, we can provide explicit metadata to hint the
 ;; output schema of the fnk.
 
 (defnk a-simple-fnk3
@@ -152,17 +152,17 @@
          (a-nested-fnk {:a 1
                         :b {:b1 12}
                         :c 2})))
-  
+
   (is (= {:a true :b {:b1 true :b2 false} :c true}
          (pfnk/input-schema a-nested-fnk)))
   (is (= {:sum true :products {:as true :bs true :cs true}}
          (pfnk/output-schema a-nested-fnk)))
-  
-  (is (thrown? Throwable (a-nested-fnk {:a 1 :b {:b2 10} :c 3}))) ;; :b1 is missing  
+
+  (is (thrown? Throwable (a-nested-fnk {:a 1 :b {:b2 10} :c 3}))) ;; :b1 is missing
   )
 
 ;; finally, fnks have support for :as and & bindings like Clojure's
-;; built-in destructuring.  :as binds a symbol to the entire map 
+;; built-in destructuring.  :as binds a symbol to the entire map
 ;; input, and & binds to a map of any extra keys not destructured.
 
 (defnk a-fancier-nested-fnk
@@ -175,37 +175,6 @@
          (pfnk/input-schema a-fancier-nested-fnk)))
   (is (= true
          (pfnk/output-schema a-fancier-nested-fnk)))
-  
+
   (is (= [1 2 {:b1 2 :b2 3} {:a 1 :b {:b1 2 :b2 3} :c 4} {:c 4}]
          (a-fancier-nested-fnk {:a 1 :b {:b1 2 :b2 3} :c 4}))))
-
-;; pfnk also defines an composition operation on keyword functions called
-;; comp-partial, which is useful in graph and elsewhere.  
-;; (comp-partial f1 f2) returns a new keyword function equivalent to 
-;; #(f1 (merge % (f2 %))), with inferred input and output schemata.
-;; comp-partial throws if outputs of f2 used by f1 do not satisfy
-;; the input structure required by f1.
-
-(deftest comp-partial-test
-  (let [f1 (fnk [a [:b b1] c]
-            {:x (+ a b1 c)})
-        f2 (fnk [c d]
-             {:b {:b1 (* c d)}})
-        composed (pfnk/comp-partial f1 f2)]
-    ;; the final function does not require :b, since it is provided to f1 by f2.
-    (is (= [{:a true :c true :d true}
-            {:x true}]
-           (pfnk/io-schemata composed)))
-    
-    (is (= {:x 20}
-           (composed {:a 2 :c 2 :d 8})))
-    
-    ;; This throws, because the value output by the second function under :b
-    ;; cannot satisfy the input schema of f1 under :b.
-    (is (thrown? Throwable (pfnk/comp-partial f1 (fnk [c d] {:b (* c d)}))))))
-
-
-
-
-
-

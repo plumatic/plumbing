@@ -6,48 +6,48 @@
 
 (deftest graph-construction-test
   ;; io-schemata works correctly for flat graphs
-  (is (= [{:x true :z true :q false :y false :r false} 
+  (is (= [{:x true :z true :q false :y false :r false}
           {:foo {:foox true :fooy true} :bar true}]
-         (pfnk/io-schemata 
+         (pfnk/io-schemata
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
                  :bar (fnk [foo z {q 4} {r 1}] [foo z])))))
 
   ;; io-schemata works correctly for nested graphs
-  (is (= [{:x true :q false :y false} 
+  (is (= [{:x true :q false :y false}
           {:foo {:foox true :fooy true} :bar {:a true :baz {:foo true}}}]
-         (pfnk/io-schemata 
+         (pfnk/io-schemata
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
                  :bar {:a (fnk [foo] (inc foo))
                        :baz {:foo (fnk [x] x)}}))))
-  
+
   ;; io-schemata works correctly for inline graphs
-  (is (= [{:x true :q false :y false :b true} 
+  (is (= [{:x true :q false :y false :b true}
           {:foo {:foox true :fooy true} :a true :baz {:foo true} :z true}]
-         (pfnk/io-schemata 
+         (pfnk/io-schemata
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
-                 (graph 
+                 (graph
                   :a (fnk [foo] (inc foo))
                   :baz {:foo (fnk [x] x)})
                  :z (fnk [a b])))))
-  
+
   (let [g {:foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
            :bar {:a (fnk [foo] (inc foo))
                  :baz {:foo (fnk [x] x)}}}]
     (is (= g (->graph g))))
-  
+
   ;; Key order should be preserved by graph.
   (let [ks (map #(keyword (str %)) (range 1000))]
     (is (= ks
            (keys (apply graph (interleave ks (repeat (fnk [x] (inc x)))))))))
-    
+
   (is (thrown? Exception (graph :foo (fnk [x]) :foo (fnk [y]))))     ;; duplicate keys are bad
   (is (thrown? Exception (graph :foo (fnk [x {y 1}]) :x (fnk [y])))) ;; cycles are bad
-  (is (thrown? Exception (graph :foo (fnk [x {y 1}]) :y (fnk [y])))) ;; even self-cycles  
+  (is (thrown? Exception (graph :foo (fnk [x {y 1}]) :y (fnk [y])))) ;; even self-cycles
   )
 
 (deftest eager-compile-test
   (let [a (atom [])
-        g (graph 
+        g (graph
            :x (fnk xfn [p1] (swap! a conj :x) (inc p1))
            :y (fnk yfn [x] (swap! a conj :y) (inc x)))
         c (eager-compile g)
@@ -76,7 +76,7 @@
                      :x {:y (fnk [a] (inc a))}
                      :q (fnk [[:x z]] z))
                     {:a 5})))
-  
+
 
   (is (= {:foo 6 :bar {:a -6 :baz {:foo 4}}}
          (run (graph :foo (fnk [x] (inc x))
@@ -114,26 +114,60 @@
   (is (= 100 (:x100 ((lazy-compile (chain-graph 100)) {:x0 0})))))
 
 
+(deftest comp-partial-fn-test
+  (let [in  (fnk [a b {c 2} :as m] m)]
+    (let [out (comp-partial-fn in (fnk [d a {q 2}] {:b d :e (inc a)}))]
+      (is (= {:a 1 :b 5 :d 5 :e 2}
+             (out {:a 1 :d 5})))
+      (is (= {:a 1 :b 5 :c 4 :d 5 :e 2}
+             (out {:a 1 :c 4 :d 5})))
+      (is (= {:a true :d true :c false :q false}
+             (pfnk/input-schema out))))
+    (let [out (comp-partial-fn in (fnk [d a {q 2}] {:b d :e (inc a) :c q}))]
+      (is (= {:a 1 :b 5 :c 2 :d 5 :e 2}
+             (out {:a 1 :d 5})))
+      (is (= {:a 1 :b 5 :c 2 :d 5 :e 2}
+             (out {:a 1 :c 4 :d 5})))
+      (is (= {:a true :d true :q false}
+             (pfnk/input-schema out)))))
+
+  (let [in2 (fnk [[:a a1] b] (+ a1 b))]
+    (let [out (comp-partial-fn in2 (fnk [x] {:a {:a1 x} :b (inc x)}))]
+      (is (= 3 (out {:x 1})))
+      (is (= {:x true} (pfnk/input-schema out))))
+    (is (thrown? Exception (comp-partial-fn in2 (fnk [x] {:a x :b (inc x)})))))
+
+  (is (= 10 ((comp-partial-fn (fnk [x {y 2} z] (+ x y z)) (fnk [] {:x 7}))
+             {:z 1})))
+  (is (= 12 ((comp-partial-fn (fnk [x {y 2} z :as m & more]
+                                (is (= [5 2 5] [x y z]))
+                                (is (= {:x 5 :z 5 :efour 4 :enine 9 :q 44 :r 5} m))
+                                (is (= {:efour 4 :enine 9 :q 44 :r 5 } more))
+                                (+ x y z))
+              (fnk [r enine] {:efour 4 :x r :z r :enine enine}))
+             {:r 5 :enine 9 :q 44}))))
+
+
 (deftest instance-test
     ;; on a fnk, instance should just return a fnk.
   (is (= 21 ((instance (fnk [x] (inc x)) [y] {:x (* y 2)}) {:y 10})))
-  
+
   (let [raw-g {:x (fnk [a] (* a 2))
                :y (fnk [x] (+ x 1))}
         inst-g (instance raw-g [z] {:a (+ z 5)})]
     (is (= {:z true} (pfnk/input-schema inst-g)))
     (is (= {:x true :y true} (select-keys (pfnk/output-schema inst-g) [:x :y])))
-    
+
     (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y])))
-    
+
     (is (thrown? Exception (instance raw-g [z] {:q 22}))))
-  
+
   (let [raw-g {:x (fnk [[:a a1]] (* a1 2))
                :y (fnk [x] (+ x 1))}]
     (let [inst-g (instance raw-g [z] {:a {:a1 (+ z 5)}})]
       (is (= {:z true} (pfnk/input-schema inst-g)))
-      (is (= {:x true :y true} (select-keys (pfnk/output-schema inst-g) [:x :y])))    
-      (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y]))))    
+      (is (= {:x true :y true} (select-keys (pfnk/output-schema inst-g) [:x :y])))
+      (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y]))))
     (is (thrown? Exception (instance raw-g [z] {:a z})))))
 
 

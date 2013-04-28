@@ -70,7 +70,7 @@
         pos-fn-sym (gensym "pos")]
     (eval-bound
      `(let [~pos-fn-sym ~positional-fn-form]
-        ~(fnk-impl/positional-fnk*
+        ~(fnk-impl/positional-fnk-form
           nil
           (pfnk/io-schemata g)
           (list `(~pos-fn-sym ~@(mapv (comp symbol name) arg-ks)))))

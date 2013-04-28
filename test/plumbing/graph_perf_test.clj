@@ -241,22 +241,24 @@
   [& args]
   ;; simple profiling, comparing the graph implemention
   ;; to the function implementation
-  (let [solar-rad-as-graph (graph/old-eager-compile solar-rad-from-temp)
-        solar-rad-pos-graph (fnk-impl/positional-fn
-                              (graph/eager-compile solar-rad-from-temp-positional)
-                              [:lat :alt :tmin :tmax :doy])
-
+  (let [solar-rad-as-graph (time (graph/interpreted-eager-compile solar-rad-from-temp))
+        solar-rad-pos-graph (time (graph/eager-compile solar-rad-from-temp-positional))
+        solar-rad-pos-graph-pos (time (fnk-impl/positional-fn solar-rad-pos-graph [:lat :alt :tmin :tmax :doy]))
         solar-rad-pos-graph-th (fnk-impl/positional-fn
                                  (graph/eager-compile solar-rad-from-temp-positional-typehinted)
                                  [:lat :alt :tmin :tmax :doy :kRs :a :s])]
-    (println "As graph")
+    (println "As old eager")
     (dotimes [_ 10]
       (time (dotimes [_ 10000]
               (solar-rad-as-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))))
-    (println "As positional"  (solar-rad-pos-graph 45.0 100.0 15.0 25.0 205))
+    (println "As new eager"  (solar-rad-pos-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))
     (dotimes [_ 10]
       (time (dotimes [_ 10000]
-              (solar-rad-pos-graph 45.0 100.0 15.0 25.0 205))))
+              (solar-rad-pos-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))))
+    (println "As new eager positional" (solar-rad-pos-graph-pos 45.0 100.0 15.0 25.0 205))
+    (dotimes [_ 10]
+      (time (dotimes [_ 10000]
+              (solar-rad-pos-graph-pos 45.0 100.0 15.0 25.0 205))))
     (println "As positional-th"  (solar-rad-pos-graph-th 45.0 100.0 15.0 25.0 205  0.16 0.23 4.903e-9))
     (dotimes [_ 10]
       (time (dotimes [_ 10000]
