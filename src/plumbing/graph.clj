@@ -103,13 +103,22 @@
   speed. Wherever possible, fnks are called positionally, to reduce the
   overhead of creating and destructuring maps, and the return value is a
   record, which is much faster to create and access than a map.  Compilation
-  is relatively slow, however, due to calls to 'eval'."
+  is relatively slow, however, due to internal calls to 'eval'."
   [g]
   (if (fn? g)
     g
     (let [g (for [[k sub-g] (->graph g)]
               [k (eager-compile sub-g)])]
       (graph-positional/positional-flat-compile (->graph g)))))
+
+(defn positional-eager-compile
+  "Like eager-compile, but produce a non-keyword function that can be called
+   with args in the order provided by arg-ks, avoiding the overhead of creating
+   and destructuring a top-level map.  This can yield a substantially faster
+   fn for Graphs with very computationally inexpensive node fnks."
+  [g arg-ks]
+  (fnk-impl/positional-fn (eager-compile g) arg-ks))
+
 
 (defn simple-flat-compile
   "Helper method for simple (non-nested) graph compilations that convert a graph
