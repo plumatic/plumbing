@@ -9,10 +9,6 @@
 
 ;;; Helpers
 
-(def +none+
-  "A sentinel value used to indicate a non-provided optional value in a positional form."
-  ::none)
-
 (defn safe-get
   "Like (get m k), but throws if k is not present in m."
   [m k key-path]
@@ -31,7 +27,7 @@
                              seq)]
     (schema/assert-iae (empty? repeated-things) "Got repeated items (expected distinct): %s" repeated-things)))
 
-;;; Core fnk utilities
+;;; Parsing new fnk binding style
 
 (defn- parse-letk-binding
   "Parse a binding form into required [sym k] bindings (here sym~=k), optional [sym v] bindings,
@@ -115,8 +111,12 @@
      (distinct (concat outer-bound-syms inner-bound-syms))
      (merge outer-input-schema input-schema)]))
 
+;;; Positional fnks
 
-;; handle nested bindings as usual, top-level is positional.
+(def +none+
+  "A sentinel value used to indicate a non-provided optional value in a positional form."
+  ::none)
+
 (defn positional-arg-bind-form
   "Generate the binding form to handle a single element of the fnk binding
    vector when called positionally"
@@ -136,7 +136,8 @@
         :else (throw (RuntimeException. (format "bad binding: %s" binding)))))
 
 
-(declare positional-info)
+(defn positional-info [f]
+  (get (meta f) ::positional-info))
 
 (defn efficient-call-forms
   "Get [f arg-forms] needed to call a function most efficiently. This returns a
@@ -194,8 +195,7 @@
                   ~io-schemata)
                  assoc ::positional-info [pos-fn# ~(mapv keyword pos-args)]))))
 
-(defn positional-info [f]
-  (get (meta f) ::positional-info))
+;;; Generating fnk bodies
 
 (defn fnk*
   "Take an optional name, binding form, and body for a fnk, and make an IFn/PFnk for these arguments"

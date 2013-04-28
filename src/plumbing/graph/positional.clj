@@ -28,22 +28,17 @@
                 (apply get this# args#))))
      record-type-name))
 
-(defn fn-binding-and-call
-  "Compute both the binding needed to inject a function into a form and a
-  let-binding form that will call the function and store the value."
-  [g-value-syms [kw f]]
-  (let [sym (-> kw name (str "-fn") gensym)
-        arg-forms (map-from-keys g-value-syms (keys (pfnk/input-schema f)))
-        [f arg-forms] (fnk-impl/efficient-call-forms f arg-forms)]
-    [[sym f] [(g-value-syms kw) (cons sym arg-forms)]]))
-
 (defn graph-let-bindings
   "Compute the bindings for functions and intermediates needed to form the body
   of a positional graph, E.g.
     [`[[f-3 ~some-function]] `[[intermediate-3 (f-3 intermediate-1 intermediate-2)]]]"
   [g g-value-syms]
   (->> g
-       (map (partial fn-binding-and-call g-value-syms))
+       (map (fn [[kw f]]
+              (let [f-sym (-> kw name (str "-fn") gensym)
+                    arg-forms (map-from-keys g-value-syms (keys (pfnk/input-schema f)))
+                    [f arg-forms] (fnk-impl/efficient-call-forms f arg-forms)]
+                [[f-sym f] [(g-value-syms kw) (cons f-sym arg-forms)]])))
        (apply map vector)))
 
 (defn eval-bound
@@ -58,14 +53,13 @@
   [g arg-keywords]
   (let [value-syms (->> g pfnk/io-schemata (apply merge) keys
                         (map-from-keys (comp gensym name)))
-        output-values (->> g pfnk/output-schema keys (mapv value-syms))
         [needed-bindings value-bindings] (graph-let-bindings g value-syms)
         record-type (def-graph-record g)]
     [`(fn
        positional-graph#  ;; Name it just for kicks.
        ~(mapv value-syms arg-keywords)
        (let ~(vec (apply concat value-bindings))
-         (new ~record-type ~@output-values)))
+         (new ~record-type ~@(->> g pfnk/output-schema keys (mapv value-syms)))))
      needed-bindings]))
 
 (defn positional-flat-compile
