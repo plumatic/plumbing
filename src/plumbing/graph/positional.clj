@@ -50,13 +50,7 @@
        (map (partial fn-binding-and-call g-value-syms))
        (apply map vector)))
 
-(defn missing-positional-args
-  "Get unused positional arguments."
-  [input-schema arg-ks]
-  (->> arg-ks
-       (reduce dissoc input-schema)
-       keys
-       set))
+
 
 (defn validate-positional-args
   "Given a graph input schema and provided seq of arg ks, validate that it
@@ -64,17 +58,10 @@
   [input-schema arg-ks]
   (when arg-ks
     ;; Args are sane.
-    (schema/assert-iae (apply distinct? ::dummy arg-ks)
-                       "Invalid positional args %s contain duplicates"
-                       arg-ks)
-    (let [missing-args (remove (comp false? input-schema)
-                               (missing-positional-args input-schema arg-ks))
-          extra-args (remove (partial contains? input-schema) arg-ks)]
-      (schema/assert-iae (and (empty? missing-args) (empty? extra-args))
-        "Invalid positional args %s missing %s, with extra %s"
-        arg-ks missing-args extra-args))
+
     arg-ks))
 
+;;; TODO: kill this.
 (defn positional-fn->keyword-fn
   "Construct a keyword function that calls a positional function."
   [positional-fn positional-args]
@@ -95,30 +82,20 @@
   [g arg-keywords]
   (let [value-syms (->> g pfnk/io-schemata (apply merge) keys
                         (map-from-keys (comp gensym name)))
-        missing-arg-bindings (-> g
-                                 pfnk/input-schema
-                                 (missing-positional-args arg-keywords)
-                                 (->> (map value-syms))
-                                 (interleave (repeat fnk-impl/+none+))
-                                 vec)
         output-values (->> g pfnk/output-schema keys (mapv value-syms))
         [needed-bindings value-bindings] (graph-let-bindings g value-syms)
         record-type (def-graph-record g)]
     [`(fn
        positional-graph#  ;; Name it just for kicks.
        ~(mapv value-syms arg-keywords)
-       (let ~(into missing-arg-bindings (apply concat value-bindings))
+       (let ~(vec (apply concat value-bindings))
          (new ~record-type ~@output-values)))
      needed-bindings]))
 
 (defn positional-flat-compile
   "Positional compile for a flat (non-nested) graph."
-  [g arg-keywords]
-  (let [arg-keywords (or (validate-positional-args (pfnk/input-schema g)
-                                                   arg-keywords)
-                         (-> g pfnk/input-schema keys))
-        ;; NOTE: This eval is needed because we want to make a let structure
-        ;; based on information (a graph) that's only available at runtime.
+  [g]
+  (let [arg-keywords (-> g pfnk/input-schema keys)
         positional-fn (apply eval-bound (graph-form g arg-keywords))]
     (fnk-impl/fn->positional-fnk
       (positional-fn->keyword-fn positional-fn arg-keywords)

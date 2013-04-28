@@ -1,7 +1,7 @@
 (ns plumbing.fnk.impl
   "Core utilities for parsing our 'fnk'-style binding syntax and generating bodies.
    Documented and tested through the actual 'letk','fnk', and 'defnk' macros in plumbing.core."
-  (require 
+  (require
    [clojure.set :as set]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]))
@@ -9,9 +9,11 @@
 
 ;;; Helpers
 
-(def +none+ ::none)
+(def +none+
+  "A sentinel value used to indicate a non-provided optional value in a positional form."
+  ::none)
 
-(defn safe-get 
+(defn safe-get
   "Like (get m k), but throws if k is not present in m."
   [m k key-path]
   (when-not (map? m)
@@ -20,7 +22,7 @@
     (when-not p (throw (RuntimeException. (format "Key %s not found in %s" k (keys m)))))
     v))
 
-(defn assert-distinct 
+(defn assert-distinct
   "Like (assert (distinct things)) but with a more helpful error message."
   [things]
   (let [repeated-things (->> things
@@ -68,7 +70,7 @@
     (assert-distinct (concat (map second required) (map first optional)))
     {:required required :optional optional :nested parsed-nested :as as-sym :more more-sym}))
 
-(defn generate-letk-level 
+(defn generate-letk-level
   "Generate the binding form for a single level of 'letk' bindings (i.e., with no nested bindings)"
   [{:keys [required optional as more]} map-form body key-path]
   [`(let ~(vec
@@ -90,8 +92,8 @@
             [(keyword o) false])))])
 
 (defn letk*
-  "Take a letk/fnk binding form, a form that generates a map to bind from, and a body, and 
-   return a triple [output-form bound-syms input-schema], where:  
+  "Take a letk/fnk binding form, a form that generates a map to bind from, and a body, and
+   return a triple [output-form bound-syms input-schema], where:
      output-form is the final output form that executes body in the scope of the provided bindings,
      bound-syms is the set of symbols bound, which must be unique, and
      input-schema is the input schema imposed on the map-form by the binding."
@@ -109,8 +111,8 @@
         [outer-form outer-bound-syms outer-input-schema]
            (generate-letk-level parsed-binding map-form inner-form key-path)]
     (assert-distinct (concat outer-bound-syms inner-bound-syms))
-    [outer-form 
-     (distinct (concat outer-bound-syms inner-bound-syms)) 
+    [outer-form
+     (distinct (concat outer-bound-syms inner-bound-syms))
      (merge outer-input-schema input-schema)]))
 
 (defn keyword-fnk-form
@@ -174,15 +176,11 @@
 (defn fn->positional-fnk
   "Generate a fnk that has a positional form for calling efficiently."
   [f [input-schema output-schema :as io] positional-f positional-args]
-  (vary-meta (pfnk/fn->fnk f io) assoc
-             ::io-schemata io
-             ::positional-info [positional-f positional-args]))
+  (vary-meta (pfnk/fn->fnk f io)
+             assoc ::positional-info [positional-f positional-args]))
 
-(defn positional-fn
-  "Get the positional form of a fnk, if it has one."
-  [fnk]
-  (when-let [[positional-f positional-args] (get (meta fnk) ::positional-info)]
-    positional-f))
+(defn positional-info [f]
+  (get (meta f) ::positional-info))
 
 (defn efficient-call-forms
   "Get [f arg-forms] needed to call a function most efficiently. This returns a
@@ -190,7 +188,7 @@
   evaluated, but in general functions (closures) can't be eval'ed. E.g. try:
     (eval `(~(let [x 1] (fn [y] (+ y x))) 2))"
   [fnk arg-form-map]
-  (if-let [[positional-f positional-args] (get (meta fnk) ::positional-info)]
+  (if-let [[positional-f positional-args] (positional-info fnk)]
     (do
       (schema/assert-iae (set/superset? (set (keys arg-form-map))
                                         (set positional-args))
@@ -198,6 +196,30 @@
                          positional-args arg-form-map)
       [positional-f (map arg-form-map positional-args)])
     [fnk [`(into {} (remove #(identical? +none+ (second %)) ~arg-form-map))]]))
+
+(defn positional-fn
+  "Given argument order in arg-ks, produce an ordinary fn that can be called
+   with arguments in this order.  arg-ks must include all required keys of fnk.
+   Can only be applied to fnks with a positional form."
+  [fnk arg-ks]
+  (schema/assert-iae (apply distinct? ::dummy arg-ks)
+                     "Invalid positional args %s contain duplicates" arg-ks)
+  (schema/assert-iae (positional-info fnk)
+                     "Called positional-fn on a fnk without a positional form")
+  (let [input-schema (pfnk/input-schema fnk)
+        missing-args (remove (set arg-ks) (keys input-schema))
+        [missing-opt missing-req] ((juxt filter remove) #(false? (input-schema %)) missing-args)
+        extra-args (remove (partial contains? input-schema) arg-ks)
+        arg-syms (mapv (comp symbol name) arg-ks)
+        [pos-fn pos-args] (efficient-call-forms
+                           fnk
+                           (merge (zipmap arg-ks arg-syms)
+                                  (zipmap missing-opt (repeat +none+))))]
+    (schema/assert-iae (and (empty? missing-req) (empty? extra-args))
+                       "Invalid positional args %s missing %s, with extra %s"
+                       arg-ks missing-req extra-args)
+    ((eval `(fn [f#] (fn ~arg-syms (f# ~@pos-args))))
+     pos-fn)))
 
 (defn fnk*
   "Take an optional name, binding form, and body for a fnk, and make an IFn/PFnk for these arguments"

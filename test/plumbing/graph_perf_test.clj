@@ -243,14 +243,12 @@
   ;; to the function implementation
   (let [solar-rad-as-graph (graph/old-eager-compile solar-rad-from-temp)
         solar-rad-pos-graph (fnk-impl/positional-fn
-                              (graph/eager-compile
-                                solar-rad-from-temp-positional
-                                [:lat :alt :tmin :tmax :doy]))
+                              (graph/eager-compile solar-rad-from-temp-positional)
+                              [:lat :alt :tmin :tmax :doy])
 
         solar-rad-pos-graph-th (fnk-impl/positional-fn
-                                 (graph/eager-compile
-                                   solar-rad-from-temp-positional-typehinted
-                                   [:lat :alt :tmin :tmax :doy :kRs :a :s]))]
+                                 (graph/eager-compile solar-rad-from-temp-positional-typehinted)
+                                 [:lat :alt :tmin :tmax :doy :kRs :a :s])]
     (println "As graph")
     (dotimes [_ 10]
       (time (dotimes [_ 10000]
