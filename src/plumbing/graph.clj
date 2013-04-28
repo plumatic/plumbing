@@ -100,10 +100,10 @@
 
 (defn eager-compile
   "Compile graph specification g to a corresponding fnk that is optimized for
-  speed. Wherever possible, fnks are called positionally, to reduce the
-  overhead of creating and destructuring maps, and the return value is a
-  record, which is much faster to create and access than a map.  Compilation
-  is relatively slow, however, due to internal calls to 'eval'."
+   speed. Wherever possible, fnks are called positionally, to reduce the
+   overhead of creating and destructuring maps, and the return value is a
+   record, which is much faster to create and access than a map.  Compilation
+   is relatively slow, however, due to internal calls to 'eval'."
   [g]
   (if (fn? g)
     g
