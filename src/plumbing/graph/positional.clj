@@ -8,29 +8,25 @@
   (:import
     clojure.lang.IFn))
 
-;; TODO: allow qualified keyword binding in graph?
-;; https://github.com/Prismatic/plumbing/issues/6
-;; TODO: generate .invokePrim for primitive hinted fns.
-
 (defn def-graph-record
   "Define a record for the output of a graph. It is usable as a function to be
   as close to a map as possible. Return the typename."
-  [g]
-  (let [record-type-name (gensym "graph-record")]
-    ;; NOTE: This eval is needed because we want to define a record based on
-    ;; information (a graph) that's only available at runtime.
-    (eval `(defrecord ~record-type-name ~(->> g
-                                           pfnk/output-schema
-                                           keys
-                                           (mapv (comp symbol name)))
-             IFn
-             (invoke [this# k#]
-               (get this# k#))
-             (invoke [this# k# not-found#]
-               (get this# k# not-found#))
-             (applyTo [this# args#]
-               (apply get this# args#))))
-    record-type-name))
+  ([g] (def-graph-record g (gensym "graph-record")))
+  ([g record-type-name]
+     ;; NOTE: This eval is needed because we want to define a record based on
+     ;; information (a graph) that's only available at runtime.
+     (eval `(defrecord ~record-type-name ~(->> g
+                                               pfnk/output-schema
+                                               keys
+                                               (mapv (comp symbol name)))
+              IFn
+              (invoke [this# k#]
+                (get this# k#))
+              (invoke [this# k# not-found#]
+                (get this# k# not-found#))
+              (applyTo [this# args#]
+                (apply get this# args#))))
+     record-type-name))
 
 (defn fn-binding-and-call
   "Compute both the binding needed to inject a function into a form and a
@@ -49,26 +45,6 @@
   (->> g
        (map (partial fn-binding-and-call g-value-syms))
        (apply map vector)))
-
-
-
-(defn validate-positional-args
-  "Given a graph input schema and provided seq of arg ks, validate that it
-  contains all required keys and only valid input keys."
-  [input-schema arg-ks]
-  (when arg-ks
-    ;; Args are sane.
-
-    arg-ks))
-
-;;; TODO: kill this.
-(defn positional-fn->keyword-fn
-  "Construct a keyword function that calls a positional function."
-  [positional-fn positional-args]
-  (fn [args-map]
-    (into {}
-          (apply positional-fn (for [arg positional-args]
-                                 (get args-map arg fnk-impl/+none+))))))
 
 (defn eval-bound
   "Evaluate a form with some symbols bound into some values."
@@ -95,10 +71,13 @@
 (defn positional-flat-compile
   "Positional compile for a flat (non-nested) graph."
   [g]
-  (let [arg-keywords (-> g pfnk/input-schema keys)
-        positional-fn (apply eval-bound (graph-form g arg-keywords))]
-    (fnk-impl/fn->positional-fnk
-      (positional-fn->keyword-fn positional-fn arg-keywords)
-      (pfnk/io-schemata g)
-      positional-fn
-      arg-keywords)))
+  (let [arg-ks (-> g pfnk/input-schema keys)
+        [positional-fn-form eval-bindings] (graph-form g arg-ks)
+        pos-fn-sym (gensym "pos")]
+    (eval-bound
+     `(let [~pos-fn-sym ~positional-fn-form]
+        ~(fnk-impl/positional-fnk*
+          nil
+          (pfnk/io-schemata g)
+          (list `(~pos-fn-sym ~@(mapv (comp symbol name) arg-ks)))))
+     eval-bindings)))

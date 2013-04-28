@@ -115,72 +115,28 @@
      (distinct (concat outer-bound-syms inner-bound-syms))
      (merge outer-input-schema input-schema)]))
 
-(defn keyword-fnk-form
-  [name? map-sym final-body]
-  `(fn ~name?
-     [~map-sym]
-     (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
-     ~final-body))
-
-(defn extract-positional-args
-  "If possible, generate the argument vector for the positional-fn, which has
-  one symbol for each top-level key in the fnk binding vector, in order."
-  [bind]
-  (when (not-any? #(contains? #{'& :as} %) bind)
-    (for [arg bind]
-      (cond (symbol? arg) arg
-            (map? arg) (ffirst arg)
-            ;; Returns a keyword if we'll need to gensym for bindings like in
-            ;; [:y z] where we don't want to bind anything to y.
-            (vector? arg) (first arg)
-            :else (throw (RuntimeException. (format "bad binding: %s" arg)))))))
-
-(defn gensym-positional-arg-if-needed
-  "If a positional argument is a keyword, that means we should gensym a symbol
-  for it to avoid collisions."
-  [arg]
-  (if (keyword? arg)
-    (gensym (name arg))
-    arg))
 
 ;; handle nested bindings as usual, top-level is positional.
 (defn positional-arg-bind-form
   "Generate the binding form to handle a single element of the fnk binding
    vector when called positionally"
-  [body-expr [bs binding]]
+  [body-expr binding]
   (cond (symbol? binding)
-        (do (assert (= binding bs)) body-expr)
+        body-expr
 
         (map? binding)
-        (let [[bs* ov] (first binding)]
-          (assert (= bs* bs))
+        (let [[bs ov] (first binding)]
           `(let [~bs (if (identical? +none+ ~bs) ~ov ~bs)]
              ~body-expr))
 
         (vector? binding)
         (let [[k & more] binding]
-          (first (letk* (vec more) bs [body-expr])))
+          (first (letk* (vec more) (symbol (name k)) [body-expr])))
 
         :else (throw (RuntimeException. (format "bad binding: %s" binding)))))
 
-(defn positional-fnk-form
-  "Generate the form for a positional fn version of a fnk."
-  [name? bind body]
-  `(fn ~@(when name? [(symbol (str name? "-positional"))])
-     ~(mapv first bind)
-     ~(reduce
-        positional-arg-bind-form
-        `(do ~@body)
-        bind)))
 
-(defn fn->positional-fnk
-  "Generate a fnk that has a positional form for calling efficiently."
-  [f [input-schema output-schema :as io] positional-f positional-args]
-  (vary-meta (pfnk/fn->fnk f io)
-             assoc ::positional-info [positional-f positional-args]))
-
-(defn positional-info [f]
-  (get (meta f) ::positional-info))
+(declare positional-info)
 
 (defn efficient-call-forms
   "Get [f arg-forms] needed to call a function most efficiently. This returns a
@@ -221,27 +177,45 @@
     ((eval `(fn [f#] (fn ~arg-syms (f# ~@pos-args))))
      pos-fn)))
 
+(defn positional-fnk*
+  "Take an optional name, binding form, and body for a fnk, and make an IFn/PFnk for these arguments
+   which takes arguments in the order provided by the input-schema in io-schemata."
+  [name? [input-schema :as io-schemata] body]
+  (let [[opt-ks req-ks] ((juxt filter remove) #(false? (input-schema %)) (keys input-schema))
+        pos-args (mapv (comp symbol name) (keys input-schema))]
+   `(let [pos-fn# (fn ~@(when name? [(symbol (str name? "-positional"))])
+                    ~pos-args
+                    ~@body)]
+      (vary-meta (pfnk/fn->fnk
+                  (fn [m#]
+                    (plumbing.core/letk [~(into (mapv (comp symbol name) req-ks)
+                                                (mapv #(hash-map (symbol (name %)) +none+) opt-ks)) m#]
+                      (pos-fn# ~@pos-args)))
+                  ~io-schemata)
+                 assoc ::positional-info [pos-fn# ~(mapv keyword pos-args)]))))
+
+(defn positional-info [f]
+  (get (meta f) ::positional-info))
+
 (defn fnk*
   "Take an optional name, binding form, and body for a fnk, and make an IFn/PFnk for these arguments"
   [name? bind body]
   (let [map-sym (gensym)
-        [final-body _ input-schema] (letk* bind map-sym body)
-        name? (or name? (gensym "fnk"))
-        keyword-form (keyword-fnk-form name? map-sym final-body)
+        [fnk-body _ input-schema] (letk* bind map-sym body)
         schema [input-schema
                 (schema/make-output-schema (last body)
                                            (eval (:output-schema (meta bind) true)))]]
-    (if-let [positional-args (extract-positional-args bind)]
-      ;; If we can make a positional form, do so.
-      (fn->positional-fnk
-        keyword-form
-        schema
-        (positional-fnk-form name?
-                             (map vector
-                                  (map gensym-positional-arg-if-needed positional-args)
-                                  bind)
-                             body)
-        (mapv keyword positional-args))
+    (if (not-any? #{'& :as} bind) ;; If we can make a positional fnk form, do it.
+      (positional-fnk*
+       name?
+       schema
+       [(reduce
+          positional-arg-bind-form
+          `(do ~@body)
+          bind)])
       (pfnk/fn->fnk
-        keyword-form
-        schema))))
+       `(fn ~@(when name? [name?])
+          [~map-sym]
+          (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
+          ~fnk-body)
+       schema))))
