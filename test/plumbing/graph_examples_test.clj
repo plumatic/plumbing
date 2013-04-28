@@ -254,10 +254,10 @@
 (defn graph? [g]
   (or (and (fn? g) (try (pfnk/io-schemata g) true (catch Throwable t false)))
       (and (map? g)
-       (every? (fn [[k sub-g]]
-                 (and (keyword? k)
-                      (graph? sub-g)))
-               g))))
+           (every? (fn [[k sub-g]]
+                     (and (keyword? k)
+                          (graph? sub-g)))
+                   g))))
 
 (deftest graph?-test
   (is (graph? stats-graph))
@@ -381,7 +381,7 @@
 
 (deftest graph-ampersand-test
   (let [x-fn (fnk [a {b 2} & m]
-                  [a b m])]
+               [a b m])]
     ;; When called directly, the & binding gets the leftover inputs
     (is (= [1 2 {:c 3 :d 4}]
            (x-fn {:a 1 :c 3 :d 4})))
@@ -440,7 +440,7 @@
       (timed-is 250 true? (= (:c out) (:c lazy-out))) ;; 200 + 50
       (timed-is 0 true? (= (:b1 out) (:b1 lazy-out)))) ;; already computed by :c
 
-        ;; lazy computes stuff as needed
+    ;; lazy computes stuff as needed
     (let [par (graph/par-compile slow-graph)
           par-out (timed-is 0 keys (par in))]
       (timed-is 450 true? (= out (into {} par-out)))))) ;; :b1 and :b2 are done in parallel
@@ -459,7 +459,7 @@
 
 (deftest comp-partial-fn-test
   (let [f1 (fnk [a [:b b1] c]
-            {:x (+ a b1 c)})
+             {:x (+ a b1 c)})
         f2 (fnk [c d]
              {:b {:b1 (* c d)}})
         composed (graph/comp-partial-fn f1 f2)]
@@ -524,7 +524,7 @@
              [(assoc (pfnk/input-schema node-fn) :shutdown-hooks true)
               (pfnk/output-schema node-fn)]))
           g)
-         :shutdown-hooks (fnk [] (atom nil))))
+    :shutdown-hooks (fnk [] (atom nil))))
 
 (defn start-service [graph params]
   ((graph/eager-compile (resource-transform graph)) params))
@@ -552,13 +552,13 @@
   (graph/graph
    :atom (fnk [] {:resource  (atom nil)})
    :prune (fnk [atom max-age {prune-rate 1}]
-               (schedule-work
-                {:work-fn (fn [] (swap! atom (fn [m]
-                                               (let [cutoff (- (millis) (* 1000 max-age))]
-                                                 (for-map [[k [v ts]] m
-                                                           :when (> ts cutoff)]
-                                                   k [v ts])))))
-                 :rate prune-rate}))))
+            (schedule-work
+             {:work-fn (fn [] (swap! atom (fn [m]
+                                            (let [cutoff (- (millis) (* 1000 max-age))]
+                                              (for-map [[k [v ts]] m
+                                                        :when (> ts cutoff)]
+                                                k [v ts])))))
+              :rate prune-rate}))))
 
 (defn ec-get [ec k f]
   (letk [[atom] ec]

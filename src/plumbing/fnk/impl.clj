@@ -70,12 +70,12 @@
         [optional more]     ((juxt filter remove) map? bindings)
         optional            (for [opt optional]
                               (do (schema/assert-iae (and (= (count opt) 1) (symbol? (key (first opt))))
-                                              "Invalid optional binding %s" opt)
+                                                     "Invalid optional binding %s" opt)
                                   (first opt)))
         [nested more]       ((juxt filter remove) vector? more)
         parsed-nested       (for [[sub-k & sub-bind] nested]
                               (do (schema/assert-iae (keyword? sub-k)
-                                              "First element to nested binding not a keyword: %s" sub-k)
+                                                     "First element to nested binding not a keyword: %s" sub-k)
                                   [(gensym (name sub-k)) [sub-k (vec sub-bind)]]))
         required            (concat
                              (for [[s [k]] parsed-nested]
@@ -93,12 +93,12 @@
   "Generate the binding form for a single level of 'letk' bindings (i.e., with no nested bindings)"
   [{:keys [required optional as more]} map-form body key-path]
   [`(let ~(vec
-             (concat
-              [as map-form]
-              (mapcat (fn [[r rk]] [r `(safe-get ~as ~rk ~key-path)]) required)
-              (mapcat (fn [[o v]] [o `(get ~as ~(keyword o) ~v)]) optional)
-              (when more
-                [more `(dissoc ~as ~@(map keyword (concat (map second required) (map first optional))))])))
+           (concat
+            [as map-form]
+            (mapcat (fn [[r rk]] [r `(safe-get ~as ~rk ~key-path)]) required)
+            (mapcat (fn [[o v]] [o `(get ~as ~(keyword o) ~v)]) optional)
+            (when more
+              [more `(dissoc ~as ~@(map keyword (concat (map second required) (map first optional))))])))
       ~@(when (or (seq required) (seq optional) more) ;; allow naked :as for non-map...
           [`(schema/assert-iae (map? ~as) "Form to be destructured is not a map")])
       ~@body)
@@ -120,15 +120,15 @@
   (let [{:keys [nested,] :as parsed-binding} (parse-letk-binding binding-form)
 
         [inner-form inner-bound-syms input-schema]
-          (reduce
-           (fn wrap-nested [[frm syms spec] [nest-sym [nest-k nest-b]]]
-              (let [[sub-frm sub-syms sub-spec] (letk* nest-b nest-sym frm (conj (or key-path []) nest-k))]
-                [(list sub-frm) (concat sub-syms syms) (assoc spec nest-k sub-spec)]))
-            [body [] {}]
-            nested)
+        (reduce
+         (fn wrap-nested [[frm syms spec] [nest-sym [nest-k nest-b]]]
+           (let [[sub-frm sub-syms sub-spec] (letk* nest-b nest-sym frm (conj (or key-path []) nest-k))]
+             [(list sub-frm) (concat sub-syms syms) (assoc spec nest-k sub-spec)]))
+         [body [] {}]
+         nested)
 
         [outer-form outer-bound-syms outer-input-schema]
-           (generate-letk-level parsed-binding map-form inner-form key-path)]
+        (generate-letk-level parsed-binding map-form inner-form key-path)]
     (assert-distinct (concat outer-bound-syms inner-bound-syms))
     [outer-form
      (distinct (concat outer-bound-syms inner-bound-syms))
@@ -237,16 +237,16 @@
   [name? [input-schema :as io-schemata] body]
   (let [[opt-ks req-ks] ((juxt filter remove) #(false? (input-schema %)) (keys input-schema))
         pos-args (mapv (comp symbol name) (keys input-schema))]
-   `(let [pos-fn# (fn ~@(when name? [(symbol (str name? "-positional"))])
-                    ~pos-args
-                    ~@body)]
-      (vary-meta (pfnk/fn->fnk
-                  (fn [m#]
-                    (plumbing.core/letk [~(into (mapv (comp symbol name) req-ks)
-                                                (mapv #(hash-map (symbol (name %)) +none+) opt-ks)) m#]
-                      (pos-fn# ~@pos-args)))
-                  ~io-schemata)
-                 assoc ::positional-info [pos-fn# ~(mapv keyword pos-args)]))))
+    `(let [pos-fn# (fn ~@(when name? [(symbol (str name? "-positional"))])
+                     ~pos-args
+                     ~@body)]
+       (vary-meta (pfnk/fn->fnk
+                   (fn [m#]
+                     (plumbing.core/letk [~(into (mapv (comp symbol name) req-ks)
+                                                 (mapv #(hash-map (symbol (name %)) +none+) opt-ks)) m#]
+                       (pos-fn# ~@pos-args)))
+                   ~io-schemata)
+                  assoc ::positional-info [pos-fn# ~(mapv keyword pos-args)]))))
 
 ;;; Generating fnk bodies
 
@@ -273,9 +273,9 @@
        name?
        schema
        [(reduce
-          positional-arg-bind-form
-          `(do ~@body)
-          bind)])
+         positional-arg-bind-form
+         `(do ~@body)
+         bind)])
       (pfnk/fn->fnk
        `(fn ~@(when name? [name?])
           [~map-sym]

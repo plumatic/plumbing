@@ -1,6 +1,6 @@
 (ns plumbing.core-test
   (:use clojure.test plumbing.core)
-  (:require 
+  (:require
    [plumbing.fnk.pfnk :as pfnk]))
 
 
@@ -25,23 +25,23 @@
 
 (deftest map-vals-test
   (is (= (map-vals inc {:a 0 :b 0})
-	 {:a 1 :b 1}))
+         {:a 1 :b 1}))
   (is (= (map-vals inc [[:a 0] [:b 0]])
-	 {:a 1 :b 1})))
+         {:a 1 :b 1})))
 
 (deftest map-keys-test
   (is (= (map-keys str {:a 1 :b 1})
-	 {":a" 1 ":b" 1}))
+         {":a" 1 ":b" 1}))
   (is (= (map-keys str [[:a 1] [:b 1]])
-	 {":a" 1 ":b" 1})))
+         {":a" 1 ":b" 1})))
 
 (deftest map-from-keys-test
   (is (= (map-from-keys inc [0 1 2])
-	 {0 1, 1 2, 2 3})))
+         {0 1, 1 2, 2 3})))
 
 (deftest map-from-vals-test
   (is (= (map-from-vals inc [0 1 2])
-	 {1 0, 2 1, 3 2})))
+         {1 0, 2 1, 3 2})))
 
 (deftest dissoc-in-test
   (is (= {:a 1} (dissoc-in {:a 1 :b 2} [:b])))
@@ -129,11 +129,11 @@
 (deftest frequencies-fast-test
   (is (= {\p 2, \s 4, \i 4, \m 1}
          (frequencies-fast "mississippi")))
-  (is (= {1 3 2 2 3 1} 
+  (is (= {1 3 2 2 3 1}
          (frequencies-fast [1 2 3 1 2 1])))
   ;; We don't return the right thing on = but not .equals things,
   ;; because of the difference between Java Maps and Clojure maps.
-  (is (= {1 1} 
+  (is (= {1 1}
          (frequencies-fast [1 (BigInteger. "1")]))))
 
 (deftest distinct-fast-test
@@ -153,27 +153,27 @@
 
 (deftest distinct-by-test
   (is (= [{:id 1 :data "a"}]
-	 (distinct-by :id
-		    [{:id 1 :data "a"}
-		     {:id 1 :data "b"}])))
+         (distinct-by :id
+                      [{:id 1 :data "a"}
+                       {:id 1 :data "b"}])))
   (is (= [1 2 3 2 1]
          (map second
               (distinct-by
                first
-           [[1 1]
-            [1 10]
-            [17 2]
-            [1 12]
-            [:foo 3]
-            [:foo 3]
-            ['bar 2]
-            [1 3]
-            [3 1]])))))
+               [[1 1]
+                [1 10]
+                [17 2]
+                [1 12]
+                [:foo 3]
+                [:foo 3]
+                ['bar 2]
+                [1 3]
+                [3 1]])))))
 
 (deftest distinct-id-test
   (let [x (distinct-id [:a :b :c :a :b (Long. 1) (Long. 1)])]
     (is (= 5 (count x)))
-    (is (= #{:a :b :c 1} (set x)))    
+    (is (= #{:a :b :c 1} (set x)))
     (is (= #{:a :b :c 1} (set x)))
     (is (empty? (distinct-id nil)))))
 
@@ -201,11 +201,11 @@
   (let [side-effect (atom [])]
     (is (= {:a 1}
            (-> {:a 1}
-                (?> false (do (swap! side-effect conj :bad) assoc) :b 1))))
+               (?> false (do (swap! side-effect conj :bad) assoc) :b 1))))
     (is (empty? @side-effect))
     (is (= {:a 1 :b 1}
            (-> {:a 1}
-                (?> true (do (swap! side-effect conj :good) assoc) :b 1))))
+               (?> true (do (swap! side-effect conj :good) assoc) :b 1))))
     (is (= @side-effect [:good]))))
 
 (deftest fn->-test
@@ -227,7 +227,7 @@
 (deftest memoized-fn-test
   (let [calls (atom 0)]
     (is (= 55
-           ((memoized-fn fib [x] (swap! calls inc) 
+           ((memoized-fn fib [x] (swap! calls inc)
                          (case x 0 0 1 1 (+ (fib (- x 1)) (fib (- x 2)))))
             10)))
     (is (= 11 @calls))))
@@ -254,19 +254,19 @@
   (let [called? (atom false)
         om {:a 1 :c 3 :d 4 :e 17 :g 22}]
     (letk [[a { b 2} c d {e 5} :as m & more] om]
-              (is (= [a b c d e] [1 2 3 4 17]))
-              (is (= m om))    
-              (is (= {:g 22} more))
-              (reset! called? true))
+      (is (= [a b c d e] [1 2 3 4 17]))
+      (is (= m om))
+      (is (= {:g 22} more))
+      (reset! called? true))
     (is (= @called?))
     (letk [[:as m] om]
-              (is (= m om)))
+      (is (= m om)))
     (letk [[a & m] om]
-              (is (= a 1))
-              (is (= m (dissoc om :a))))
+      (is (= a 1))
+      (is (= m (dissoc om :a))))
     (letk [[a] {:a {:b 1}}
-               [b] a]
-              (is (= b 1)))
+           [b] a]
+      (is (= b 1)))
     (is (thrown? Throwable
                  (letk [[a] {:b 2}] a)))))
 
@@ -278,21 +278,21 @@
        (swap! call-count inc))
      {:a 1})
     ((fnk [a {b 2} c d {e 5} :as m & more]
-          (is (= [a b c d e] [4 2 3 4 17]))
-          (is (= m (assoc om :a 4 :h 77)))    
-          (is (= {:g 22 :h 77} more))
-          (swap! call-count inc))
+       (is (= [a b c d e] [4 2 3 4 17]))
+       (is (= m (assoc om :a 4 :h 77)))
+       (is (= {:g 22 :h 77} more))
+       (swap! call-count inc))
      (assoc om :a 4 :h 77))
     ((fnk [a {b 2} [:c :as c0] [:d d1 {d2 2} [:d3 :as d30] [:d4 d41 :as d4]]]
-          (is (= [a b c0 d1 d2 d30 d41 d4]
-                 [4 2 3 4 2 17 18 {:d41 18 :d42 :foo}]))
-          (swap! call-count inc))
+       (is (= [a b c0 d1 d2 d30 d41 d4]
+              [4 2 3 4 2 17 18 {:d41 18 :d42 :foo}]))
+       (swap! call-count inc))
      {:a 4 :c 3 :d {:d1 4 :d3 17 :d4 {:d41 18 :d42 :foo}}})
     (is (= @call-count 3))
     (is (thrown? Throwable ((fnk [a] a) {:b 3})))
-    
-    (let [f (fnk ^{:output-schema {:a true :b {:b1 true}}} [] 
-                 (hash-map :a 1 :b {:b1 2}))]
+
+    (let [f (fnk ^{:output-schema {:a true :b {:b1 true}}} []
+              (hash-map :a 1 :b {:b1 2}))]
       (is (= (pfnk/output-schema f) {:a true :b {:b1 true}})))))
 
 ;; TODO: test plumbing.fnk.comp-partial.

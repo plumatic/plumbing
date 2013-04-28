@@ -94,7 +94,7 @@
            :x (fnk [p1] (swap! a conj :x) (inc p1))
            :y (fnk [x] (swap! a conj :y) (inc x))
            :z (fnk [x] (swap! a conj :z)))
-	l ((lazy-compile g) {:p1 42})]
+        l ((lazy-compile g) {:p1 42})]
     (is (empty? @a))
     (is (= (:y l) 44))
     (is (= (:x l) 43))
@@ -144,12 +144,12 @@
                                 (is (= {:x 5 :z 5 :efour 4 :enine 9 :q 44 :r 5} m))
                                 (is (= {:efour 4 :enine 9 :q 44 :r 5 } more))
                                 (+ x y z))
-              (fnk [r enine] {:efour 4 :x r :z r :enine enine}))
+                              (fnk [r enine] {:efour 4 :x r :z r :enine enine}))
              {:r 5 :enine 9 :q 44}))))
 
 
 (deftest instance-test
-    ;; on a fnk, instance should just return a fnk.
+  ;; on a fnk, instance should just return a fnk.
   (is (= 21 ((instance (fnk [x] (inc x)) [y] {:x (* y 2)}) {:y 10})))
 
   (let [raw-g {:x (fnk [a] (* a 2))
@@ -190,10 +190,10 @@
   (let [n 1000
         g (chain-graph n)
         tk (keyword (str "x" n))]
-   (doseq [[k f]
-           {:direct (fnk [x0] {tk (nth (iterate inc 1) n)})
-            :eager  (time (eager-compile g))
-            :lazy   (time (lazy-compile g))}]
-     (println k)
-     (dotimes [_ 5]
-       (println (time (sum tk (repeatedly 10 #(f {:x0 1})))))))))
+    (doseq [[k f]
+            {:direct (fnk [x0] {tk (nth (iterate inc 1) n)})
+             :eager  (time (eager-compile g))
+             :lazy   (time (lazy-compile g))}]
+      (println k)
+      (dotimes [_ 5]
+        (println (time (sum tk (repeatedly 10 #(f {:x0 1})))))))))

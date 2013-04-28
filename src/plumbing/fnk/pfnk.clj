@@ -2,8 +2,7 @@
   "Core protocol for keyword functions that store input and output schema metadata about
    their arguments and return values.  This protocol says nothing about how fnks are created,
    so users are free to create PFnks directly using fn->fnk, or using custom binding syntax
-   (of which 'fnk' et al are one possible example)."
-  (require [plumbing.fnk.schema :as schema]))
+   (of which 'fnk' et al are one possible example).")
 
 (defprotocol PFnk
   "Protocol for keyword functions and their specifications, e.g., fnks and graphs."

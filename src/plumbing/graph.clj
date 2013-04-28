@@ -122,10 +122,10 @@
     (pfnk/fn->fnk
      (fn [m]
        (when check-input?
-        (let [missing-keys (seq (remove #(contains? m %) req-ks))]
-          (schema/assert-iae (empty? missing-keys)
-                             "Missing top-level keys in graph input: %s"
-                             (set missing-keys))))
+         (let [missing-keys (seq (remove #(contains? m %) req-ks))]
+           (schema/assert-iae (empty? missing-keys)
+                              "Missing top-level keys in graph input: %s"
+                              (set missing-keys))))
        (apply
         dissoc
         (reduce
@@ -243,15 +243,15 @@
   [g instance-fn]
   (if (fn? g)
     (comp-partial-fn g instance-fn)
-   (let [os (pfnk/output-schema instance-fn)]
-     (check-comp-partial! g instance-fn)
-     (->graph
-      (map/map-leaves
-       (fn [node-fn]
-         (if (some os (keys (pfnk/input-schema node-fn)))
-           (comp-partial-fn node-fn instance-fn)
-           node-fn))
-       g)))))
+    (let [os (pfnk/output-schema instance-fn)]
+      (check-comp-partial! g instance-fn)
+      (->graph
+       (map/map-leaves
+        (fn [node-fn]
+          (if (some os (keys (pfnk/input-schema node-fn)))
+            (comp-partial-fn node-fn instance-fn)
+            node-fn))
+        g)))))
 
 (defmacro instance
   "Experimental.
