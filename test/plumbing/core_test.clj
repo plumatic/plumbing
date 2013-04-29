@@ -1,7 +1,8 @@
 (ns plumbing.core-test
   (:use clojure.test plumbing.core)
   (:require
-   [plumbing.fnk.pfnk :as pfnk]))
+   [plumbing.fnk.pfnk :as pfnk]
+   [plumbing.fnk.impl :as fnk-impl]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -283,19 +284,19 @@
        (is (= {:g 22 :h 77} more))
        (swap! call-count inc))
      (assoc om :a 4 :h 77))
-    ((fnk [a {b 2} [:c :as c0] [:d d1 {d2 2} [:d3 :as d30] [:d4 d41 :as d4]]]
-       (is (= [a b c0 d1 d2 d30 d41 d4]
-              [4 2 3 4 2 17 18 {:d41 18 :d42 :foo}]))
-       (swap! call-count inc))
-     {:a 4 :c 3 :d {:d1 4 :d3 17 :d4 {:d41 18 :d42 :foo}}})
-    (is (= @call-count 3))
+    (let [f (fnk [a {b 2} [:c :as c0] [:d d1 {d2 2} [:d3 :as d30] [:d4 d41 :as d4]]]
+              (is (= [a b c0 d1 d2 d30 d41 d4]
+                     [4 2 3 4 2 17 18 {:d41 18 :d42 :foo}]))
+              (swap! call-count inc))]
+      (f {:a 4 :c 3 :d {:d1 4 :d3 17 :d4 {:d41 18 :d42 :foo}}})
+      ((fnk-impl/positional-fn f [:d :a :c])
+       {:d1 4 :d3 17 :d4 {:d41 18 :d42 :foo}} 4 3))
+    (is (= @call-count 4))
     (is (thrown? Throwable ((fnk [a] a) {:b 3})))
 
     (let [f (fnk ^{:output-schema {:a true :b {:b1 true}}} []
               (hash-map :a 1 :b {:b1 2}))]
       (is (= (pfnk/output-schema f) {:a true :b {:b1 true}})))))
-
-;; TODO: test plumbing.fnk.comp-partial.
 
 (defnk keyfn-test-docstring "whoa" [dude {wheres :foo} :as my & car]
   [dude wheres my car])
