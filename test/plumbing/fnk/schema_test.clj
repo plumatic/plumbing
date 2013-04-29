@@ -16,28 +16,9 @@
   (is (= #{:a :b}
          (set (required-toplevel-keys {:a {:a1 true} :b true :c false})))))
 
-
-(deftest parse-explicit-output-schema-spec-test
-  (is (= true (@#'schema/parse-explicit-output-schema-spec true)))
-  (is (= {:a true :b true} (@#'schema/parse-explicit-output-schema-spec [:a :b])))
-  (is (= {:a true :b true} (@#'schema/parse-explicit-output-schema-spec {:a true :b true})))
-  (is (= {:a {:a1 true} :b true} (@#'schema/parse-explicit-output-schema-spec {:a [:a1] :b true})))
-  (is (= {:a {:a1 true} :b {:b1 true}} (@#'schema/parse-explicit-output-schema-spec {:a [:a1] :b {:b1 true} })))
-  (is (= {:a {}} (@#'schema/parse-explicit-output-schema-spec {:a []}))))
-
 (deftest guess-expr-output-schema-test
   (is (= true (@#'guess-expr-output-schema "foo")))
   (is (= {:a true :b true} (@#'guess-expr-output-schema {:a (+ 1 1) :b false}))))
-
-(deftest make-output-schema-test
-  (is (= true
-         (make-output-schema `(+ 1 1) true)))
-  (is (= {:a true}
-         (make-output-schema `(+ 1 1) [:a])))
-  (is (= {:a true}
-         (make-output-schema `{:a (+ 1 1)} true)))
-  (is (= {:a {:a1 true} :b true}
-         (make-output-schema `{:a (+ 1 1) :b (- 1 1)} {:a [:a1]}))))
 
 (deftest assert-satisfies-schema-test
   (doseq [[yes? x y]
@@ -93,8 +74,7 @@
        {:x true :y false :z true} (fnk [x {y 2} z])
        {:x true :y false :z true :q {:r true}} (fnk [x {y 2} z [:q r] :as m & more])
        {:x false :y {:alias true}} (fnk [ {x 1} [:y alias]])
-       {:o1 false :o2 true :o3 {:x true :y false :z true :q {:r true}}} (fnk [{o1 1} o2 [:o3 x {y 2} z [:q r]]])
-       )
+       {:o1 false :o2 true :o3 {:x true :y false :z true :q {:r true}}} (fnk [{o1 1} o2 [:o3 x {y 2} z [:q r]]]))
   (is (= [1 2] ((eval `(fnk [[:x ~'x] [:y ~'y]] [~'x ~'y])) {:x {:x 1} :y {:y 2}})))
   (is (thrown? Throwable (eval `(fnk [{:y ~'x} {:y ~'y}] [~'x ~'y]))))
   (is (thrown? Throwable (eval `(fnk [{:x ~'x} {:y ~'x}] [~'x]))))
@@ -106,11 +86,9 @@
   (is (= true (second (pfnk/io-schemata (fnk [])))))
   (is (= true (second (pfnk/io-schemata (fnk [] (hash-map :x :y))))))
   (is (= {:o1 true :o2 {:i true :j {:q true}}} (second (pfnk/io-schemata (fnk  [x] {:o1 x :o2 {:i x :j {:q 2}}})))))
-  (is (= {:o1 true :o2 true} (second (pfnk/io-schemata (fnk ^{:output-schema [:o1 :o2]} [x])))))
   (is (= {:o1 true :o2 true} (second (pfnk/io-schemata (fnk ^{:output-schema {:o1 true :o2 true}} [x])))))
   (is (= {:o1 true :o2 true} (second (pfnk/io-schemata (fnk ^{:output-schema {:o1 true :o2 true}} [x])))))
-  (is (= {:o1 true :o2 {:i true :j {:q true}}} (second (pfnk/io-schemata (fnk ^{:output-schema [:o1 :o2]} [x] {:o1 x :o2 {:i x :j {:q 2}}})))))
-  (is (= {:o1 {:i1 true} :o2 {:i true :j {:q true}}} (second (pfnk/io-schemata (fnk ^{:output-schema {:o1 {:i1 true}}} [x] {:o1 x :o2 {:i x :j {:q 2}}})))))
-
-  (is (fn? (eval `(fnk ^{:output-schema [:o1]} [] {:o1 2}))))
-  (is (thrown? Throwable (eval `(fnk ^{:output-schema [:o1 :o2]} [] {:o1 2})))))
+  (is (= {:o1 true :o2 true} (second (pfnk/io-schemata (fnk ^{:output-schema {:o1 true :o2 true}} [x])))))
+  (is (= {:o1 true :o2 true} (second (pfnk/io-schemata (fnk ^{:output-schema {:o1 true :o2 true}} [x]
+                                                         {:o1 x :o2 {:i x :j {:q 2}}})))))
+  (is (fn? (eval `(fnk ^{:output-schema {:o1 true}} [] {:o1 2})))))

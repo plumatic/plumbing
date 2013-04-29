@@ -42,54 +42,12 @@
 
 ;;; Output schemata
 
-(defn- parse-explicit-output-schema-spec
-  "Convert an output schema spec (where leaf meaps can be given as seqs of keys) to
-   an ordinary output schema.
-
-   For example, (= (parse-output-schema {:a [:b :c]}) {:a {:b true :c true}})"
-  [s]
-  (cond (map? s)
-        (do (assert-iae (every? keyword? (keys s)) "Output schema has non-keyword keys: %s" s)
-            (into {} (for [[k v] s] [k (parse-explicit-output-schema-spec v)])))
-
-        (coll? s)
-        (do (assert-iae (every? keyword? s) "Output schema has non-keyword keys: %s" s)
-            (into {} (for [k s] [k true])))
-
-        :else
-        (do (assert-iae (true? s) "Output schema has non-true leaf: %s" s)
-            true)))
-
 (defn guess-expr-output-schema
   "Guess an output schema for an expr.  Currently just looks for literal map structure."
   [expr]
   (if (map? expr)
     (into {} (for [[k v] expr] [k (guess-expr-output-schema v)]))
     true))
-
-(defn- intersect-output-schemata
-  "Combine information from an explicit output schema and guess from examining a body expr."
-  [expr-schema explicit-schema]
-  (cond (true? expr-schema) explicit-schema
-        (true? explicit-schema) expr-schema
-        :else
-        (do (assert-iae (and (map? expr-schema) (map? explicit-schema))
-                        "Non-map schema in %s or %s" expr-schema explicit-schema)
-            (assert-iae (every? expr-schema (keys explicit-schema))
-                        "Explicit schema %s claims impossible keys given expr-schema %s" explicit-schema  expr-schema)
-            (into {}
-                  (for [[k v] expr-schema]
-                    [k (intersect-output-schemata v (explicit-schema k true))])))))
-
-(defn make-output-schema
-  "Take an expr and an (possibly partial or absent) explicit specification of the output schema of the expr,
-   and return the most specific output schema inferrable from these specifications."
-  [body-expr explicit-spec]
-  (intersect-output-schemata
-   (guess-expr-output-schema body-expr)
-   (parse-explicit-output-schema-spec explicit-spec)))
-
-
 
 ;;; Combining inputs and outputs.
 

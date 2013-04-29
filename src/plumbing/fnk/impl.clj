@@ -295,9 +295,8 @@
   [name? bind body]
   (let [map-sym (gensym)
         [fnk-body _ input-schema] (letk* bind map-sym body)
-        schema [input-schema
-                (schema/make-output-schema (last body)
-                                           (eval (:output-schema (meta bind) true)))]]
+        schema [input-schema (or (:output-schema (meta bind))
+                                 (schema/guess-expr-output-schema (last body)))]]
     (if (not-any? #{'& :as} bind) ;; If we can make a positional fnk form, do it.
       (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body `(do ~@body) bind)]
         (positional-fnk-form name? schema bind-sym-map [bound-body]))

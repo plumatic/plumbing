@@ -312,7 +312,7 @@
   "Keyword fn, using letk.  Stores input and output schemata in metadata.
    Fn accepts a single explicit map i.e., (f {:foo :bar})
    Explicit top-level map structure will be recorded in output spec, or
-   to capture implicit structure use ^{:output-schema output-schema-spec}
+   to capture implicit structure use ^{:output-schema output-schema}
    metadata on the binding form."
   [& args]
   (let [[name? [bind & body]] (if (symbol? (first args))
