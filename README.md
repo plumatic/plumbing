@@ -215,6 +215,11 @@ Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
 
 Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/src/plumbing/core.clj) for many other useful functions.
 
+## Community
+
+Plumbing now has a [mailing list](https://groups.google.com/forum/#!forum/prismatic-plumbing).  Please feel free to join and ask questions or discuss how you're using Plumbing and Graph.
+
+For announcements of new releases, you can also follow on [@PrismaticEng](http://twitter.com/prismaticeng) on Twitter.
 
 ## Supported Clojure versions
 
