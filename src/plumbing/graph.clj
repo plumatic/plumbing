@@ -211,7 +211,7 @@
 (defn run
   "Eagerly run a graph on an input by compiling and then executing on this input."
   [g input]
-  ((eager-compile g) input))
+  ((interpreted-eager-compile g) input))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

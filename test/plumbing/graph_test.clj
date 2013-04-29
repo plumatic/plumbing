@@ -1,7 +1,9 @@
 (ns plumbing.graph-test
   (:use plumbing.core plumbing.graph clojure.test)
   (:require
-   [plumbing.fnk.pfnk :as pfnk]))
+   [clojure.walk :as walk]
+   [plumbing.fnk.pfnk :as pfnk]
+   [plumbing.fnk.impl :as fnk-impl]))
 
 
 (deftest graph-construction-test
@@ -45,48 +47,73 @@
   (is (thrown? Exception (graph :foo (fnk [x {y 1}]) :y (fnk [y])))) ;; even self-cycles
   )
 
-(deftest eager-compile-test
+(defn test-eager-compile
+  "Test eager compilation eager-compile-fn, where normalize-output-fn turns the outputs
+   into ordinary clojure maps from records if necessary."
+  [compile-fn normalize-output-fn]
   (let [a (atom [])
         g (graph
            :x (fnk xfn [p1] (swap! a conj :x) (inc p1))
            :y (fnk yfn [x] (swap! a conj :y) (inc x)))
-        c (eager-compile g)
+        c (compile-fn g)
         l (c {:p1 42})]
     (is (= [:x :y] @a))
     (is (= (:y l) 44))
     (is (= (:x l) 43)))
-  (let [g2 (graph
-            :x (fnk [] 1)
-            :y {:z (fnk [a] 1)})]
+  (let [run-fn (fn [g m] (normalize-output-fn ((compile-fn g) m)))]
     (is (= {:x 1 :y {:z 1}}
-           (run g2 {:a 1}))))
-  (is (= {:x {:y 6} :q 12}
-         (run (graph
-               :x {:y (fnk [a] (inc a))}
-               :q (fnk [[:x y]] (* 2 y)))
-              {:a 5})))
+           (run-fn (graph
+                    :x (fnk [] 1)
+                    :y {:z (fnk [a] 1)})
+                   {:a 1})))
+    (is (= {:x {:y 6} :q 12}
+           (run-fn (graph
+                    :x {:y (fnk [a] (inc a))}
+                    :q (fnk [[:x y]] (* 2 y)))
+                   {:a 5})))
 
-  (is (= {:foo 6 :bar {:a -6 :baz {:foo -5}}}
-         (run (graph :foo (fnk [x] (inc x))
-                     :bar {:a (fnk [foo] (- foo))
-                           :baz {:foo (fnk [a] (inc a))}})
-              {:x 5})))
-  (is (thrown? Exception
-               (run (graph
-                     :x {:y (fnk [a] (inc a))}
-                     :q (fnk [[:x z]] z))
-                    {:a 5})))
+    (is (= {:foo 6 :bar {:a -6 :baz {:foo -5}}}
+           (run-fn (graph :foo (fnk [x] (inc x))
+                          :bar {:a (fnk [foo] (- foo))
+                                :baz {:foo (fnk [a] (inc a))}})
+                   {:x 5})))
+    (is (thrown? Exception
+                 (run-fn (graph
+                          :x {:y (fnk [a] (inc a))}
+                          :q (fnk [[:x z]] z))
+                         {:a 5})))
 
 
-  (is (= {:foo 6 :bar {:a -6 :baz {:foo 4}}}
-         (run (graph :foo (fnk [x] (inc x))
-                     :bar {:a (fnk [foo] (- foo))
-                           :baz {:foo (fnk [x] (dec x))}})
-              {:x 5})))
+    (is (= {:foo 6 :bar {:a -6 :baz {:foo 4}}}
+           (run-fn (graph :foo (fnk [x] (inc x))
+                          :bar {:a (fnk [foo] (- foo))
+                                :baz {:foo (fnk [x] (dec x))}})
+                   {:x 5})))
 
-  (is (thrown? Exception
-               (eager-compile (graph :foo {:bar (fnk [] 1)}
-                                     :baz (fnk [[:foo baz]] (inc baz)))))))
+    (is (thrown? Exception
+                 (compile-fn (graph :foo {:bar (fnk [] 1)}
+                                    :baz (fnk [[:foo baz]] (inc baz))))))))
+
+
+(deftest interpreted-eager-compile-test
+  (test-eager-compile interpreted-eager-compile identity))
+
+(deftest eager-compile-test
+  ;; eager-compile outputs records rather than ordinary maps as outputs.
+  (test-eager-compile eager-compile (partial walk/prewalk #(if (map? %) (into {} %) %)))
+  (let [o ((eager-compile (graph :x (fnk [y] (inc 1)))) {:y 1})]
+    (is (= [:x] (keys o)))
+    (is (= [2] (vals o)))
+    (is (= 2 (o :x) (get o :x) (:x o)))
+    (is (= {:x 2} (into {} o)))
+    (is (not= {:x 2} o))))
+
+(deftest positional-eager-compile-test
+  (let [f (positional-eager-compile (graph :x (fnk [a {b 1} {c 2}] (+ a (* b 2) (* c 3)))) [:b :a])]
+    (is (= 19 (:x (f 5 3))))
+    (is (= 11 (:x (f fnk-impl/+none+ 3))))
+    (is (thrown? Exception (f 1)))
+    (is (thrown? Exception (f 3 fnk-impl/+none+)))))
 
 (deftest lazy-compile-test
   (let [a (atom [])
