@@ -79,7 +79,7 @@
 ;; We can "compile" this graph to produce a function equivalent to the
 ;; opaque example above:
 
-(def stats2 (graph/eager-compile stats-graph))
+(def stats2 (graph/interpreted-eager-compile stats-graph))
 
 (defn test-stats-fn [f]
   (is (= {:n 4
@@ -103,7 +103,7 @@
   (assoc stats-graph
     :sd (fnk [^double v] (Math/sqrt v))))
 
-(def extended-stats (graph/eager-compile extended-stats-graph))
+(def extended-stats (graph/interpreted-eager-compile extended-stats-graph))
 
 (deftest extended-stats-test
   (is (= {:n 4
@@ -429,7 +429,7 @@
   (let [in {:x 3}
         out {:a 4 :b1 8 :b2 1 :c 9}]
     ;; eager computes everything before returning
-    (let [eager (graph/eager-compile slow-graph)
+    (let [eager (graph/interpreted-eager-compile slow-graph)
           eager-out (timed-is 650 identity (eager in))]
       (timed-is 0 true? (= out eager-out)))
 
