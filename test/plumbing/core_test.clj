@@ -311,3 +311,24 @@
   (is (= [{:foo true :city false} true]
          (pfnk/io-schemata keyfn-test-no-docstring)))
   (is (thrown? Throwable (keyfn-test-docstring :wheres :mycar))))
+
+;; Test that type hints are properly propagated for fnk and defnk.
+(defnk ^Byte a-typehinted-defnk [^Long l]
+  (.byteValue l))
+
+(deftest type-hints-test
+  (is (= Byte (:tag (meta #'a-typehinted-defnk))))
+  (doseq [f [a-typehinted-defnk
+             (fnk [^Long l] (.byteValue l))
+             (fnk [{^Long l 1}] (.byteValue l))
+             (fnk [^Long l & m] (.byteValue l))]]
+    (is (= (Byte. (byte 1)) (f {:l (Long. 1)})))
+    (is (thrown? Exception (f {:l (Integer. 1)})))))
+
+(deftest ^:slow repeated-bindings-test
+  (is (thrown? Exception (eval '(fnk [x [:x y]] (+ x y)))))
+  (is (thrown? Exception (eval '(fnk [{x {:y 1}} [:x y]] (+ x y)))))
+  (is (thrown? Exception (eval '(fnk [{x {:y 1}} x] (+ x y)))))
+  (is (thrown? Exception (eval '(fnk [x [:x y] :as m] (+ x y)))))
+  (is (thrown? Exception (eval '(fnk [{x {:y 1}} [:x y] :as m] (+ x y)))))
+  (is (thrown? Exception (eval '(fnk [{x {:y 1}} x :as m] (+ x y))))))

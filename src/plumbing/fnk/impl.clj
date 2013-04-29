@@ -85,7 +85,8 @@
                                  [b (keyword b)]
                                  (throw (RuntimeException. (format "Unsupported binding form %s" b))))))]
     (schema/assert-iae (not (some #{'&} (map first required))) "Cannot bind to &")
-    (assert-distinct (concat (map first required) (map first optional) (remove nil? [more-sym as-sym])))
+    (assert-distinct (concat (map (comp symbol name first) nested)
+                             (map first required) (map first optional) (remove nil? [more-sym as-sym])))
     (assert-distinct (concat (map second required) (map first optional)))
     {:required required :optional optional :nested parsed-nested :as as-sym :more more-sym}))
 
@@ -139,6 +140,15 @@
 (def +none+
   "A sentinel value used to indicate a non-provided optional value in a positional form."
   ::none)
+
+(defn positional-arg-bind-symbol
+  "Generate the symbol corresponding to a single element of the fnk binding vector,
+   retaining tag metadata if applicable."
+  [binding]
+  (cond (symbol? binding) binding
+        (map? binding) (key (first binding))
+        (vector? binding) (with-meta (symbol (name (first binding)))
+                            (if (= (last (butlast binding)) :as) (meta (last binding)) {}))))
 
 (defn positional-arg-bind-form
   "Generate the binding form to handle a single element of the fnk binding
@@ -227,26 +237,29 @@
    produces a form generating a IFn/PFnk that can be called as a keyword function,
    and has metadata containing the positional function for efficient compilation
    as described in 'efficient-call-forms' and 'positional-fn' above, with
-   argument order the same as in (first io-schemata).   Example:
+   argument order the same as in (first io-schemata) by default.  An explicit
+   pos-args vector can also be passed to change this order, and propagate
+   argument tag megadata into the fn. Example:
 
    (def f (eval (i/positional-fnk-form 'foo [{:x true :y false} true]
                    [`(+ ~'x (if (= ~'y i/+none+) 5 ~'y))])))
 
    (= [6 3] [(f {:x 1}) (f {:x 1 :y 2})])
    (= [6 3] [((i/positional-fn f [:x]) 1) ((i/positional-fn f [:y :x]) 2 1)])"
-  [name? [input-schema :as io-schemata] body]
-  (let [[opt-ks req-ks] ((juxt filter remove) #(false? (input-schema %)) (keys input-schema))
-        pos-args (mapv (comp symbol name) (keys input-schema))]
-    `(let [pos-fn# (fn ~@(when name? [(symbol (str name? "-positional"))])
-                     ~pos-args
-                     ~@body)]
-       (vary-meta (pfnk/fn->fnk
-                   (fn [m#]
-                     (plumbing.core/letk [~(into (mapv (comp symbol name) req-ks)
-                                                 (mapv #(hash-map (symbol (name %)) +none+) opt-ks)) m#]
-                       (pos-fn# ~@pos-args)))
-                   ~io-schemata)
-                  assoc ::positional-info [pos-fn# ~(mapv keyword pos-args)]))))
+  ([name? [input-schema :as io-schemata] body]
+     (positional-fnk-form name io-schemata (mapv (comp symbol name) (keys input-schema)) body))
+  ([name? [input-schema :as io-schemata] pos-args body]
+     (let [[opt-ks req-ks] ((juxt filter remove) #(false? (input-schema %)) (keys input-schema))]
+       `(let [pos-fn# (fn ~@(when name? [(symbol (str name? "-positional"))])
+                        ~pos-args
+                        ~@body)]
+          (vary-meta (pfnk/fn->fnk
+                      (fn [m#]
+                        (plumbing.core/letk [~(into (mapv (comp symbol name) req-ks)
+                                                    (mapv #(hash-map (symbol (name %)) +none+) opt-ks)) m#]
+                          (pos-fn# ~@pos-args)))
+                      ~io-schemata)
+                     assoc ::positional-info [pos-fn# ~(mapv keyword pos-args)])))))
 
 ;;; Generating fnk bodies
 
@@ -272,10 +285,8 @@
       (positional-fnk-form
        name?
        schema
-       [(reduce
-         positional-arg-bind-form
-         `(do ~@body)
-         bind)])
+       (mapv positional-arg-bind-symbol bind)
+       [(reduce positional-arg-bind-form `(do ~@body) bind)])
       (pfnk/fn->fnk
        `(fn ~@(when name? [name?])
           [~map-sym]

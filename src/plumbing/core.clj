@@ -328,7 +328,7 @@
         [attr-map? [bind & body]] (take-if map? args)]
     (schema/assert-iae (symbol? name) "Name for defnk is not a symbol: %s" name)
     (let [f (fnk-impl/fnk-form name bind body)]
-      `(def ~(with-meta name (assoc-when (or attr-map? {}) :doc docstring?))
+      `(def ~(with-meta name (merge (meta name) (assoc-when (or attr-map? {}) :doc docstring?)))
          ~f))))
 
 (set! *warn-on-reflection* false)
