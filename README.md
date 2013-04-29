@@ -46,14 +46,16 @@ We can "compile" this Graph to produce a single function (equivalent to `stats`)
 (def stats-eager (graph/eager-compile stats-graph))
 
 (= {:n 4
-	:m 3
-	:m2 (/ 25 2)
-	:v (/ 7 2)}
-   (stats-eager {:xs [1 2 3 6]}))
+    :m 3
+    :m2 (/ 25 2)
+    :v (/ 7 2)}
+   (into {} (stats-eager {:xs [1 2 3 6]})))
 
 ;; Missing :xs key exception
 (thrown? Throwable (stats-eager {:ys [1 2 3]}))
 ```
+
+Moreover, as of the latest 0.2.0 release, `stats-eager` is *fast* -- only about 30% slower than the hand-coded `stats` if `xs` has a single element, and within 5% of `stats` if `xs` has ten elements.
 
 Unlike the opaque `stats` fn, however, we can modify and extend `stats-graph` using ordinary operations on maps:
 
@@ -68,7 +70,7 @@ Unlike the opaque `stats` fn, however, we can modify and extend `stats-graph` us
     :m2 (/ 25 2)
     :v (/ 7 2)
     :sd (Math/sqrt 3.5)}
-   (extended-stats {:xs [1 2 3 6]}))
+   (into {} (extended-stats {:xs [1 2 3 6]})))
 ```
 
 A Graph encodes the structure of a computation, but not how it happens, allowing for many execution strategies. For example, we can compile a Graph lazily so that step values are computed as needed.  Or, we can parallel-compile the Graph so that independent step functions are run in separate threads:
