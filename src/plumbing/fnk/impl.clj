@@ -141,32 +141,44 @@
   "A sentinel value used to indicate a non-provided optional value in a positional form."
   ::none)
 
-(defn positional-arg-bind-symbol
-  "Generate the symbol corresponding to a single element of the fnk binding vector,
-   retaining tag metadata if applicable."
-  [binding]
-  (cond (symbol? binding) binding
-        (map? binding) (key (first binding))
-        (vector? binding) (with-meta (symbol (name (first binding)))
-                            (if (= (last (butlast binding)) :as) (meta (last binding)) {}))))
-
-(defn positional-arg-bind-form
-  "Generate the binding form to handle a single element of the fnk binding
-   vector when called positionally"
+(defn positional-arg-bind-sym-and-body
+  "Given a single element of a fnk binding form and a current body form, return
+   a pair [[k bind-sym] new-body-form] where bind-sym is a suitable symbol to bind
+   to k in the fnk arglist (including tag metadata if applicable) and new-body-form
+   is wrapped with destructuring for this binding as necessary."
   [body-expr binding]
   (cond (symbol? binding)
-        body-expr
+        [[(keyword binding) binding] body-expr]
 
         (map? binding)
         (let [[bs ov] (first binding)]
-          `(let [~bs (if (identical? +none+ ~bs) ~ov ~bs)]
-             ~body-expr))
+          [[(keyword bs) bs]
+           `(let [~bs (if (identical? +none+ ~bs) ~ov ~bs)]
+              ~body-expr)])
 
         (vector? binding)
-        (let [[k & more] binding]
-          (first (letk* (vec more) (symbol (name k)) [body-expr])))
+        (let [[k & more] binding
+              bind-sym (gensym (name (first binding)))]
+          [[k
+            (with-meta bind-sym
+              (if (= (last (butlast binding)) :as) (meta (last binding)) {}))]
+           (first (letk* (vec more) bind-sym [body-expr]))])
 
         :else (throw (IllegalArgumentException. (format "bad binding: %s" binding)))))
+
+(defn positional-arg-bind-syms-and-body
+  "Given a fnk binding form and body form, return a pair
+   [bind-sym-map new-body-form] where bind-sym-map is a map from keyword args
+   to binding symbols and and new-body-form wraps body to do any extra processing
+   of nested or optional bindings above and beyond the bindings achieved by
+   bind-sym-vector."
+  [body-expr bind]
+  (reduce
+   (fn [[cur-bind cur-body] binding]
+     (let [[bind-sym new-body] (positional-arg-bind-sym-and-body cur-body binding)]
+       [(conj cur-bind bind-sym) new-body]))
+   [{} body-expr]
+   bind))
 
 
 (defn positional-info
@@ -238,8 +250,8 @@
    and has metadata containing the positional function for efficient compilation
    as described in 'efficient-call-forms' and 'positional-fn' above, with
    argument order the same as in (first io-schemata) by default.  An explicit
-   pos-args vector can also be passed to change this order, and propagate
-   argument tag megadata into the fn. Example:
+   arg-sym-map from keywords to symbols can also be passed to provide explicit
+   symbols for each arg, and propagate argument tag megadata into the fn. Example:
 
    (def f (eval (i/positional-fnk-form 'foo [{:x true :y false} true]
                    [`(+ ~'x (if (= ~'y i/+none+) 5 ~'y))])))
@@ -247,9 +259,14 @@
    (= [6 3] [(f {:x 1}) (f {:x 1 :y 2})])
    (= [6 3] [((i/positional-fn f [:x]) 1) ((i/positional-fn f [:y :x]) 2 1)])"
   ([name? [input-schema :as io-schemata] body]
-     (positional-fnk-form name io-schemata (mapv (comp symbol name) (keys input-schema)) body))
-  ([name? [input-schema :as io-schemata] pos-args body]
-     (let [[opt-ks req-ks] ((juxt filter remove) #(false? (input-schema %)) (keys input-schema))]
+     (positional-fnk-form
+      name?
+      io-schemata
+      (into {} (for [k (keys input-schema)] [k (symbol (name k))]))
+      body))
+  ([name? [input-schema :as io-schemata] arg-sym-map body]
+     (let [[opt-ks req-ks] ((juxt filter remove) #(false? (input-schema %)) (keys input-schema))
+           pos-args (mapv #(safe-get arg-sym-map % []) (keys input-schema))]
        `(let [pos-fn# (fn ~@(when name? [(symbol (str name? "-positional"))])
                         ~pos-args
                         ~@body)]
@@ -257,9 +274,9 @@
                       (fn [m#]
                         (plumbing.core/letk [~(into (mapv (comp symbol name) req-ks)
                                                     (mapv #(hash-map (symbol (name %)) +none+) opt-ks)) m#]
-                          (pos-fn# ~@pos-args)))
+                          (pos-fn# ~@(map (comp symbol name) (keys input-schema)))))
                       ~io-schemata)
-                     assoc ::positional-info [pos-fn# ~(mapv keyword pos-args)])))))
+                     assoc ::positional-info [pos-fn# ~(vec (keys input-schema))])))))
 
 ;;; Generating fnk bodies
 
@@ -282,11 +299,8 @@
                 (schema/make-output-schema (last body)
                                            (eval (:output-schema (meta bind) true)))]]
     (if (not-any? #{'& :as} bind) ;; If we can make a positional fnk form, do it.
-      (positional-fnk-form
-       name?
-       schema
-       (mapv positional-arg-bind-symbol bind)
-       [(reduce positional-arg-bind-form `(do ~@body) bind)])
+      (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body `(do ~@body) bind)]
+        (positional-fnk-form name? schema bind-sym-map [bound-body]))
       (pfnk/fn->fnk
        `(fn ~@(when name? [name?])
           [~map-sym]

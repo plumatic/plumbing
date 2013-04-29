@@ -332,3 +332,7 @@
   (is (thrown? Exception (eval '(fnk [x [:x y] :as m] (+ x y)))))
   (is (thrown? Exception (eval '(fnk [{x {:y 1}} [:x y] :as m] (+ x y)))))
   (is (thrown? Exception (eval '(fnk [{x {:y 1}} x :as m] (+ x y))))))
+
+(deftest dont-shadow-nested-test
+  (let [m {:x 1}]
+    (is (= 3 ((fnk [[:m x]] (+ x (:x m))) {:m {:x 2}})))))
