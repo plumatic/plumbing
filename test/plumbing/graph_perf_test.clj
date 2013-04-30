@@ -1,11 +1,9 @@
 (ns plumbing.graph-perf-test
-  "Demo test from Climate"
+  "Demo test based on example graph from Climate."
   (:use
    [plumbing.core :only [fnk]])
   (:require
-   [plumbing.graph :as graph]
-   [plumbing.fnk.impl :as fnk-impl]
-   [plumbing.fnk.pfnk :as pfnk]))
+   [plumbing.graph :as graph]))
 
 (def ^:const kelvin 273.15)
 (def ^:const days-in-year 365)
@@ -19,7 +17,6 @@
   "Inverse relational distance between the Earth and sun at a
    given day of the year (1 to 366)"
   ^double [^long day-of-year]
-;;  {:pre [(h/between-inclusive day-of-year 1 366)]}
   (-> (* day-of-year 2 Math/PI)
       (/ days-in-year)
       Math/cos
@@ -29,7 +26,6 @@
 (defn solar-declination
   "Solar declination at a given day of the year (1 to 366)"
   ^double [^long day-of-year]
-;;  {:pre [(h/between-inclusive day-of-year 1 366)]}
   (-> (* day-of-year Math/PI 2)
       (/ days-in-year)
       (- 1.39)
@@ -39,9 +35,6 @@
 (defn sunset-hour-angle
   "Sunset hour angle given day of year (1 to 366) and latitude in radians"
   ^double [^double solar-dec ^double lat-in-rad]
-  ;; {:pre [(h/between-inclusive solar-dec -0.5 0.5)
-  ;;        (h/between-inclusive lat-in-rad -3.15 3.15)]
-  ;;  :post [(h/between-inclusive % 0 3.15)]}
   (-> (Math/tan lat-in-rad)
       (* (Math/tan solar-dec) -1)
       Math/acos))
@@ -135,7 +128,6 @@
         Net short wave radiation
     Rn: float
       Net solar radiation, MJ/(m^2*day)"
-
   {:Ra (fnk [doy lat] (solar-rad-et doy lat))
    :Rs (fnk [tmax tmin {kRs 0.16} Ra] (-> (- tmax tmin) Math/sqrt (* kRs Ra)))
    :Rso (fnk [alt Ra] (-> (* 2e-5 alt) (+ 0.75) (* Ra)))
@@ -148,67 +140,9 @@
    :term2 (fnk [ea] (-> (Math/sqrt ea) (* -0.14) (+ 0.34)))
    :term3 (fnk [Rs Rso] (-> (* 1.35 Rs) (/ Rso) (- 0.35)))
    :Rnl (fnk [term1 term2 term3] (* term1 term2 term3))
-   :Rn  (fnk [Rns Rnl ](- Rns Rnl))})
-
-(def solar-rad-from-temp-positional
-  {:Ra (fnk [doy lat] (plumbing.graph-perf-test/solar-rad-et doy lat))
-   :Rs (fnk [tmax tmin {kRs 0.16} Ra] (-> (- tmax tmin) Math/sqrt (* kRs Ra)))
-   :Rso (fnk [alt Ra] (-> (* 2e-5 alt) (+ 0.75) (* Ra)))
-   :Rns (fnk [{a 0.23} Rs] (-> (- 1 a) (* Rs)))
-   :tmaxK (fnk [tmax] (plumbing.graph-perf-test/to-kelvin tmax))
-   :tminK (fnk [tmin] (plumbing.graph-perf-test/to-kelvin tmin))
-   :ea (fnk [tmin] (plumbing.graph-perf-test/sat-vapour-pressure tmin))
-   :term1 (fnk [tmaxK tminK {s 4.903e-9}]
-               (-> (Math/pow tmaxK 4) (+ (Math/pow tminK 4)) (* s) (/ 2)))
-   :term2 (fnk [ea] (-> (Math/sqrt ea) (* -0.14) (+ 0.34)))
-   :term3 (fnk [Rs Rso] (-> (* 1.35 Rs) (/ Rso) (- 0.35)))
-   :Rnl (fnk [term1 term2 term3] (* term1 term2 term3))
-   :Rn  (fnk [Rns Rnl ](- Rns Rnl))})
-
-(def solar-rad-from-temp-positional-typehinted
-  {:Ra (fnk [^long doy ^double lat] (plumbing.graph-perf-test/solar-rad-et doy lat))
-   :Rs (fnk [^long tmax ^long tmin {kRs 0.16} Ra] (-> (- tmax tmin) Math/sqrt (* kRs Ra)))
-   :Rso (fnk [alt Ra] (-> (* 2e-5 alt) (+ 0.75) (* Ra)))
-   :Rns (fnk [{a 0.23} Rs] (-> (- 1 a) (* Rs)))
-   :tmaxK (fnk [tmax] (plumbing.graph-perf-test/to-kelvin tmax))
-   :tminK (fnk [tmin] (plumbing.graph-perf-test/to-kelvin tmin))
-   :ea (fnk [tmin] (plumbing.graph-perf-test/sat-vapour-pressure tmin))
-   :term1 (fnk [tmaxK tminK {s 4.903e-9}]
-               (-> (Math/pow tmaxK 4) (+ (Math/pow tminK 4)) (* s) (/ 2)))
-   :term2 (fnk [ea] (-> (Math/sqrt ea) (* -0.14) (+ 0.34)))
-   :term3 (fnk [Rs Rso] (-> (* 1.35 Rs) (/ Rso) (- 0.35)))
-   :Rnl (fnk [term1 term2 term3] (* term1 term2 term3))
    :Rn  (fnk [Rns Rnl] (- Rns Rnl))})
 
-(defrecord SolarRadRecord [Ra Rs Rso Rns tmax-kelvin tmin-kelvin ea term-1
-                           term-2 term-3 Rnl Rn])
 (defn solar-rad-from-temp-fn
-  "Estimate the solar radiation from temperature
-
-    Parameters
-    ----------
-    kRs: float, default = 0.16
-        adjustment coefficient for solar radiation
-
-    lat: float,
-        Latitude, decimal degrees
-
-    alt: float,
-        Altitude, in m
-
-    tmax, tmin: float
-        Maximum and minimum temperatures, deg C.  Must be
-        between -5 and 45 C.
-
-    day-of-year: int
-        Day of the year (1 to 366)
-
-    a: float, default = 0.23
-        Canopy reflection coefficient (default is for grass)
-
-    Returns
-    -------
-    Net solar radiation, MJ/(m^2*day)"
   ([lat alt tmax tmin day-of-year]
      (let [kRs 0.16
            a 0.23]
@@ -233,79 +167,155 @@
            term-3 (-> (* 1.35 Rs) (/ Rso) (- 0.35))
            Rnl (* term-1 term-2 term-3)
            Rn (- Rns Rnl)]
-       ;(SolarRadRecord. Ra Rs Rso Rns tmax-kelvin tmin-kelvin ea term-1 term-2
-       ;                 term-3 Rnl Rn)
        Rn)))
+
+(defmacro fn-call
+  [args body]
+  `((fn ~args ~body) ~@args))
+(defrecord SolarRadRecord [Ra Rs Rso Rns tmax-kelvin tmin-kelvin ea term-1
+                           term-2 term-3 Rnl Rn])
+(defn solar-rad-from-temp-fn-calls
+  ([lat alt tmax tmin day-of-year]
+     (let [kRs 0.16
+           a 0.23]
+       (solar-rad-from-temp-fn-calls kRs lat alt tmax tmin day-of-year a)))
+  ([kRs lat alt tmax tmin day-of-year]
+     (let [a 0.23]
+       (solar-rad-from-temp-fn-calls kRs lat alt tmax tmin day-of-year a)))
+  ([kRs lat alt tmax tmin day-of-year a]
+   (let [Ra (fn-call [day-of-year lat] (solar-rad-et day-of-year lat))
+         Rs (fn-call [tmax tmin kRs Ra] (-> (- tmax tmin) Math/sqrt (* kRs Ra)))
+         Rso (fn-call [alt Ra] (-> (* 2e-5 alt) (+ 0.75) (* Ra)))
+         Rns (fn-call [a Rs] (-> (- 1 a) (* Rs)))
+         tmaxK (fn-call [tmax] (to-kelvin tmax))
+         tminK (fn-call [tmin] (to-kelvin tmin))
+         ea (fn-call [tmin] (sat-vapour-pressure tmin))
+         term1 (fn-call [tmaxK tminK]
+                    (-> (Math/pow tmaxK 4) (+ (Math/pow tminK 4)) (* 4.903e-9) (/ 2)))
+         term2 (fn-call [ea] (-> (Math/sqrt ea) (* -0.14) (+ 0.34)))
+         term3 (fn-call [Rs Rso] (-> (* 1.35 Rs) (/ Rso) (- 0.35)))
+         Rnl (fn-call [term1 term2 term3] (* term1 term2 term3))
+         Rn  (fn-call [Rns Rnl] (- Rns Rnl))]
+     (new SolarRadRecord Ra Rs Rso Rns tmaxK tminK ea term1 term2 term3 Rnl Rn))))
 
 (defn -main
   [& args]
   ;; simple profiling, comparing the graph implemention
   ;; to the function implementation
-  (let [solar-rad-as-graph (time (graph/interpreted-eager-compile solar-rad-from-temp))
-        solar-rad-pos-graph (time (graph/eager-compile solar-rad-from-temp-positional))
-        solar-rad-pos-graph-pos (time (graph/positional-eager-compile
-                                       solar-rad-from-temp-positional
-                                       [:lat :alt :tmin :tmax :doy]))
-        solar-rad-pos-graph-th (fnk-impl/positional-fn
-                                 (graph/eager-compile solar-rad-from-temp-positional-typehinted)
-                                 [:lat :alt :tmin :tmax :doy :kRs :a :s])]
-    (println "As old eager")
-    (dotimes [_ 10]
-      (time (dotimes [_ 10000]
-              (solar-rad-as-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))))
-    (println "As new eager"  (solar-rad-pos-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))
-    (dotimes [_ 10]
-      (time (dotimes [_ 10000]
-              (solar-rad-pos-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))))
-    (println "As new eager positional" (solar-rad-pos-graph-pos 45.0 100.0 15.0 25.0 205))
-    (dotimes [_ 10]
-      (time (dotimes [_ 10000]
-              (solar-rad-pos-graph-pos 45.0 100.0 15.0 25.0 205))))
-    (println "As positional-th"  (solar-rad-pos-graph-th 45.0 100.0 15.0 25.0 205  0.16 0.23 4.903e-9))
-    (dotimes [_ 10]
-      (time (dotimes [_ 10000]
-              (solar-rad-pos-graph-th 45.0 100.0 15.0 25.0 205  0.16 0.23 4.903e-9))))
-    (println "As fn")
-    (dotimes [_ 10]
-      (time (dotimes [_ 10000]
-              (solar-rad-from-temp-fn 45.0 100.0 25.0 15.0 205))))))
 
-(comment
-  (require '[plumbing.timing :as timing])
-  (defn bench []
-    (let [solar-rad-as-graph (graph/old-eager-compile solar-rad-from-temp)
-          solar-rad-pos-graph (graph/eager-compile
-                               solar-rad-from-temp-positional
-                               [:lat :alt :tmin :tmax :doy])
-          solar-rad-pos-graph-th (graph/eager-compile
-                                  solar-rad-from-temp-positional-typehinted
-                                  [:lat :alt :tmin :tmax :doy  :kRs :a :s])]
-      (timing/microbenchmark
-       {:consume-output #(if (class %) 1.0)}
-       (solar-rad-as-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205})
-       (solar-rad-pos-graph 45.0 100.0 15.0 25.0 205)
-       (solar-rad-pos-graph-th 45.0 100.0 15.0 25.0 205)
-       (solar-rad-from-temp-fn 45.0 100.0 25.0 15.0 205)))))
+  (println "Old eager")
+  (println "  compiling")
+  (let [solar-rad-as-graph (time (graph/interpreted-eager-compile solar-rad-from-temp))]
+    (println "  gives value" (solar-rad-as-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))
+    (dotimes [_ 10]
+      (time (dotimes [_ 10000]
+              (solar-rad-as-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205})))))
 
-;; As graph
-;; "Elapsed time: 572.225293 msecs"
-;; "Elapsed time: 318.7705 msecs"
-;; "Elapsed time: 279.98468 msecs"
-;; "Elapsed time: 277.022995 msecs"
-;; "Elapsed time: 278.224107 msecs"
-;; "Elapsed time: 276.357795 msecs"
-;; "Elapsed time: 274.711719 msecs"
-;; "Elapsed time: 277.10278 msecs"
-;; "Elapsed time: 275.60973 msecs"
-;; "Elapsed time: 276.651091 msecs"
-;; As fn
-;; "Elapsed time: 22.0288 msecs"
-;; "Elapsed time: 16.1642 msecs"
-;; "Elapsed time: 9.863406 msecs"
-;; "Elapsed time: 9.611822 msecs"
-;; "Elapsed time: 10.153585 msecs"
-;; "Elapsed time: 10.043576 msecs"
-;; "Elapsed time: 9.623545 msecs"
-;; "Elapsed time: 9.710815 msecs"
-;; "Elapsed time: 17.697419 msecs"
-;; "Elapsed time: 9.881647 msecs"
+  (println)
+  (println "New eager")
+  (println "  compiling")
+  (let [solar-rad-pos-graph (time (graph/eager-compile solar-rad-from-temp))]
+    (println "  gives value"  (solar-rad-pos-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))
+    (dotimes [_ 10]
+      (time (dotimes [_ 10000]
+              (solar-rad-pos-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205})))))
+
+  (println)
+  (println "New eager positional fn")
+  (println "  compiling")
+  (let [solar-rad-pos-graph-pos (time (graph/positional-eager-compile
+                                        (into {} solar-rad-from-temp)
+                                        [:lat :alt :tmin :tmax :doy]))]
+    (println "  gives value" (solar-rad-pos-graph-pos 45.0 100.0 15.0 25.0 205))
+    (dotimes [_ 10]
+      (time (dotimes [_ 10000]
+              (solar-rad-pos-graph-pos 45.0 100.0 15.0 25.0 205)))))
+
+  (println)
+  (println "As let with fn calls")
+  (println "  no need to compile")
+  (println "  gives value" (solar-rad-from-temp-fn-calls 45.0 100.0 25.0 15.0 205))
+  (dotimes [_ 10]
+    (time (dotimes [_ 10000]
+            (solar-rad-from-temp-fn-calls 45.0 100.0 25.0 15.0 205))))
+
+  (println)
+  (println "As let")
+  (println "  no need to compile")
+  (println "  gives value" (solar-rad-from-temp-fn 45.0 100.0 25.0 15.0 205))
+  (dotimes [_ 10]
+    (time (dotimes [_ 10000]
+            (solar-rad-from-temp-fn 45.0 100.0 25.0 15.0 205)))))
+
+;;Old eager
+;;  compiling
+;;"Elapsed time: 6.037156 msecs"
+;;  gives value {:Rns 15.392102866343723, :tminK 288.15, :Rso 29.71016678897226, :term2 0.15717553186329483, :Rn 12.209062049816033, :Rnl 3.1830408165276896, :term3 0.5583137960058112, :term1 36.27261861695186, :Rs 19.989743982264574, :tmaxK 298.15, :ea 1.7053462321157722, :Ra 39.508200517250344}
+;;"Elapsed time: 391.094708 msecs"
+;;"Elapsed time: 341.611376 msecs"
+;;"Elapsed time: 333.087152 msecs"
+;;"Elapsed time: 367.831138 msecs"
+;;"Elapsed time: 341.161334 msecs"
+;;"Elapsed time: 324.572381 msecs"
+;;"Elapsed time: 337.84041 msecs"
+;;"Elapsed time: 336.182569 msecs"
+;;"Elapsed time: 360.237391 msecs"
+;;"Elapsed time: 371.491237 msecs"
+;;
+;;New eager
+;;  compiling
+;;"Elapsed time: 36.108162 msecs"
+;;  gives value #user.graph-record1401{:Rns 15.392102866343723, :tminK 288.15, :Rso 29.71016678897226, :term2 0.15717553186329483, :Rn 12.209062049816033, :Rnl 3.1830408165276896, :term3 0.5583137960058112, :term1 36.27261861695186, :Rs 19.989743982264574, :tmaxK 298.15, :ea 1.7053462321157722, :Ra 39.508200517250344}
+;;"Elapsed time: 29.617148 msecs"
+;;"Elapsed time: 28.233836 msecs"
+;;"Elapsed time: 29.150146 msecs"
+;;"Elapsed time: 28.360114 msecs"
+;;"Elapsed time: 28.416531 msecs"
+;;"Elapsed time: 38.486866 msecs"
+;;"Elapsed time: 25.48484 msecs"
+;;"Elapsed time: 27.788339 msecs"
+;;"Elapsed time: 30.93764 msecs"
+;;"Elapsed time: 25.088613 msecs"
+;;
+;;New eager positional fn
+;;  compiling
+;;"Elapsed time: 40.813282 msecs"
+;;  gives value #user.graph-record1500{:Rns 15.392102866343723, :tminK 288.15, :Rso 29.71016678897226, :term2 0.15717553186329483, :Rn 12.209062049816033, :Rnl 3.1830408165276896, :term3 0.5583137960058112, :term1 36.27261861695186, :Rs 19.989743982264574, :tmaxK 298.15, :ea 1.7053462321157722, :Ra 39.508200517250344}
+;;"Elapsed time: 15.038361 msecs"
+;;"Elapsed time: 13.721086 msecs"
+;;"Elapsed time: 13.787 msecs"
+;;"Elapsed time: 16.328639 msecs"
+;;"Elapsed time: 14.597608 msecs"
+;;"Elapsed time: 13.985261 msecs"
+;;"Elapsed time: 13.96927 msecs"
+;;"Elapsed time: 13.764979 msecs"
+;;"Elapsed time: 14.824762 msecs"
+;;"Elapsed time: 13.781415 msecs"
+;;
+;;As let with fn calls
+;;  no need to compile
+;;  gives value #plumbing.graph_perf_test.SolarRadRecord{:Ra 39.508200517250344, :Rs 19.989743982264574, :Rso 29.71016678897226, :Rns 15.392102866343723, :tmax-kelvin 298.15, :tmin-kelvin 288.15, :ea 1.7053462321157722, :term-1 36.27261861695186, :term-2 0.15717553186329483, :term-3 0.5583137960058112, :Rnl 3.1830408165276896, :Rn 12.209062049816033}
+;;"Elapsed time: 15.278042 msecs"
+;;"Elapsed time: 12.319934 msecs"
+;;"Elapsed time: 12.543768 msecs"
+;;"Elapsed time: 12.316507 msecs"
+;;"Elapsed time: 12.812431 msecs"
+;;"Elapsed time: 12.724281 msecs"
+;;"Elapsed time: 13.105688 msecs"
+;;"Elapsed time: 12.757586 msecs"
+;;"Elapsed time: 12.865573 msecs"
+;;"Elapsed time: 12.54549 msecs"
+;;
+;;As let
+;;  no need to compile
+;;  gives value 12.209062049816033
+;;"Elapsed time: 11.762075 msecs"
+;;"Elapsed time: 10.430211 msecs"
+;;"Elapsed time: 10.343818 msecs"
+;;"Elapsed time: 10.372467 msecs"
+;;"Elapsed time: 10.906296 msecs"
+;;"Elapsed time: 10.285573 msecs"
+;;"Elapsed time: 10.464272 msecs"
+;;"Elapsed time: 10.357106 msecs"
+;;"Elapsed time: 10.409813 msecs"
+;;"Elapsed time: 10.512621 msecs"

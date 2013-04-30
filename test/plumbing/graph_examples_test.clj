@@ -114,7 +114,8 @@
          (extended-stats {:xs [1 2 3 6]}))))
 
 
-;; 2.  We can lazily compile stats-graph, so only needed values are computed,
+;; 2.  We can compile stats-graph in a number of different ways. For instance,
+;;     we can lazily compile stats-graph, so only needed values are computed,
 ;;     or parallel-compile it so functions that don't depend on one-another
 ;;     are done in separate threads.
 
@@ -130,6 +131,10 @@
 ;; In cases where only some results from a set of related calculations are
 ;; needed, this lazy compilation can be very convenient and powerful.
 
+;; Similarly, auto-parallelization allows us to focus on the structure of our
+;; problem, and lets the compiler do the work of figuring out what can be
+;; done in parallel.
+
 (def par-stats (graph/par-compile stats-graph))
 
 (deftest par-stats-test
@@ -137,9 +142,33 @@
     ;; Nodes are being computed in futures, with :m and :m2 going in parallel
     (is (= (/ 7 2) (:v output)))))
 
-;; Similarly, auto-parallelization allows us to focus on the structure of our
-;; problem, and lets the compiler do the work of figuring out what can be
-;; done in parallel.
+;; There are also some compilation modes for performance tuning. If you're
+;; going to call your graph in an inner loop, where creating and destructuring
+;; maps would be too expensive, you can get an ordinary positional function
+;; version with positional-eager-compile.
+
+(def positional-stats (graph/positional-eager-compile stats-graph [:xs]))
+
+(deftest positional-stats-test
+  (let [output (positional-stats [1 2 3 6])]
+    ;; The output is a record, not a map.
+    (is (and (not (instance? clojure.lang.PersistentHashMap  output))
+             (not (instance? clojure.lang.PersistentArrayMap output))))
+    (is (= (/ 7 2) (:v output)))))
+
+;; On the other hand, if you're worried about the computational expense of
+;; compiling, you can reduce it from a few tens of milliseconds (usually not a
+;; problem unless you're doing it many times) to a few milliseconds by using
+;; interpreted-eager-compile. But the resulting function will be a bit slower.
+
+(def interpreted-stats (graph/interpreted-eager-compile stats-graph [:xs]))
+
+(deftest positional-stats-test
+  (let [output (positional-stats {:xs [1 2 3 6]})]
+    ;; The output is a map.
+    (is (or (instance? clojure.lang.PersistentHashMap  output)
+            (instance? clojure.lang.PersistentArrayMap output)))
+    (is (= (/ 7 2) (:v output)))))
 
 
 ;; 3.  We can ask stats-graph for information about its inputs and outputs
