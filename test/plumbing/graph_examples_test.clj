@@ -161,10 +161,10 @@
 ;; problem unless you're doing it many times) to a few milliseconds by using
 ;; interpreted-eager-compile. But the resulting function will be a bit slower.
 
-(def interpreted-stats (graph/interpreted-eager-compile stats-graph [:xs]))
+(def interpreted-stats (graph/interpreted-eager-compile stats-graph))
 
 (deftest positional-stats-test
-  (let [output (positional-stats {:xs [1 2 3 6]})]
+  (let [output (interpreted-stats {:xs [1 2 3 6]})]
     ;; The output is a map.
     (is (or (instance? clojure.lang.PersistentHashMap  output)
             (instance? clojure.lang.PersistentArrayMap output)))
