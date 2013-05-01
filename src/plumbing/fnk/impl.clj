@@ -216,7 +216,7 @@
   "Given argument order in arg-ks, produce an ordinary fn that can be called
    with arguments in this order. arg-ks must include all required keys of fnk.
 
-   Example: (= ((positional-fn fnk 1 2) [:b :a]) (fnk {:a 2 :b 1}))
+   Example: (= ((positional-fn a-fnk [:b :a]) [1 2]) (a-fnk {:a 2 :b 1}))
 
    Can only be applied to fnks with a positional form, and should yield
    a function that is significantly faster than calling fnk directly by

@@ -42,14 +42,13 @@
        (apply map vector)))
 
 (defn eval-bound
-  "Evaluate a form with some symbols bound into some values."
+  "Evaluate a form with some symbols bound to some values."
   [form bindings]
   ((eval `(fn [~(->> bindings (mapv first))] ~form))
      (map second bindings)))
 
 (defn graph-form
-  "Construct the form (and bindings needed for it to eval) for a positional
-  graph body."
+  "Construct [body-form bindings-needed-for-eval] for a positional graph."
   [g arg-keywords]
   (let [value-syms (->> g pfnk/io-schemata (apply merge) keys
                         (map-from-keys (comp gensym name)))
