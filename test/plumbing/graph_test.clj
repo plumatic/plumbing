@@ -83,7 +83,6 @@
                           :q (fnk [[:x z]] z))
                          {:a 5})))
 
-
     (is (= {:foo 6 :bar {:a -6 :baz {:foo 4}}}
            (run-fn (graph :foo (fnk [x] (inc x))
                           :bar {:a (fnk [foo] (- foo))
@@ -92,7 +91,51 @@
 
     (is (thrown? Exception
                  (compile-fn (graph :foo {:bar (fnk [] 1)}
-                                    :baz (fnk [[:foo baz]] (inc baz))))))))
+                                    :baz (fnk [[:foo baz]] (inc baz))))))
+
+    ;; Test as many of the advanced Graph features as possible.
+    (let [complex-graph
+          {;; Ordinary fnks.
+           :a (fnk [x] (+ x 2))
+           ;; Fnks that use &.
+           :b (fnk [a x & more] (+ a x (count more)))
+           ;; Fnks that use :as.
+           :c (fnk [b x :as inputs] (+ b (count inputs) (* x -1)))
+           ;; Nested graphs.
+           :g {:ga (fnk [x] (+ 5 x))
+               ;; Fnks with hand-crafted schemas.
+               :gm (pfnk/fn->fnk (fn [m] {:gmy (+ (:x m) (:ga m))
+                                          :gmz (- 0 1 (:x m) (:ga m))})
+                                 [{:ga true :x true}      ;; input schema
+                                  {:gmy true :gmz true}]) ;; output schema
+               ;; Fnks that depend on nested outputs.
+               :gb (fnk [[:gm gmy gmz]] (+ gmy gmz 10))
+               ;; Fnks with properly un-shadowed variables.
+               :gc (let [gm 2]
+                     (fnk [[:gm gmy] x] (+ gm gmy x)))}
+           ;; Fnks that depend on deeply nested values.
+           :d (fnk [[:g [:gm gmy]] b] (+ gmy b))
+           ;; Fnks that are compiled graphs.
+           :cg (interpreted-eager-compile {:cga (fnk [x b] (* 3 x b))})
+           ;; Fnks that we'll remove.
+           :z (fnk [x] (* x 10))}
+          ;; Graphs modified at runtime
+          complex-graph-modified (assoc (dissoc complex-graph :z)
+                                        :e (fnk [x [:cg cga]] (+ cga (rem x cga))))]
+      (is (= (run-fn (compile-fn complex-graph-modified)
+                     {:x 1
+                      :ignored 2})
+             {:a 3
+              :b 4
+              :c 5
+              :g {:ga 6
+                  :gm {:gmy 7
+                       :gmz -8}
+                  :gb 9
+                  :gc 10}
+              :d 11
+              :cg {:cga 12}
+              :e 13})))))
 
 
 (deftest interpreted-eager-compile-test

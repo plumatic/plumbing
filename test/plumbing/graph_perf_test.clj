@@ -1,5 +1,5 @@
 (ns plumbing.graph-perf-test
-  "Demo test based on example graph from Climate."
+  "Simple performance test based on example graph from Climate."
   (:use
    [plumbing.core :only [fnk]])
   (:require
@@ -200,10 +200,10 @@
 
 (defn -main
   [& args]
-  ;; simple profiling, comparing the graph implemention
-  ;; to the function implementation
+  ;; Simple profiling, comparing the various compilations to the let
+  ;; implementation.
 
-  (println "Old eager")
+  (println "Interpreted eager")
   (println "  compiling")
   (let [solar-rad-as-graph (time (graph/interpreted-eager-compile solar-rad-from-temp))]
     (println "  gives value" (solar-rad-as-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))
@@ -212,7 +212,7 @@
               (solar-rad-as-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205})))))
 
   (println)
-  (println "New eager")
+  (println "Eager called with map")
   (println "  compiling")
   (let [solar-rad-pos-graph (time (graph/eager-compile solar-rad-from-temp))]
     (println "  gives value"  (solar-rad-pos-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205}))
@@ -221,7 +221,7 @@
               (solar-rad-pos-graph {:lat 45.0 :alt 100.0 :tmin 15.0 :tmax 25.0 :doy 205})))))
 
   (println)
-  (println "New eager positional fn")
+  (println "Eager positional fn")
   (println "  compiling")
   (let [solar-rad-pos-graph-pos (time (graph/positional-eager-compile
                                         (into {} solar-rad-from-temp)
@@ -232,7 +232,7 @@
               (solar-rad-pos-graph-pos 45.0 100.0 15.0 25.0 205)))))
 
   (println)
-  (println "As let with fn calls")
+  (println "Let with fn calls")
   (println "  no need to compile")
   (println "  gives value" (solar-rad-from-temp-fn-calls 45.0 100.0 25.0 15.0 205))
   (dotimes [_ 10]
@@ -240,14 +240,14 @@
             (solar-rad-from-temp-fn-calls 45.0 100.0 25.0 15.0 205))))
 
   (println)
-  (println "As let")
+  (println "Let")
   (println "  no need to compile")
   (println "  gives value" (solar-rad-from-temp-fn 45.0 100.0 25.0 15.0 205))
   (dotimes [_ 10]
     (time (dotimes [_ 10000]
             (solar-rad-from-temp-fn 45.0 100.0 25.0 15.0 205)))))
 
-;;Old eager
+;;Interpreted eager
 ;;  compiling
 ;;"Elapsed time: 6.037156 msecs"
 ;;  gives value {:Rns 15.392102866343723, :tminK 288.15, :Rso 29.71016678897226, :term2 0.15717553186329483, :Rn 12.209062049816033, :Rnl 3.1830408165276896, :term3 0.5583137960058112, :term1 36.27261861695186, :Rs 19.989743982264574, :tmaxK 298.15, :ea 1.7053462321157722, :Ra 39.508200517250344}
@@ -262,7 +262,7 @@
 ;;"Elapsed time: 360.237391 msecs"
 ;;"Elapsed time: 371.491237 msecs"
 ;;
-;;New eager
+;;Eager called with map
 ;;  compiling
 ;;"Elapsed time: 36.108162 msecs"
 ;;  gives value #user.graph-record1401{:Rns 15.392102866343723, :tminK 288.15, :Rso 29.71016678897226, :term2 0.15717553186329483, :Rn 12.209062049816033, :Rnl 3.1830408165276896, :term3 0.5583137960058112, :term1 36.27261861695186, :Rs 19.989743982264574, :tmaxK 298.15, :ea 1.7053462321157722, :Ra 39.508200517250344}
@@ -277,7 +277,7 @@
 ;;"Elapsed time: 30.93764 msecs"
 ;;"Elapsed time: 25.088613 msecs"
 ;;
-;;New eager positional fn
+;;Eager positional fn
 ;;  compiling
 ;;"Elapsed time: 40.813282 msecs"
 ;;  gives value #user.graph-record1500{:Rns 15.392102866343723, :tminK 288.15, :Rso 29.71016678897226, :term2 0.15717553186329483, :Rn 12.209062049816033, :Rnl 3.1830408165276896, :term3 0.5583137960058112, :term1 36.27261861695186, :Rs 19.989743982264574, :tmaxK 298.15, :ea 1.7053462321157722, :Ra 39.508200517250344}
@@ -292,7 +292,7 @@
 ;;"Elapsed time: 14.824762 msecs"
 ;;"Elapsed time: 13.781415 msecs"
 ;;
-;;As let with fn calls
+;;Let with fn calls
 ;;  no need to compile
 ;;  gives value #plumbing.graph_perf_test.SolarRadRecord{:Ra 39.508200517250344, :Rs 19.989743982264574, :Rso 29.71016678897226, :Rns 15.392102866343723, :tmax-kelvin 298.15, :tmin-kelvin 288.15, :ea 1.7053462321157722, :term-1 36.27261861695186, :term-2 0.15717553186329483, :term-3 0.5583137960058112, :Rnl 3.1830408165276896, :Rn 12.209062049816033}
 ;;"Elapsed time: 15.278042 msecs"
@@ -306,7 +306,7 @@
 ;;"Elapsed time: 12.865573 msecs"
 ;;"Elapsed time: 12.54549 msecs"
 ;;
-;;As let
+;;Let
 ;;  no need to compile
 ;;  gives value 12.209062049816033
 ;;"Elapsed time: 11.762075 msecs"

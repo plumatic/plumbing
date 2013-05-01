@@ -143,32 +143,7 @@
     (is (= (/ 7 2) (:v output)))))
 
 ;; There are also some compilation modes for performance tuning. If you're
-;; going to call your graph in an inner loop, where creating and destructuring
-;; maps would be too expensive, you can get an ordinary positional function
-;; version with positional-eager-compile.
-
-(def positional-stats (graph/positional-eager-compile stats-graph [:xs]))
-
-(deftest positional-stats-test
-  (let [output (positional-stats [1 2 3 6])]
-    ;; The output is a record, not a map.
-    (is (and (not (instance? clojure.lang.PersistentHashMap  output))
-             (not (instance? clojure.lang.PersistentArrayMap output))))
-    (is (= (/ 7 2) (:v output)))))
-
-;; On the other hand, if you're worried about the computational expense of
-;; compiling, you can reduce it from a few tens of milliseconds (usually not a
-;; problem unless you're doing it many times) to a few milliseconds by using
-;; interpreted-eager-compile. But the resulting function will be a bit slower.
-
-(def interpreted-stats (graph/interpreted-eager-compile stats-graph))
-
-(deftest positional-stats-test
-  (let [output (interpreted-stats {:xs [1 2 3 6]})]
-    ;; The output is a map.
-    (is (or (instance? clojure.lang.PersistentHashMap  output)
-            (instance? clojure.lang.PersistentArrayMap output)))
-    (is (= (/ 7 2) (:v output)))))
+;; interested in the details, see below under "Compiling Graphs".
 
 
 ;; 3.  We can ask stats-graph for information about its inputs and outputs
@@ -458,9 +433,10 @@
   (let [in {:x 3}
         out {:a 4 :b1 8 :b2 1 :c 9}]
     ;; eager computes everything before returning
-    (let [eager (graph/interpreted-eager-compile slow-graph)
+    (let [eager (graph/eager-compile slow-graph)
           eager-out (timed-is 650 identity (eager in))]
-      (timed-is 0 true? (= out eager-out)))
+      ;; into {} because eager-compile returns a record for speed.
+      (timed-is 0 true? (= out (into {} eager-out))))
 
     ;; lazy computes stuff as needed
     (let [lazy (graph/lazy-compile slow-graph)
@@ -473,6 +449,59 @@
     (let [par (graph/par-compile slow-graph)
           par-out (timed-is 0 keys (par in))]
       (timed-is 450 true? (= out (into {} par-out)))))) ;; :b1 and :b2 are done in parallel
+
+;; There are also some compilation modes for performance tuning. If you're
+;; going to call your graph in an inner loop, where creating and destructuring
+;; maps would be too expensive, you can get an ordinary positional function
+;; version with positional-eager-compile.
+
+(def fast-graph
+  (graph/graph
+   :a (fnk [x] (inc x))
+   :b1 (fnk [a] (* a 2))
+   :b2 (fnk [a] (- a 3))
+   :c (fnk [b1 b2] (+ b1 b2))))
+
+(deftest positional-graph-test
+  (let [out {:a 4 :b1 8 :b2 1 :c 9}
+        positional-fast (graph/positional-eager-compile fast-graph [:x])
+        output (positional-fast 3)]
+    ;; The output is a record, not a map.
+    (is (and (not (instance? clojure.lang.PersistentHashMap  output))
+             (not (instance? clojure.lang.PersistentArrayMap output))))
+    (is (= out (into {} output)))))
+
+;; You won't get all the speedup if you have fnks that expect graph parameters,
+;; though, such as
+;;   (fnk [x & more])
+;;   (fnk [x y :as all])
+;;   (fn->fnk (fn [m]) {:x true})
+
+;; It's also worth noting that eager-compile does many of the same
+;; optimizations on the inside, so it also returns a record, not a map.
+
+(deftest eager-graph-test
+  (let [out {:a 4 :b1 8 :b2 1 :c 9}
+        eager-fast (graph/eager-compile fast-graph)
+        output (eager-fast {:x 3})]
+    ;; The output is a record, not a map.
+    (is (and (not (instance? clojure.lang.PersistentHashMap  output))
+             (not (instance? clojure.lang.PersistentArrayMap output))))
+    (is (= out (into {} output)))))
+
+;; On the other hand, if you're worried about the computational expense of
+;; compiling, you can reduce it from a few tens of milliseconds (usually not a
+;; problem unless you're doing it many times) to a few milliseconds by using
+;; interpreted-eager-compile. But the resulting function will be a bit slower.
+
+(deftest interpreted-graph-test
+  (let [out {:a 4 :b1 8 :b2 1 :c 9}
+        interpreted-fast (graph/interpreted-eager-compile fast-graph)
+        output (interpreted-fast {:x 3})]
+    ;; The output is a map.
+    (is (or (instance? clojure.lang.PersistentHashMap  output)
+            (instance? clojure.lang.PersistentArrayMap output)))
+    (is (= out (into {} output)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
