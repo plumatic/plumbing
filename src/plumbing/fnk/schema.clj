@@ -1,20 +1,20 @@
 (ns plumbing.fnk.schema
   "A very simple type system for nested maps with keyword keys, used by fnk and kin.
 
-   Input schemata specify required and optional arguments to a fnk using a nested 
+   Input schemata specify required and optional arguments to a fnk using a nested
    map structure that parallels the desired input shape.  The leaves of an input schema
    are true (for a required key) or false (for an optional key).  Non-leaf keys are always
    required.  See 'satisfies-schema?' below for examples.
-  
+
    Similarly, output schemata specify the keys outputted by a fnk (if the fnk outputs a map)
    using a similar nested map structure.  The leaves of an output schema are always true
-   (for keys guaranteed to be in the output).  If the output schema is just 'true', then 
+   (for keys guaranteed to be in the output).  If the output schema is just 'true', then
    no claims are made about the output of the function (i.e., it may not even be a map).")
 
 
 ;;; Helper
 
-(defmacro assert-iae 
+(defmacro assert-iae
   "Like assert, but throws an IllegalArgumentException not an Error (and also takes args to format)"
   [form & format-args]
   `(when-not ~form (throw (IllegalArgumentException. (format ~@format-args)))))
@@ -30,7 +30,7 @@
         (map? i2) i2
         :else (or i1 i2)))
 
-(defn required-toplevel-keys 
+(defn required-toplevel-keys
   "Which top-level keys are required (i.e., non-false) by this input schema."
   [input-schema]
   (keep
@@ -42,54 +42,12 @@
 
 ;;; Output schemata
 
-(defn- parse-explicit-output-schema-spec
-  "Convert an output schema spec (where leaf meaps can be given as seqs of keys) to 
-   an ordinary output schema.  
-
-   For example, (= (parse-output-schema {:a [:b :c]}) {:a {:b true :c true}})"
-  [s]
-  (cond (map? s)
-        (do (assert-iae (every? keyword? (keys s)) "Output schema has non-keyword keys: %s" s)
-            (into {} (for [[k v] s] [k (parse-explicit-output-schema-spec v)])))
-
-        (coll? s)
-        (do (assert-iae (every? keyword? s) "Output schema has non-keyword keys: %s" s)
-            (into {} (for [k s] [k true])))
-
-        :else
-        (do (assert-iae (true? s) "Output schema has non-true leaf: %s" s)
-            true)))
-
-(defn guess-expr-output-schema 
+(defn guess-expr-output-schema
   "Guess an output schema for an expr.  Currently just looks for literal map structure."
   [expr]
   (if (map? expr)
     (into {} (for [[k v] expr] [k (guess-expr-output-schema v)]))
     true))
-
-(defn- intersect-output-schemata 
-  "Combine information from an explicit output schema and guess from examining a body expr."
-  [expr-schema explicit-schema]
-  (cond (true? expr-schema) explicit-schema
-        (true? explicit-schema) expr-schema
-        :else
-        (do (assert-iae (and (map? expr-schema) (map? explicit-schema))
-                        "Non-map schema in %s or %s" expr-schema explicit-schema)
-            (assert-iae (every? expr-schema (keys explicit-schema))
-                        "Explicit schema %s claims impossible keys given expr-schema %s" explicit-schema  expr-schema)
-            (into {}                  
-                  (for [[k v] expr-schema]
-                    [k (intersect-output-schemata v (explicit-schema k true))])))))
-
-(defn make-output-schema 
-  "Take an expr and an (possibly partial or absent) explicit specification of the output schema of the expr,
-   and return the most specific output schema inferrable from these specifications."
-  [body-expr explicit-spec]
-  (intersect-output-schemata 
-   (guess-expr-output-schema body-expr)
-   (parse-explicit-output-schema-spec explicit-spec)))
-
-
 
 ;;; Combining inputs and outputs.
 
@@ -131,7 +89,7 @@
 
 
 (defn compose-schemata
-  "Given pairs of input and output schemata for fnks f1 and f2, 
+  "Given pairs of input and output schemata for fnks f1 and f2,
    return a pair of input and output schemata for #(f2 (merge % (f1 %)))"
   [[i2 o2] [i1 o1]]
   (assert-iae (map? o1) "Schema is not a map: %s" o1)
@@ -151,11 +109,10 @@
     [(reduce
       (fn [in [new-in-k new-in-v]]
         (if (contains? o1 new-in-k)
-          (do 
+          (do
             (assert-satisfies-schema new-in-v (o1 new-in-k))
             in)
           (assoc in new-in-k (union-input-schemata (in new-in-k) new-in-v))))
       i1
       i2)
      (merge o1 o2)]))
-

@@ -7,7 +7,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Clojure immutable maps
 
-(defn safe-select-keys 
+(defn safe-select-keys
   "Like select-keys, but asserts that all keys are present."
   [m ks]
   (doseq [k ks]
@@ -31,24 +31,24 @@
   [f & maps]
   (when (some identity maps)
     (let [merge-entry (fn [m e]
-			(let [k (key e) v (val e)]
-			  (if (contains? m k)
-			    (assoc m k (f k (get m k) v))
-			    (assoc m k v))))
+                        (let [k (key e) v (val e)]
+                          (if (contains? m k)
+                            (assoc m k (f k (get m k) v))
+                            (assoc m k v))))
           merge2 (fn [m1 m2]
-		   (reduce merge-entry (or m1 {}) (seq m2)))]
+                   (reduce merge-entry (or m1 {}) (seq m2)))]
       (reduce merge2 maps))))
 
 (defn flatten
   "Transform a nested map into a seq of [keyseq leaf-val] pairs"
   [m]
   (when m
-   ((fn flatten-helper [keyseq m]
-      (when m
-        (if (map? m)
-          (mapcat (fn [[k v]] (flatten-helper (conj keyseq k) v)) m)
-          [[keyseq m]])))
-    [] m)))
+    ((fn flatten-helper [keyseq m]
+       (when m
+         (if (map? m)
+           (mapcat (fn [[k v]] (flatten-helper (conj keyseq k) v)) m)
+           [[keyseq m]])))
+     [] m)))
 
 (defn unflatten
   "Transform a seq of [keyseq leaf-val] pairs into a nested map.
@@ -59,38 +59,38 @@
 
 ;; TODO: make sure we're safe with false here -- pretty sure we're not.  Same for nil.
 (defn map-leaves-and-path
-  "Takes a nested map and returns a nested map with the same shape, where each 
+  "Takes a nested map and returns a nested map with the same shape, where each
    (non-map) leaf v is transformed to (f key-seq v).
    key-seq is the sequence of keys to reach this leaf, starting at the root."
   ([f m] (when m (map-leaves-and-path f [] m)))
   ([f ks m]
      (if-not (map? m)
-       (f ks m)       
+       (f ks m)
        (plumbing/for-map [[k v] m]
          k
          (map-leaves-and-path f (conj ks k) v)))))
 
 (defn keep-leaves-and-path
-  "Takes a nested map and returns a nested map with the same shape, where each 
+  "Takes a nested map and returns a nested map with the same shape, where each
    (non-map) leaf v is transformed to (f key-seq v), or removed if it returns nil.
    key-seq is the sequence of keys to reach this leaf, starting at the root.
    Empty maps produced by this pruning are themselves pruned from the output."
   ([f m] (keep-leaves-and-path f [] m))
   ([f ks m]
-      (if-not (map? m)
-        (f ks m)
-        (plumbing/for-map [[k ov] m
-                           :let [nv (keep-leaves-and-path f (conj ks k) ov)]
-                           :when (not (or (nil? nv) (and (map? nv) (empty? nv))))]
-          k nv))))
+     (if-not (map? m)
+       (f ks m)
+       (plumbing/for-map [[k ov] m
+                          :let [nv (keep-leaves-and-path f (conj ks k) ov)]
+                          :when (not (or (nil? nv) (and (map? nv) (empty? nv))))]
+         k nv))))
 
 (defn map-leaves
-  "Takes a nested map and returns a nested map with the same shape, where each 
+  "Takes a nested map and returns a nested map with the same shape, where each
    (non-map) leaf v is transformed to (f v)."
   ([f m] (map-leaves-and-path (fn [_ l] (f l)) m)))
 
 (defn keep-leaves
-  "Takes a nested map and returns a nested map with the same shape, where each 
+  "Takes a nested map and returns a nested map with the same shape, where each
    (non-map) leaf v is transformed to (f v), or removed if it returns nil.
    Empty maps produced by this pruning are themselves pruned from the output."
   ([f m] (keep-leaves-and-path (fn [_ l] (f l)) m)))
@@ -109,25 +109,25 @@
 
 (defmacro get!
   "Get the value in java.util.Map m under key k.  If the key is not present,
-   set the value to the result of default-expr and return it.  Useful for 
+   set the value to the result of default-expr and return it.  Useful for
    constructing mutable nested structures on the fly.
-  
+
    (.add ^List (get! m :k (java.util.ArrayList.)) :foo)"
   [m k default-expr]
   `(let [^java.util.Map m# ~m k# ~k]
      (or (.get m# k#)
-	 (let [nv# ~default-expr]
-	   (.put m# k# nv#)
-	   nv#))))
+         (let [nv# ~default-expr]
+           (.put m# k# nv#)
+           nv#))))
 
-(defn inc-key! 
+(defn inc-key!
   "Increment the value in java.util.Map m under key k by double d."
   [^java.util.Map m k ^double d]
   (.put m k (if-let [v (.get m k)]
-	      (+ (double v) d)
-	      d)))
+              (+ (double v) d)
+              d)))
 
-(defn inc-key-in! 
+(defn inc-key-in!
   "Increment the value in java.util.Map m under key-seq ks by double d,
    creating and storing HashMaps under missing keys on the path to this leaf."
   [^java.util.Map m ks ^double d]
@@ -153,12 +153,12 @@
     m))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Ops on graphs represented as maps. 
+;;; Ops on graphs represented as maps.
 
-(defn topological-sort 
+(defn topological-sort
   "Take an adjacency list representation of a graph (a map from node names to
    sequences of child node names), and return a topological ordering of the node
-   names in linear time, or throw an error if the graph is cyclic.  
+   names in linear time, or throw an error if the graph is cyclic.
    If include-leaves? is false the ordering will only include keys from child-map,
    and if true it will also include nodes only named as children in child-map."
   [child-map & [include-leaves?]]
@@ -170,13 +170,13 @@
       (when include-leaves? (when-not (.containsKey e c) (.put e c nil)))
       (update-key! re c #(cons p %)))
     (while (not (.isEmpty e))
-     ((fn dfs1 [n]
-        (when (.containsKey e n) 
-          (let [nns (.get e n)]
-            (.remove e n)
-            (doseq [nn nns] (dfs1 nn)))
-          (.push s n)))
-      (first (keys e))))
+      ((fn dfs1 [n]
+         (when (.containsKey e n)
+           (let [nns (.get e n)]
+             (.remove e n)
+             (doseq [nn nns] (dfs1 nn)))
+           (.push s n)))
+       (first (keys e))))
     (let [candidate (reverse (seq s))]
       (doseq [c candidate
               r (.remove re c)]

@@ -11,9 +11,9 @@
 ;;; Maps
 
 (defmacro for-map
- "Like 'for' for building maps. Same bindings except the body should have a 
+ "Like 'for' for building maps. Same bindings except the body should have a
   key-expression and value-expression. If a key is repeated, the last
-  value (according to \"for\" semantics) will be retained.  
+  value (according to \"for\" semantics) will be retained.
 
   (= (for-map [i (range 2) j (range 2)] [i j] (even? (+ i j)))
      {[0 0] true, [0 1] false, [1 0] false, [1 1] true})
@@ -78,22 +78,22 @@
    (into [] (map keywordize-map x))
    x))
 
-(defmacro lazy-get 
+(defmacro lazy-get
   "Like get but lazy about default"
   [m k d]
-  `(if-let [pair# (find ~m ~k)] 
+  `(if-let [pair# (find ~m ~k)]
      (val pair#)
      ~d))
 
-(defn safe-get 
+(defn safe-get
   "Like get but throw an exception if not found"
-  [m k] 
+  [m k]
   (lazy-get m k (throw (IllegalArgumentException. (format "Key %s not found in %s" k m)))))
 
 (defn safe-get-in
   "Like get-in but throws exception if not found"
   [m ks]
-  (if (seq ks) 
+  (if (seq ks)
     (recur (safe-get m (first ks)) (next ks))
     m))
 
@@ -101,9 +101,9 @@
   "Like assoc but only assocs when value is truthy"
   [m & kvs]
   (assert (even? (count kvs)))
-  (into m 
+  (into m
    (for [[k v] (partition 2 kvs)
-         :when v]	 
+         :when v]
      [k v])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -115,13 +115,13 @@
   (lazy-cat (first s) (when-let [n (next s)] (aconcat n))))
 
 (defn unchunk
-  "Takes a seqable and returns a lazy sequence that 
+  "Takes a seqable and returns a lazy sequence that
    is maximally lazy and doesn't realize elements due to either
    chunking or apply.
-  
-   Useful when you don't want chunking, for instance, 
+
+   Useful when you don't want chunking, for instance,
    (first awesome-website? (map slurp +a-bunch-of-urls+))
-   may slurp up to 31 unneed webpages, wherease 
+   may slurp up to 31 unneed webpages, wherease
    (first awesome-website? (map slurp (unchunk +a-bunch-of-urls+)))
    is guaranteed to stop slurping after the first awesome website.
 
@@ -131,7 +131,7 @@
     (cons (first s)
           (lazy-seq (unchunk (rest s))))))
 
-(defn sum  
+(defn sum
   "Return sum of (f x) for each x in xs"
   ([f xs] (reduce + (map f xs)))
   ([xs] (reduce + xs)))
@@ -162,13 +162,13 @@
     (doseq [x xs]
       (.put res x (unchecked-inc (int (or (.get res x) 0)))))
     (into {} res)))
- 
-(defn distinct-fast 
+
+(defn distinct-fast
   "Like clojure.core/distinct, but faster.
    Uses Java's equal/hash, so may produce incorrect results if
    given values that are = but not .equal"
-  [xs] 
-  (let [s (java.util.HashSet.)] 
+  [xs]
+  (let [s (java.util.HashSet.)]
     (filter #(when-not (.contains s %) (.add s %) true) xs)))
 
 (defn distinct-by
@@ -183,7 +183,7 @@
       (do (.add s id)
 	  x))))
 
-(defn distinct-id 
+(defn distinct-id
   "Like distinct but uses reference rather than value identity, very clojurey"
   [xs]
   (let [s (java.util.IdentityHashMap.)]
@@ -191,7 +191,7 @@
       (.put s x true))
     (iterator-seq (.iterator (.keySet s)))))
 
-(defn interleave-all 
+(defn interleave-all
   "Analogy: partition:partition-all :: interleave:interleave-all"
   [& colls]
   (lazy-seq
@@ -211,7 +211,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Control flow
 
-(defmacro ?>> 
+(defmacro ?>>
   "Conditional double-arrow operation (->> nums (?>> inc-all? map inc))"
   [do-it? f & args]
   `(if ~do-it?
@@ -227,26 +227,26 @@
 
 (defmacro fn->
   "Equivalent to `(fn [x] (-> x ~@body))"
-  [& body] 
+  [& body]
   `(fn [x#] (-> x# ~@body)))
 
 (defmacro fn->>
   "Equivalent to `(fn [x] (->> x ~@body))"
-  [& body] 
+  [& body]
   `(fn [x#] (->> x# ~@body)))
 
-(defmacro <- 
+(defmacro <-
   "Converts a ->> to a ->
 
    (->> (range 10) (map inc) (<- (doto prn)) (reduce +))
 
-   Jason W01fe is happy to give a talk anywhere any time on 
+   Jason W01fe is happy to give a talk anywhere any time on
    the calculus of arrow macros"
   [& body]
   `(-> ~(last body) ~@(butlast body)))
 
 (defmacro memoized-fn
-  "Like fn, but memoized (including recursive calls). 
+  "Like fn, but memoized (including recursive calls).
 
    The clojure.core memoize correctly caches recursive calls when you do a top-level def
    of your memozied function, but if you want an annoymous fibonacci function, you must use
@@ -291,10 +291,10 @@
 
 (defmacro letk
   "Keyword let.  Accepts an interleaved sequence of binding forms and map forms like:
-   (letk [[a {b 2} [:e f g] c d {e 4} :as m & more] a-map ...] & body)
-   a, c, d, and e are required keywords, and letk will barf if not in a-map.
+   (letk [[a {b 2} [:f g h] c d {e 4} :as m & more] a-map ...] & body)
+   a, c, d, and f are required keywords, and letk will barf if not in a-map.
    b and e are optional, and will be bound to default values if not present.
-   f and g are required keys in the map found under :e.
+   g and h are required keys in the map found under :f.
    m will be bound to the entire map (a-map).
    more will be bound to all the unbound keys (ie (dissoc a-map :a :b :c :d :e)).
    :as and & are both optional, but must be at the end in the specified order if present."
@@ -312,13 +312,13 @@
   "Keyword fn, using letk.  Stores input and output schemata in metadata.
    Fn accepts a single explicit map i.e., (f {:foo :bar})
    Explicit top-level map structure will be recorded in output spec, or
-   to capture implicit structure use ^{:output-schema output-schema-spec} 
+   to capture implicit structure use ^{:output-schema output-schema}
    metadata on the binding form."
   [& args]
   (let [[name? [bind & body]] (if (symbol? (first args))
                                 [(first args) (next args)]
                                 [nil args])]
-    (fnk-impl/fnk* name? bind body)))
+    (fnk-impl/fnk-form name? bind body)))
 
 (defmacro defnk
   "Analogy: fn:fnk :: defn::defnk"
@@ -327,8 +327,8 @@
         [docstring? args] (take-if string? args)
         [attr-map? [bind & body]] (take-if map? args)]
     (schema/assert-iae (symbol? name) "Name for defnk is not a symbol: %s" name)
-    (let [f (fnk-impl/fnk* name bind body)]
-      `(def ~(with-meta name (assoc-when (or attr-map? {}) :doc docstring?))
+    (let [f (fnk-impl/fnk-form name bind body)]
+      `(def ~(with-meta name (merge (meta name) (assoc-when (or attr-map? {}) :doc docstring?)))
          ~f))))
 
 (set! *warn-on-reflection* false)
