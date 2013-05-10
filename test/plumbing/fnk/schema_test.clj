@@ -25,12 +25,12 @@
           (partition 3 [true {:x true} {:x 2 :y 3}
                         true {:x true :z false} {:x 2 :y 3}
                         true {:x true :z true} {:x 2 :y 3 :z 1}
-                        false {:x true :z true} {:x 2 :y 3}                        
+                        false {:x true :z true} {:x 2 :y 3}
                         true {:x {:y true :z false}} {:x {:y 1}}
                         false {:x {:y true :z false}} {:x 1}
                         false {:x {:y true :z false}} {:x {:z 1}}])]
-    (if-not yes? 
-      (is (thrown? Exception (assert-satisfies-schema x y))) 
+    (if-not yes?
+      (is (thrown? Exception (assert-satisfies-schema x y)))
       (is (do (assert-satisfies-schema x y) true)))))
 
 (deftest compose-schemata-test
@@ -41,7 +41,7 @@
            {:x true}]
           [{:c true :d true}
            {:b {:b1 true}}])))
-  
+
   (is (= [{:a true :e false :c true :d true}
           {:x true}]
          (compose-schemata
@@ -49,8 +49,8 @@
            {:x true}]
           [{:c true :d true}
            {:b {:b1 true} :c true :f true}])))
-  
-  (is (thrown? Exception 
+
+  (is (thrown? Exception
                (compose-schemata
                 [{:a true :b {:b1 true} :c true}
                  {:x true}]
@@ -60,11 +60,11 @@
 (deftest sequence-schemata-test
   (is (= [{:a true :b false} {:c true :o2 {:o21 true}}]
          (sequence-schemata [{:a true} {:c true}] [:o2 [{:b false :c true} {:o21 true}]])))
-  (is (thrown? IllegalArgumentException 
+  (is (thrown? IllegalArgumentException
                (sequence-schemata [{:a true} {:c true}] [:o2 [{:b false :c true :o2 true} {:o21 true}]])))
-  (is (thrown? IllegalArgumentException 
+  (is (thrown? IllegalArgumentException
                (sequence-schemata [{:a true} {:c true :o2 true}] [:o2 [{:b false :c true} {:o21 true}]])))
-  (is (thrown? IllegalArgumentException 
+  (is (thrown? IllegalArgumentException
                (sequence-schemata [{:a true :o2 true} {:c true}] [:o2 [{:b false :c true} {:o21 true}]]))))
 
 

@@ -11,7 +11,7 @@
 ;;; Maps
 
 (defmacro for-map
- "Like 'for' for building maps. Same bindings except the body should have a
+  "Like 'for' for building maps. Same bindings except the body should have a
   key-expression and value-expression. If a key is repeated, the last
   value (according to \"for\" semantics) will be retained.
 
@@ -20,14 +20,14 @@
 
   An optional symbol can be passed as a first argument, which will be
   bound to the transient map containing the entries produced so far."
- ([seq-exprs key-expr val-expr]
-    `(for-map ~(gensym "m") ~seq-exprs ~key-expr ~val-expr))
- ([m-sym seq-exprs key-expr val-expr]
-    `(let [m-atom# (atom (transient {}))]
-       (doseq ~seq-exprs
-         (let [~m-sym @m-atom#]
-           (reset! m-atom# (assoc! ~m-sym ~key-expr ~val-expr))))
-       (persistent! @m-atom#))))
+  ([seq-exprs key-expr val-expr]
+     `(for-map ~(gensym "m") ~seq-exprs ~key-expr ~val-expr))
+  ([m-sym seq-exprs key-expr val-expr]
+     `(let [m-atom# (atom (transient {}))]
+        (doseq ~seq-exprs
+          (let [~m-sym @m-atom#]
+            (reset! m-atom# (assoc! ~m-sym ~key-expr ~val-expr))))
+        (persistent! @m-atom#))))
 
 (defn map-vals
   "Build map k -> (f v) for [k v] in map m"
@@ -69,14 +69,14 @@
    to have keyword keys instead of string"
   [x]
   (condp instance? x
-   clojure.lang.IPersistentMap
-   (for-map [[k v] x]
-     (if (string? k) (keyword k) k) (keywordize-map v))
-   clojure.lang.IPersistentList
-   (map keywordize-map x)
-   clojure.lang.IPersistentVector
-   (into [] (map keywordize-map x))
-   x))
+    clojure.lang.IPersistentMap
+    (for-map [[k v] x]
+      (if (string? k) (keyword k) k) (keywordize-map v))
+    clojure.lang.IPersistentList
+    (map keywordize-map x)
+    clojure.lang.IPersistentVector
+    (into [] (map keywordize-map x))
+    x))
 
 (defmacro lazy-get
   "Like get but lazy about default"
@@ -102,9 +102,9 @@
   [m & kvs]
   (assert (even? (count kvs)))
   (into m
-   (for [[k v] (partition 2 kvs)
-         :when v]
-     [k v])))
+        (for [[k v] (partition 2 kvs)
+              :when v]
+          [k v])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Seqs
@@ -178,10 +178,10 @@
   [f xs]
   (let [s (java.util.HashSet.)]
     (for [x xs
-	  :let [id (f x)]
-	  :when (not (.contains s id))]
+          :let [id (f x)]
+          :when (not (.contains s id))]
       (do (.add s id)
-	  x))))
+          x))))
 
 (defn distinct-id
   "Like distinct but uses reference rather than value identity, very clojurey"
@@ -252,15 +252,15 @@
    of your memozied function, but if you want an annoymous fibonacci function, you must use
    memoized-fn rather than memoize to cache the recursive calls."
   [name args & body]
-   `(let [a# (atom {})]
-      (fn ~name ~args
-        (let [m# @a#
-              args# ~args]
-          (if-let [[_# v#] (find m# args#)]
-            v#
-            (let [v# (do ~@body)]
-              (swap! a# assoc args# v#)
-              v#))))))
+  `(let [a# (atom {})]
+     (fn ~name ~args
+       (let [m# @a#
+             args# ~args]
+         (if-let [[_# v#] (find m# args#)]
+           v#
+           (let [v# (do ~@body)]
+             (swap! a# assoc args# v#)
+             v#))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Miscellaneous

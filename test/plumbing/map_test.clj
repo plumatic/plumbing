@@ -27,14 +27,14 @@
   (is (=
        {"k1" "v1" :k1 :v2}
        (merge-with-key
-         (fn [k v1 v2]
-           (if (string? k)
-             v1
-             v2))
-         {"k1" "v1"
-          :k1 :v1}
-         {"k1" "v2"
-          :k1 :v2}))))
+        (fn [k v1 v2]
+          (if (string? k)
+            v1
+            v2))
+        {"k1" "v1"
+         :k1 :v1}
+        {"k1" "v2"
+         :k1 :v2}))))
 
 (deftest flatten-test
   (is (empty? (flatten nil)))

@@ -121,7 +121,7 @@
            :z (fnk [x] (* x 10))}
           ;; Graphs modified at runtime
           complex-graph-modified (assoc (dissoc complex-graph :z)
-                                        :e (fnk [x [:cg cga]] (+ cga (rem x cga))))]
+                                   :e (fnk [x [:cg cga]] (+ cga (rem x cga))))]
       (is (= (run-fn (compile-fn complex-graph-modified)
                      {:x 1
                       :ignored 2})

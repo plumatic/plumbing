@@ -6,7 +6,7 @@
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl])
   (:import
-    clojure.lang.IFn))
+   clojure.lang.IFn))
 
 (defn def-graph-record
   "Define a record for the output of a graph. It is usable as a function to be
@@ -45,7 +45,7 @@
   "Evaluate a form with some symbols bound to some values."
   [form bindings]
   ((eval `(fn [~(->> bindings (mapv first))] ~form))
-     (map second bindings)))
+   (map second bindings)))
 
 (defn graph-form
   "Construct [body-form bindings-needed-for-eval] for a positional graph."
@@ -55,10 +55,10 @@
         [needed-bindings value-bindings] (graph-let-bindings g value-syms)
         record-type (def-graph-record g)]
     [`(fn
-       positional-graph#  ;; Name it just for kicks.
-       ~(mapv value-syms arg-keywords)
-       (let ~(vec (apply concat value-bindings))
-         (new ~record-type ~@(->> g pfnk/output-schema keys (mapv value-syms)))))
+        positional-graph#  ;; Name it just for kicks.
+        ~(mapv value-syms arg-keywords)
+        (let ~(vec (apply concat value-bindings))
+          (new ~record-type ~@(->> g pfnk/output-schema keys (mapv value-syms)))))
      needed-bindings]))
 
 (defn positional-flat-compile

@@ -136,7 +136,7 @@
    :tminK (fnk [tmin] (to-kelvin tmin))
    :ea (fnk [tmin] (sat-vapour-pressure tmin))
    :term1 (fnk [tmaxK tminK {s 4.903e-9}]
-               (-> (Math/pow tmaxK 4) (+ (Math/pow tminK 4)) (* s) (/ 2)))
+            (-> (Math/pow tmaxK 4) (+ (Math/pow tminK 4)) (* s) (/ 2)))
    :term2 (fnk [ea] (-> (Math/sqrt ea) (* -0.14) (+ 0.34)))
    :term3 (fnk [Rs Rso] (-> (* 1.35 Rs) (/ Rso) (- 0.35)))
    :Rnl (fnk [term1 term2 term3] (* term1 term2 term3))
@@ -183,20 +183,20 @@
      (let [a 0.23]
        (solar-rad-from-temp-fn-calls kRs lat alt tmax tmin day-of-year a)))
   ([kRs lat alt tmax tmin day-of-year a]
-   (let [Ra (fn-call [day-of-year lat] (solar-rad-et day-of-year lat))
-         Rs (fn-call [tmax tmin kRs Ra] (-> (- tmax tmin) Math/sqrt (* kRs Ra)))
-         Rso (fn-call [alt Ra] (-> (* 2e-5 alt) (+ 0.75) (* Ra)))
-         Rns (fn-call [a Rs] (-> (- 1 a) (* Rs)))
-         tmaxK (fn-call [tmax] (to-kelvin tmax))
-         tminK (fn-call [tmin] (to-kelvin tmin))
-         ea (fn-call [tmin] (sat-vapour-pressure tmin))
-         term1 (fn-call [tmaxK tminK]
-                    (-> (Math/pow tmaxK 4) (+ (Math/pow tminK 4)) (* 4.903e-9) (/ 2)))
-         term2 (fn-call [ea] (-> (Math/sqrt ea) (* -0.14) (+ 0.34)))
-         term3 (fn-call [Rs Rso] (-> (* 1.35 Rs) (/ Rso) (- 0.35)))
-         Rnl (fn-call [term1 term2 term3] (* term1 term2 term3))
-         Rn  (fn-call [Rns Rnl] (- Rns Rnl))]
-     (new SolarRadRecord Ra Rs Rso Rns tmaxK tminK ea term1 term2 term3 Rnl Rn))))
+     (let [Ra (fn-call [day-of-year lat] (solar-rad-et day-of-year lat))
+           Rs (fn-call [tmax tmin kRs Ra] (-> (- tmax tmin) Math/sqrt (* kRs Ra)))
+           Rso (fn-call [alt Ra] (-> (* 2e-5 alt) (+ 0.75) (* Ra)))
+           Rns (fn-call [a Rs] (-> (- 1 a) (* Rs)))
+           tmaxK (fn-call [tmax] (to-kelvin tmax))
+           tminK (fn-call [tmin] (to-kelvin tmin))
+           ea (fn-call [tmin] (sat-vapour-pressure tmin))
+           term1 (fn-call [tmaxK tminK]
+                          (-> (Math/pow tmaxK 4) (+ (Math/pow tminK 4)) (* 4.903e-9) (/ 2)))
+           term2 (fn-call [ea] (-> (Math/sqrt ea) (* -0.14) (+ 0.34)))
+           term3 (fn-call [Rs Rso] (-> (* 1.35 Rs) (/ Rso) (- 0.35)))
+           Rnl (fn-call [term1 term2 term3] (* term1 term2 term3))
+           Rn  (fn-call [Rns Rnl] (- Rns Rnl))]
+       (new SolarRadRecord Ra Rs Rso Rns tmaxK tminK ea term1 term2 term3 Rnl Rn))))
 
 (defn -main
   [& args]
@@ -224,8 +224,8 @@
   (println "Eager positional fn")
   (println "  compiling")
   (let [solar-rad-pos-graph-pos (time (graph/positional-eager-compile
-                                        (into {} solar-rad-from-temp)
-                                        [:lat :alt :tmin :tmax :doy]))]
+                                       (into {} solar-rad-from-temp)
+                                       [:lat :alt :tmin :tmax :doy]))]
     (println "  gives value" (solar-rad-pos-graph-pos 45.0 100.0 15.0 25.0 205))
     (dotimes [_ 10]
       (time (dotimes [_ 10000]
