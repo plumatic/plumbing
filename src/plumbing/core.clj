@@ -285,8 +285,6 @@
 (defn millis ^long []
   (System/currentTimeMillis))
 
-(def take-drop (juxt take drop))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; fnk
 
