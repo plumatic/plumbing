@@ -151,9 +151,10 @@
         [[(keyword binding) binding] body-expr]
 
         (map? binding)
-        (let [[bs ov] (first binding)]
-          [[(keyword bs) bs]
-           `(let [~bs (if (identical? +none+ ~bs) ~ov ~bs)]
+        (let [[bs ov] (first binding)
+              bind-sym (gensym (name bs))]
+          [[(keyword bs) bind-sym]
+           `(let [~bs (if (identical? +none+ ~bind-sym) ~ov ~bind-sym)]
               ~body-expr)])
 
         (vector? binding)

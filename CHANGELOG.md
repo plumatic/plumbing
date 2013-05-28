@@ -1,3 +1,6 @@
+## 0.2.0
+ * Fix bug when aliasing optional values with arg names, i.e. `(let [a 1] ((fnk [{a a}] a) {}))`
+
 ## 0.1.0
  * Minor bugfixes and improved tests
  * Perf improvements for `map-keys` and `map-vals` (thanks [bendlas](https://github.com/bendlas)!)

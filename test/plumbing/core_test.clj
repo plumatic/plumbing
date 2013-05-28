@@ -333,6 +333,13 @@
   (is (thrown? Exception (eval '(fnk [{x {:y 1}} [:x y] :as m] (+ x y)))))
   (is (thrown? Exception (eval '(fnk [{x {:y 1}} x :as m] (+ x y))))))
 
+(deftest optional-shadow-test
+  (is (= (let [b 1] ((fnk [{a b}] a) {})) 1))
+  (is (= (let [a 1] ((fnk [{a a}] a) {})) 1))
+  (is (= (let [a 1] ((fnk [{a a}] a) {:a 2})) 2))
+  (is (= (let [a 1] ((fnk [{a a} :as m] a) {})) 1))
+  (is (= (let [a 1] ((fnk [{a a} :as m] a) {:a 2})) 2)))
+
 (deftest dont-shadow-nested-test
   (let [m {:x 1}]
     (is (= 3 ((fnk [[:m x]] (+ x (:x m))) {:m {:x 2}})))))
