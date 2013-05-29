@@ -271,6 +271,32 @@
     (is (thrown? Throwable
                  (letk [[a] {:b 2}] a)))))
 
+(deftest letk-self-shadow-test
+  (is (= 2 (let [a 1] (letk [[{a a}] {:a 2}] a))))
+  (is (= 1 (let [a 1] (letk [[{a a}] {}] a)))))
+
+(deftest letk-single-shadow-test
+  (let [a 1 b 2 c 3 e 4 e 5]
+    (is (= [8 8 8 5 10] (letk [[c {a c} {b a} {d e} e] {:c 8 :e 10}] [a b c d e])))
+    (is (= [8 8 8 5 10] (letk [[c [:nest {a c} {b a} {d e}] e] {:c 8 :e 10 :nest {}}] [a b c d e])))))
+
+(deftest letk-dont-require-map-for-nested-only-as
+  (is (= 1 (letk [[[:a :as a]] {:a 1}] a))))
+
+(deftest letk-no-multiple-binding-test
+  (is (thrown? Exception (eval '(letk [[a a] {:a 1}] a))))
+  (is (= 1 (letk [[a] {:a 1} [a] {:a a}] a))))
+
+(deftest letk-multi-shadow-test
+  (let [a 1 b 2 c 3 e 4 e 5
+        inp {:c 8 :e 10}]
+    (is (= [8 8 8 5 10] (letk [[c] inp
+                               [{a c}] inp
+                               [{b a}] inp
+                               [{d e}] inp
+                               [e] inp]
+                          [a b c d e])))))
+
 (deftest fnk-test
   (let [call-count (atom 0)
         om {:a 1 :c 3 :d 4 :e 17 :g 22}]
@@ -333,12 +359,24 @@
   (is (thrown? Exception (eval '(fnk [{x {:y 1}} [:x y] :as m] (+ x y)))))
   (is (thrown? Exception (eval '(fnk [{x {:y 1}} x :as m] (+ x y))))))
 
-(deftest optional-shadow-test
-  (is (= (let [b 1] ((fnk [{a b}] a) {})) 1))
-  (is (= (let [a 1] ((fnk [{a a}] a) {})) 1))
-  (is (= (let [a 1] ((fnk [{a a}] a) {:a 2})) 2))
-  (is (= (let [a 1] ((fnk [{a a} :as m] a) {})) 1))
-  (is (= (let [a 1] ((fnk [{a a} :as m] a) {:a 2})) 2)))
+(deftest optional-self-shadow-test
+  (is (= 1 (let [b 1] ((fnk [{a b}] a) {}))))
+  (doseq [[desc f] (let [a 1]
+                     {"pos" (fnk [{a a}] a)
+                      "non-pos" (fnk [{a a} :as m] a)})]
+    (testing desc
+      (is (= 1 (f {})))
+      (is (= 2 (f {:a 2}))))))
+
+(deftest optional-cross-arg-shadow-test
+  (doseq [[desc f] (let [a 1 b 2 c 3 e 4 e 5]
+                     {"pos" (fnk [c {a c} {b a} {d e} e] [a b c d e])
+                      "non-pos" (fnk [c {a c} {b a} {d e} e :as m] [a b c d e])})]
+    (testing desc
+      (is (= [6 7 8 9 10] (f {:a 6 :b 7 :c 8 :d 9 :e 10})))
+      (is (= [8 7 8 9 10] (f {:b 7 :c 8 :d 9 :e 10})))
+      (is (= [8 8 8 9 10] (f {:c 8 :d 9 :e 10})))
+      (is (= [8 8 8 5 10] (f {:c 8 :e 10}))))))
 
 (deftest dont-shadow-nested-test
   (let [m {:x 1}]

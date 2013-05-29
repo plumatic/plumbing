@@ -49,91 +49,84 @@
 
 ;;; Parsing new fnk binding style
 
-(defn- parse-letk-binding
-  "Parse a binding form into required [sym k] bindings (here sym~=k),
-   optional [sym v] bindings, nested {sym binding-form} bindings, and
-   possible :as and & symbols."
-  [binding-form]
+(declare letk-input-schema-and-body-form)
+
+;; TODO: unify this with positional version.
+(defn letk-arg-bind-sym-and-body-form
+  "Given a single element of a single letk binding form and a current body form, return
+   a map {:schema-entry :body-form} where schema-entry is a pair [bound-key required?],
+   and body-form wraps body with destructuring for this binding as necessary."
+  [map-sym binding key-path body-form]
+  (cond (symbol? binding)
+        {:schema-entry [(keyword binding) true]
+         :body-form `(let [~binding (safe-get ~map-sym ~(keyword binding) ~key-path)]
+                       ~body-form)}
+
+        (map? binding)
+        (let [[bound-sym opt-val-expr] (first binding)
+              bound-key (keyword bound-sym)]
+          (schema/assert-iae "optional binding has more than 1 entry: %s" binding)
+          {:schema-entry [bound-key false]
+           :body-form `(let [~bound-sym (get ~map-sym ~bound-key ~opt-val-expr)]
+                         ~body-form)})
+
+        (vector? binding)
+        (let [[bound-key & more] binding
+              {inner-input-schema :input-schema
+               inner-map-sym :map-sym
+               inner-body-form :body-form} (letk-input-schema-and-body-form
+                                            (vec more)
+                                            (conj key-path bound-key)
+                                            body-form)]
+          (schema/assert-iae
+           (keyword? bound-key)
+           "First element to nested binding not a keyword: %s" bound-key)
+          {:schema-entry [bound-key inner-input-schema]
+           :body-form `(let [~inner-map-sym (safe-get ~map-sym ~bound-key ~key-path)]
+                         ~inner-body-form)})
+
+        :else (throw (IllegalArgumentException. (format "bad binding: %s" binding)))))
+
+(defn letk-input-schema-and-body-form
+  "Given a single letk binding form, value form, key path, and body form, return a map
+   {:input-schema :map-sym :body-form} where input-schema is the schema imposed by
+   binding-form, map-sym is the symbol which it expects the bound value to be bound to, and
+   body-form wraps body in the bindings from binding-form from map-sym."
+  [binding-form key-path body-form]
   (schema/assert-iae (vector? binding-form) "Binding form is not vector: %s" binding-form)
   (let [[binding-form more-sym] (if (= (last (butlast binding-form)) '&)
                                   [(drop-last 2 binding-form)
                                    (doto (last binding-form)
-                                     (-> symbol? (schema/assert-iae "Argument to & not a symbol: %s"
-                                                                    binding-form)))]
+                                     (-> symbol? (schema/assert-iae
+                                                  "Argument to & not a symbol: %s"
+                                                  binding-form)))]
                                   [binding-form nil])
         [bindings as-sym]       (if (= (last (butlast binding-form)) :as)
                                   [(drop-last 2 binding-form)
                                    (doto (last binding-form)
-                                     (-> symbol? (schema/assert-iae "Argument to :as not a symbol: %s"
-                                                                    binding-form)))]
+                                     (-> symbol? (schema/assert-iae
+                                                  "Argument to :as not a symbol: %s"
+                                                  binding-form)))]
                                   [binding-form (gensym "map")])
-        [optional more]     ((juxt filter remove) map? bindings)
-        optional            (for [opt optional]
-                              (do (schema/assert-iae (and (= (count opt) 1) (symbol? (key (first opt))))
-                                                     "Invalid optional binding %s" opt)
-                                  (first opt)))
-        [nested more]       ((juxt filter remove) vector? more)
-        parsed-nested       (for [[sub-k & sub-bind] nested]
-                              (do (schema/assert-iae (keyword? sub-k)
-                                                     "First element to nested binding not a keyword: %s" sub-k)
-                                  [(gensym (name sub-k)) [sub-k (vec sub-bind)]]))
-        required            (concat
-                             (for [[s [k]] parsed-nested]
-                               [s k])
-                             (for [b more]
-                               (if (symbol? b)
-                                 [b (keyword b)]
-                                 (throw (RuntimeException. (format "Unsupported binding form %s" b))))))]
-    (schema/assert-iae (not (some #{'&} (map first required))) "Cannot bind to &")
-    (assert-distinct (concat (map (comp symbol name first) nested)
-                             (map first required) (map first optional) (remove nil? [more-sym as-sym])))
-    (assert-distinct (concat (map second required) (map first optional)))
-    {:required required :optional optional :nested parsed-nested :as as-sym :more more-sym}))
-
-(defn generate-letk-level
-  "Generate the binding form for a single level of 'letk' bindings (i.e., with no nested bindings)"
-  [{:keys [required optional as more]} map-form body key-path]
-  [`(let ~(vec
-           (concat
-            [as map-form]
-            (mapcat (fn [[r rk]] [r `(safe-get ~as ~rk ~key-path)]) required)
-            (mapcat (fn [[o v]] [o `(get ~as ~(keyword o) ~v)]) optional)
-            (when more
-              [more `(dissoc ~as ~@(map keyword (concat (map second required) (map first optional))))])))
-      ~@(when (or (seq required) (seq optional) more) ;; allow naked :as for non-map...
-          [`(schema/assert-iae (map? ~as) "Form to be destructured is not a map")])
-      ~@body)
-   (map first (concat required optional))
-   (into {}
-         (concat
-          (for [r (map second required)]
-            [(keyword r) true])
-          (for [o (map first optional)]
-            [(keyword o) false])))])
-
-(defn letk*
-  "Take a letk/fnk binding form, a form that generates a map to bind from, and a body, and
-   return a triple [output-form bound-syms input-schema], where:
-   -  output-form is the final output form that executes body in the scope of the provided bindings,
-   -  bound-syms is the set of symbols bound, which must be unique, and
-   -  input-schema is the input schema imposed on the map-form by the binding."
-  [binding-form map-form body & [key-path]]
-  (let [{:keys [nested,] :as parsed-binding} (parse-letk-binding binding-form)
-
-        [inner-form inner-bound-syms input-schema]
-        (reduce
-         (fn wrap-nested [[frm syms spec] [nest-sym [nest-k nest-b]]]
-           (let [[sub-frm sub-syms sub-spec] (letk* nest-b nest-sym frm (conj (or key-path []) nest-k))]
-             [(list sub-frm) (concat sub-syms syms) (assoc spec nest-k sub-spec)]))
-         [body [] {}]
-         nested)
-
-        [outer-form outer-bound-syms outer-input-schema]
-        (generate-letk-level parsed-binding map-form inner-form key-path)]
-    (assert-distinct (concat outer-bound-syms inner-bound-syms))
-    [outer-form
-     (distinct (concat outer-bound-syms inner-bound-syms))
-     (merge outer-input-schema input-schema)]))
+        [input-schema-elts bound-body-form] (reduce
+                                             (fn [[input-schema-elts cur-body] binding]
+                                               (let [{:keys [schema-entry body-form]}
+                                                     (letk-arg-bind-sym-and-body-form
+                                                      as-sym binding key-path cur-body)]
+                                                 [(conj input-schema-elts schema-entry)
+                                                  body-form]))
+                                             [[] body-form]
+                                             (reverse bindings))
+        final-body-form (if more-sym
+                          `(let [~more-sym (dissoc ~as-sym ~@(map (comp keyword first)
+                                                                  input-schema-elts))]
+                             ~bound-body-form)
+                          bound-body-form)]
+    (schema/assert-iae (not (some #{'&} (map first input-schema-elts))) "Cannot bind to &")
+    (assert-distinct (concat (map first input-schema-elts) (remove nil? [more-sym as-sym])))
+    {:input-schema (into {} input-schema-elts)
+     :map-sym as-sym
+     :body-form final-body-form}))
 
 ;;; Positional fnks
 
@@ -146,24 +139,27 @@
    a pair [[k bind-sym] new-body-form] where bind-sym is a suitable symbol to bind
    to k in the fnk arglist (including tag metadata if applicable) and new-body-form
    is wrapped with destructuring for this binding as necessary."
-  [body-expr binding]
+  [binding body-form]
   (cond (symbol? binding)
-        [[(keyword binding) binding] body-expr]
+        (let [bind-sym (gensym (name binding))]
+          [[(keyword binding) bind-sym]
+           `(let [~binding ~bind-sym] ~body-form)])
 
         (map? binding)
         (let [[bs ov] (first binding)
               bind-sym (gensym (name bs))]
           [[(keyword bs) bind-sym]
            `(let [~bs (if (identical? +none+ ~bind-sym) ~ov ~bind-sym)]
-              ~body-expr)])
+              ~body-form)])
 
         (vector? binding)
         (let [[k & more] binding
-              bind-sym (gensym (name (first binding)))]
+              {:keys [map-sym body-form]} (letk-input-schema-and-body-form
+                                           (vec more) [] body-form)]
           [[k
-            (with-meta bind-sym
+            (with-meta map-sym
               (if (= (last (butlast binding)) :as) (meta (last binding)) {}))]
-           (first (letk* (vec more) bind-sym [body-expr]))])
+           body-form])
 
         :else (throw (IllegalArgumentException. (format "bad binding: %s" binding)))))
 
@@ -173,13 +169,13 @@
    to binding symbols and and new-body-form wraps body to do any extra processing
    of nested or optional bindings above and beyond the bindings achieved by
    bind-sym-vector."
-  [body-expr bind]
+  [bind body-form]
   (reduce
    (fn [[cur-bind cur-body] binding]
-     (let [[bind-sym new-body] (positional-arg-bind-sym-and-body cur-body binding)]
+     (let [[bind-sym new-body] (positional-arg-bind-sym-and-body binding cur-body)]
        [(conj cur-bind bind-sym) new-body]))
-   [{} body-expr]
-   bind))
+   [{} body-form]
+   (reverse bind)))
 
 
 (defn positional-info
@@ -294,16 +290,16 @@
    positional version).  If '& or :as are used, no such positional
    function is generated."
   [name? bind body]
-  (let [map-sym (gensym)
-        [fnk-body _ input-schema] (letk* bind map-sym body)
+  (let [{:keys [map-sym body-form input-schema]} (letk-input-schema-and-body-form
+                                                  bind [] `(do ~@body))
         schema [input-schema (or (:output-schema (meta bind))
                                  (schema/guess-expr-output-schema (last body)))]]
     (if (not-any? #{'& :as} bind) ;; If we can make a positional fnk form, do it.
-      (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body `(do ~@body) bind)]
+      (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body bind `(do ~@body))]
         (positional-fnk-form name? schema bind-sym-map [bound-body]))
       (pfnk/fn->fnk
        `(fn ~@(when name? [name?])
           [~map-sym]
           (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
-          ~fnk-body)
+          ~body-form)
        schema))))
