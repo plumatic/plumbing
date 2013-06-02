@@ -296,16 +296,24 @@
    g and h are required keys in the map found under :f.
    m will be bound to the entire map (a-map).
    more will be bound to all the unbound keys (ie (dissoc a-map :a :b :c :d :e)).
-   :as and & are both optional, but must be at the end in the specified order if present."
+   :as and & are both optional, but must be at the end in the specified order if present.
+   The same symbol cannot be bound multiple times within the same destructing level.
+
+   Optional values can reference symbols bound earlier within the same binding, i.e.,
+   (= [2 2] (let [a 1] (letk [[a {b a}] {:a 2}] [a b]))) but
+   (= [2 1] (let [a 1] (letk [[{b a} a] {:a 2}] [a b])))
+
+   If present, :as and :& symbols are bound before other symbols within the binding."
   [bindings & body]
   (schema/assert-iae (vector? bindings) "Letk binding must be a vector")
   (schema/assert-iae (even? (count bindings)) "Letk binding must have even number of elements")
-  (first
-   (reduce
-    (fn [body [f e]]
-      [(first (fnk-impl/letk* f e body))])
-    body
-    (reverse (partition 2 bindings)))))
+  (reduce
+   (fn [cur-body-form [bind-form value-form]]
+     (let [{:keys [map-sym body-form]} (fnk-impl/letk-input-schema-and-body-form
+                                        bind-form [] cur-body-form)]
+       `(let [~map-sym ~value-form] ~body-form)))
+   `(do ~@body)
+   (reverse (partition 2 bindings))))
 
 (defmacro fnk
   "Keyword fn, using letk.  Stores input and output schemata in metadata.
