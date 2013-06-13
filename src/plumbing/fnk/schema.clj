@@ -43,9 +43,10 @@
 ;;; Output schemata
 
 (defn guess-expr-output-schema
-  "Guess an output schema for an expr.  Currently just looks for literal map structure."
+  "Guess an output schema for an expr.  Currently just looks for literal map structure and
+   all keyword keys."
   [expr]
-  (if (map? expr)
+  (if (and (map? expr) (every? keyword? (keys expr)))
     (into {} (for [[k v] expr] [k (guess-expr-output-schema v)]))
     true))
 

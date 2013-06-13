@@ -1,7 +1,7 @@
 (ns plumbing.fnk.schema-test
-  (:use clojure.test plumbing.fnk.schema plumbing.core)
-  (:require [plumbing.fnk.schema :as schema]
-            [plumbing.fnk.pfnk :as pfnk]))
+  (:use clojure.test plumbing.core plumbing.fnk.schema)
+  (:require
+   [plumbing.fnk.pfnk :as pfnk]))
 
 
 (deftest union-input-schemata-test
@@ -18,7 +18,8 @@
 
 (deftest guess-expr-output-schema-test
   (is (= true (@#'guess-expr-output-schema "foo")))
-  (is (= {:a true :b true} (@#'guess-expr-output-schema {:a (+ 1 1) :b false}))))
+  (is (= {:a true :b true} (@#'guess-expr-output-schema {:a (+ 1 1) :b false})))
+  (is (= true (@#'guess-expr-output-schema {'a (+ 1 1)}))))
 
 (deftest assert-satisfies-schema-test
   (doseq [[yes? x y]

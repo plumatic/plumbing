@@ -320,9 +320,12 @@
     (is (= @call-count 4))
     (is (thrown? Throwable ((fnk [a] a) {:b 3})))
 
-    (let [f (fnk ^{:output-schema {:a true :b {:b1 true}}} []
-              (hash-map :a 1 :b {:b1 2}))]
-      (is (= (pfnk/output-schema f) {:a true :b {:b1 true}})))))
+    (doseq [f [(fnk [] {:a 1 :b {:b1 2}})
+               (fnk ^{:output-schema {:a true :b {:b1 true}}} []
+                 (hash-map :a 1 :b {:b1 2} :c 3))]]
+      (is (= (pfnk/output-schema f) {:a true :b {:b1 true}})))
+    (let [a :k]
+      (is (= (pfnk/output-schema (fnk [a] {a a})) true)))))
 
 (defnk keyfn-test-docstring "whoa" [dude {wheres :foo} :as my & car]
   [dude wheres my car])
