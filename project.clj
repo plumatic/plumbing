@@ -8,4 +8,5 @@
                  [de.kotka/lazymap "3.1.0" :exclusions [org.clojure/clojure]]]
   :profiles {:1.4    {:dependencies [[org.clojure/clojure "1.4.0"]]}
              :dev {}}
+  :jvm-opts ^:replace []
   :aliases {"all" ["with-profile" "dev:dev,1.4"]})
