@@ -101,7 +101,7 @@
   "Like assoc but only assocs when value is truthy"
   [m & kvs]
   (assert (even? (count kvs)))
-  (into m
+  (into (or m {})
         (for [[k v] (partition 2 kvs)
               :when v]
           [k v])))

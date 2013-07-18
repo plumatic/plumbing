@@ -88,6 +88,7 @@
   (is (thrown? Exception (safe-get-in {:a {:b 2}} [:a :b :d]))))
 
 (deftest assoc-when-test
+  (is (= {:a 1} (assoc-when nil :a 1)))
   (is (= {:a 1 :c 2} (assoc-when {:a 1} :b nil :c 2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
