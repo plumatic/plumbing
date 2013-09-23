@@ -97,8 +97,6 @@
   [(union-input-schemata (filter-and-match-schemata i2 o1) i1)
    o2])
 
-()
-
 (defn sequence-schemata
   "Given pairs of input and output schemata for fnks f1 and f2, and a keyword k,
    return a pair of input and output schemata for #(let [v1 (f1 %)] (assoc v1 k (f2 (merge-disjoint % v1))))"
