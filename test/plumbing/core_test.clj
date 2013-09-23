@@ -91,9 +91,19 @@
   (is (= {:a 1} (assoc-when nil :a 1)))
   (is (= {:a 1 :c 2} (assoc-when {:a 1} :b nil :c 2))))
 
+(deftest update-in-when-test
+  (is (= nil (update-in-when nil [:a] inc)))
+  (is (= {:a {:b 2}} (update-in-when {:a {:b 2}} [:a :c] inc)))
+  (is (= {} (update-in-when {} [:foo :bar] inc)))
+  (is (= {:foo 2 :bar 1})
+      (update-in-when {:foo 1 :bar 1} [:foo] inc))
+  (is (= {:a {:b 3 :z 5}} (update-in-when {:a {:b 2 :z 5}} [:a :b] inc))))
+
+(deftest grouped-map-test
+  (is (= {:a [1 2] :b [3]} (grouped-map first second [[:a 1] [:b 3] [:a 2]]))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Seqs
-
 
 (deftest aconcat-test
   (is (= [1 2 3 4 5 6] (aconcat [[1 2 3] [4 5 6]]))))
@@ -185,6 +195,18 @@
 (deftest count-when-test
   (is (= 5 (count-when even? (range 10)))))
 
+(deftest conj-when-test
+  (is (= [:a :b :c]
+         (conj-when [:a] :b nil :c))))
+
+(deftest cons-when-test
+  (is (= [1 2] (cons-when nil [1 2])))
+  (is (= [1 2] (cons-when false [1 2])))
+  (is (= [3 1 2] (cons-when 3 [1 2]))))
+
+(deftest rsort-by-test
+  (is (= [5 4 3 2 1] (rsort-by identity [3 2 1 4 5]))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Control flow
 
@@ -225,6 +247,12 @@
                   (map-keys inc)
                   (<- (update-in [2] inc)
                       (map [2 4])))))))
+
+(deftest as->>-test
+  (is (= [1 2 3]
+         (->> (range 5)
+              (map inc)
+              (as->> x (drop-last 2 x))))))
 
 (deftest memoized-fn-test
   (let [calls (atom 0)]

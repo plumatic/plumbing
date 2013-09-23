@@ -106,6 +106,26 @@
               :when v]
           [k v])))
 
+(defn update-in-when
+  "Like update-in but returns m unchanged if key-seq is not present."
+  [m key-seq f & args]
+  (let [found (get-in m key-seq ::sent)]
+    (if-not (identical? ::sent found)
+      (assoc-in m key-seq (apply f found args))
+      m)))
+
+(defn grouped-map
+  "Like group-by, but accepts a map-fn that is applied to values before
+   collected."
+  [key-fn map-fn coll]
+  (persistent!
+   (reduce
+    (fn [ret x]
+      (let [k (key-fn x)]
+        (assoc! ret k (conj (get ret k []) (map-fn x)))))
+    (transient {}) coll)))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Seqs
 
@@ -206,7 +226,24 @@
   [pred xs]
   (count (filter pred xs)))
 
+(defn conj-when
+  "Like conj but ignores non-truthy values"
+  ([coll x] (if x (conj coll x) coll))
+  ([coll x & xs]
+     (if xs
+       (recur (conj-when coll x)
+              (first xs)
+              (next xs))
+       (conj-when coll x))))
 
+(defn cons-when
+  "Like cons but does nothing if x is non-truthy."
+  [x s]
+  (if x (cons x s) s))
+
+(def rsort-by
+  "Like sort-by, but prefers higher values rather than lower ones."
+  (comp reverse sort-by))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Control flow
@@ -244,6 +281,11 @@
    the calculus of arrow macros"
   [& body]
   `(-> ~(last body) ~@(butlast body)))
+
+(defmacro as->>
+  "Like as->, but can be used in double arrow."
+  [name & forms-and-expr]
+  `(as-> ~(last forms-and-expr) ~name ~@(butlast forms-and-expr)))
 
 (defmacro memoized-fn
   "Like fn, but memoized (including recursive calls).
