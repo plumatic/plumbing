@@ -88,7 +88,7 @@
 (defn safe-get
   "Like get but throw an exception if not found"
   [m k]
-  (lazy-get m k (throw (IllegalArgumentException. (format "Key %s not found in %s" k m)))))
+  (lazy-get m k (throw (IllegalArgumentException. (format "Key %s not found in %s" k (mapv key m))))))
 
 (defn safe-get-in
   "Like get-in but throws exception if not found"
