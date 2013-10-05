@@ -5,8 +5,9 @@
             :distribution :repo}
   :url "https://github.com/Prismatic/plumbing"
   :dependencies [[org.clojure/clojure "1.5.1"]
+                 [prismatic/schema "0.1.6"]
                  [de.kotka/lazymap "3.1.0" :exclusions [org.clojure/clojure]]]
-  :profiles {:1.4    {:dependencies [[org.clojure/clojure "1.4.0"]]}
+  :profiles {:1.4 {:dependencies [[org.clojure/clojure "1.4.0"]]}
              :dev {}}
   :jvm-opts ^:replace []
   :aliases {"all" ["with-profile" "dev:dev,1.4"]})
