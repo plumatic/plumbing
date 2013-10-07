@@ -2,29 +2,43 @@
   (:use plumbing.core plumbing.graph clojure.test)
   (:require
    [clojure.walk :as walk]
+   [schema.core :as s]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
 
+(defn convert-old-schema [s]
+  (if (map? s)
+    (into {}
+          (for [[k v] s]
+            (if (false? v)
+              [(s/optional-key k) s/Any]
+              [k (convert-old-schema v)])))
+    (do (assert (true? s)) s/Any)))
+
+(def convert-old-schemas (partial mapv convert-old-schema))
 
 (deftest graph-construction-test
   ;; io-schemata works correctly for flat graphs
-  (is (= [{:x true :z true :q false :y false :r false}
-          {:foo {:foox true :fooy true} :bar true}]
+  (is (= (convert-old-schemas
+          [{:x true :z true :q false :y false :r false}
+           {:foo {:foox true :fooy true} :bar true}])
          (pfnk/io-schemata
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
                  :bar (fnk [foo z {q 4} {r 1}] [foo z])))))
 
   ;; io-schemata works correctly for nested graphs
-  (is (= [{:x true :q false :y false}
-          {:foo {:foox true :fooy true} :bar {:a true :baz {:foo true}}}]
+  (is (= (convert-old-schemas
+          [{:x true :q false :y false}
+           {:foo {:foox true :fooy true} :bar {:a true :baz {:foo true}}}])
          (pfnk/io-schemata
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
                  :bar {:a (fnk [foo] (inc foo))
                        :baz {:foo (fnk [x] x)}}))))
 
   ;; io-schemata works correctly for inline graphs
-  (is (= [{:x true :q false :y false :b true}
-          {:foo {:foox true :fooy true} :a true :baz {:foo true} :z true}]
+  (is (= (convert-old-schemas
+          [{:x true :q false :y false :b true}
+           {:foo {:foox true :fooy true} :a true :baz {:foo true} :z true}])
          (pfnk/io-schemata
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
                  (graph
@@ -191,20 +205,20 @@
              (out {:a 1 :d 5})))
       (is (= {:a 1 :b 5 :c 4 :d 5 :e 2}
              (out {:a 1 :c 4 :d 5})))
-      (is (= {:a true :d true :c false :q false}
+      (is (= (convert-old-schema {:a true :d true :c false :q false})
              (pfnk/input-schema out))))
     (let [out (comp-partial-fn in (fnk [d a {q 2}] {:b d :e (inc a) :c q}))]
       (is (= {:a 1 :b 5 :c 2 :d 5 :e 2}
              (out {:a 1 :d 5})))
       (is (= {:a 1 :b 5 :c 2 :d 5 :e 2}
              (out {:a 1 :c 4 :d 5})))
-      (is (= {:a true :d true :q false}
+      (is (= (convert-old-schema {:a true :d true :q false})
              (pfnk/input-schema out)))))
 
   (let [in2 (fnk [[:a a1] b] (+ a1 b))]
     (let [out (comp-partial-fn in2 (fnk [x] {:a {:a1 x} :b (inc x)}))]
       (is (= 3 (out {:x 1})))
-      (is (= {:x true} (pfnk/input-schema out))))
+      (is (= {:x s/Any} (pfnk/input-schema out))))
     (is (thrown? Exception (comp-partial-fn in2 (fnk [x] {:a x :b (inc x)})))))
 
   (is (= 10 ((comp-partial-fn (fnk [x {y 2} z] (+ x y z)) (fnk [] {:x 7}))
@@ -221,23 +235,28 @@
 (deftest instance-test
   ;; on a fnk, instance should just return a fnk.
   (is (= 21 ((instance (fnk [x] (inc x)) [y] {:x (* y 2)}) {:y 10})))
+  (is (= 23 ((instance (fnk [x {z 1}] (+ x z)) [y] {:z (* y 2)}) {:x 3 :y 10})))
 
   (let [raw-g {:x (fnk [a] (* a 2))
                :y (fnk [x] (+ x 1))}
         inst-g (instance raw-g [z] {:a (+ z 5)})]
-    (is (= {:z true} (pfnk/input-schema inst-g)))
-    (is (= {:x true :y true} (select-keys (pfnk/output-schema inst-g) [:x :y])))
+    (is (= {:z s/Any} (pfnk/input-schema inst-g)))
+    (is (= {:x s/Any :y s/Any} (select-keys (pfnk/output-schema inst-g) [:x :y])))
 
     (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y])))
 
     (is (thrown? Exception (instance raw-g [z] {:q 22}))))
 
   (let [raw-g {:x (fnk [[:a a1]] (* a1 2))
-               :y (fnk [x] (+ x 1))}]
+               :y (fnk [x {o 1}] (+ x o))}]
     (let [inst-g (instance raw-g [z] {:a {:a1 (+ z 5)}})]
-      (is (= {:z true} (pfnk/input-schema inst-g)))
-      (is (= {:x true :y true} (select-keys (pfnk/output-schema inst-g) [:x :y])))
+      (is (= {:z s/Any (s/optional-key :o) s/Any} (pfnk/input-schema inst-g)))
+      (is (= {:x s/Any :y s/Any} (select-keys (pfnk/output-schema inst-g) [:x :y])))
       (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y]))))
+    (testing "optional keys"
+      (let [inst-o (instance raw-g [z] {:a {:a1 (+ z 5)} :o 10})]
+        (is (= {:z s/Any} (pfnk/input-schema inst-o)))
+        (is (= {:x 16 :y 26} (select-keys (run inst-o {:z 3}) [:x :y])))))
     (is (thrown? Exception (instance raw-g [z] {:a z})))))
 
 

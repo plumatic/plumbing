@@ -1,81 +1,97 @@
 (ns plumbing.fnk.schema-test
   (:use clojure.test plumbing.core plumbing.fnk.schema)
   (:require
+   [schema.core :as s]
+   [schema.test :as schema-test]
    [plumbing.fnk.pfnk :as pfnk]))
 
 
+(deftest merge-on-with-test
+  (is (= {0 5 4 9 9 12}
+         (#'plumbing.fnk.schema/merge-on-with #(quot % 2) min + {1 2 4 9 9 4} {9 8 0 3}))))
+
 (deftest union-input-schemata-test
-  (is (= {:a true}
-         (union-input-schemata {:a true} {:a false})))
-  (is (= {:a {:a1 true}}
-         (union-input-schemata {:a true} {:a {:a1 true}})))
-  (is (= {:a {:a1 false :a2 true :a3 true} :b false}
-         (union-input-schemata {:a {:a1 false :a2 false} :b false} {:a {:a2 true :a3 true}}))))
+  (is (= {:a s/Any}
+         (union-input-schemata {:a s/Any} {:a s/Any})))
+  (is (= {:a String}
+         (union-input-schemata {:a String} {(s/optional-key :a) String})))
+  (is (= {:a String}
+         (union-input-schemata {(s/optional-key :a) String} {:a s/Any})))
+  (is (= {:a (s/both String Object)}
+         (union-input-schemata {(s/optional-key :a) String} {:a Object})))
+  (is (= {:a {(s/optional-key :a1) String
+              :a2 Object
+              :a3 String}
+          (s/optional-key :b) Object}
+         (union-input-schemata {:a {(s/optional-key :a1) String
+                                    (s/optional-key :a2) Object}
+                                (s/optional-key :b) Object}
+                               {:a {:a2 Object :a3 String}}))))
 
 (deftest required-toplevel-keys-test
   (is (= #{:a :b}
-         (set (required-toplevel-keys {:a {:a1 true} :b true :c false})))))
+         (set (required-toplevel-keys {:a {:a1 String} :b Long (s/optional-key :c) Object})))))
 
 (deftest guess-expr-output-schema-test
-  (is (= true (@#'guess-expr-output-schema "foo")))
-  (is (= {:a true :b true} (@#'guess-expr-output-schema {:a (+ 1 1) :b false})))
-  (is (= true (@#'guess-expr-output-schema {'a (+ 1 1)}))))
-
-(deftest assert-satisfies-schema-test
-  (doseq [[yes? x y]
-          (partition 3 [true {:x true} {:x 2 :y 3}
-                        true {:x true :z false} {:x 2 :y 3}
-                        true {:x true :z true} {:x 2 :y 3 :z 1}
-                        false {:x true :z true} {:x 2 :y 3}
-                        true {:x {:y true :z false}} {:x {:y 1}}
-                        false {:x {:y true :z false}} {:x 1}
-                        false {:x {:y true :z false}} {:x {:z 1}}])]
-    (if-not yes?
-      (is (thrown? Exception (assert-satisfies-schema x y)))
-      (is (do (assert-satisfies-schema x y) true)))))
+  (is (= s/Any (@#'guess-expr-output-schema "foo")))
+  (is (= {:a s/Any :b s/Any} (@#'guess-expr-output-schema {:a (+ 1 1) :b false})))
+  (is (= s/Any (@#'guess-expr-output-schema {'a (+ 1 1)}))))
 
 (deftest compose-schemata-test
-  (is (= [{:a true :c true :d true}
-          {:x true}]
+  (is (= [{:a s/Any :c s/Any :d s/Any}
+          {:x s/Any}]
          (compose-schemata
-          [{:a true :b {:b1 true} :c true}
-           {:x true}]
-          [{:c true :d true}
-           {:b {:b1 true}}])))
+          [{:a s/Any :b {:b1 s/Any} :c s/Any}
+           {:x s/Any}]
+          [{:c s/Any :d s/Any}
+           {:b {:b1 s/Any}}])))
 
-  (is (= [{:a true :e false :c true :d true}
-          {:x true}]
+  (is (= [{:a s/Any (s/optional-key :e) s/Any :c s/Any :d s/Any}
+          {:x s/Any}]
          (compose-schemata
-          [{:a true :b {:b1 true} :c false :e false :f false}
-           {:x true}]
-          [{:c true :d true}
-           {:b {:b1 true} :c true :f true}])))
+          [{:a s/Any
+            :b {:b1 s/Any}
+            (s/optional-key :c) s/Any
+            (s/optional-key :e) s/Any
+            (s/optional-key :f) s/Any}
+           {:x s/Any}]
+          [{:c s/Any :d s/Any}
+           {:b {:b1 s/Any} :c s/Any :f s/Any}])))
 
   (is (thrown? Exception
                (compose-schemata
-                [{:a true :b {:b1 true} :c true}
-                 {:x true}]
-                [{:c true :d true}
-                 {:b true}]))))
+                [{:a s/Any :b {:b1 s/Any} :c s/Any}
+                 {:x s/Any}]
+                [{:c s/Any :d s/Any}
+                 {:b s/Any}]))))
 
 (deftest sequence-schemata-test
-  (is (= [{:a true :b false} {:c true :o2 {:o21 true}}]
-         (sequence-schemata [{:a true} {:c true}] [:o2 [{:b false :c true} {:o21 true}]])))
+  (is (= [{:a s/Any (s/optional-key :b) s/Any} {:c s/Any :o2 {:o21 s/Any}}]
+         (sequence-schemata [{:a s/Any} {:c s/Any}] [:o2 [{(s/optional-key :b) s/Any :c s/Any} {:o21 s/Any}]])))
   (is (thrown? IllegalArgumentException
-               (sequence-schemata [{:a true} {:c true}] [:o2 [{:b false :c true :o2 true} {:o21 true}]])))
+               (sequence-schemata [{:a s/Any} {:c s/Any}] [:o2 [{(s/optional-key :b) s/Any :c s/Any :o2 s/Any} {:o21 s/Any}]])))
   (is (thrown? IllegalArgumentException
-               (sequence-schemata [{:a true} {:c true :o2 true}] [:o2 [{:b false :c true} {:o21 true}]])))
+               (sequence-schemata [{:a s/Any} {:c s/Any :o2 s/Any}] [:o2 [{(s/optional-key :b) s/Any :c s/Any} {:o21 s/Any}]])))
   (is (thrown? IllegalArgumentException
-               (sequence-schemata [{:a true :o2 true} {:c true}] [:o2 [{:b false :c true} {:o21 true}]]))))
+               (sequence-schemata [{:a s/Any :o2 s/Any} {:c s/Any}] [:o2 [{(s/optional-key :b) s/Any :c s/Any} {:o21 s/Any}]]))))
 
 
 (deftest fnk-input-schemata-test
-  (are [in fnk-form] (= in (first (pfnk/io-schemata fnk-form)))
-       {:x true :y true} (fnk [x y])
-       {:x true :y false :z true} (fnk [x {y 2} z])
-       {:x true :y false :z true :q {:r true}} (fnk [x {y 2} z [:q r] :as m & more])
-       {:x false :y {:alias true}} (fnk [ {x 1} [:y alias]])
-       {:o1 false :o2 true :o3 {:x true :y false :z true :q {:r true}}} (fnk [{o1 1} o2 [:o3 x {y 2} z [:q r]]]))
+  (are [in fnk-form] (= in (pfnk/input-schema fnk-form))
+       {:x s/Any :y s/Any}
+       (fnk [x y])
+
+       {:x s/Any (s/optional-key :y) s/Any :z s/Any}
+       (fnk [x {y 2} z])
+
+       {:x s/Any (s/optional-key :y) s/Any :z s/Any :q {:r s/Any}}
+       (fnk [x {y 2} z [:q r] :as m & more])
+
+       {(s/optional-key :x) s/Any :y {:alias s/Any}}
+       (fnk [ {x 1} [:y alias]])
+
+       {(s/optional-key :o1) s/Any :o2 s/Any :o3 {:x s/Any (s/optional-key :y) s/Any :z s/Any :q {:r s/Any}}}
+       (fnk [{o1 1} o2 [:o3 x {y 2} z [:q r]]]))
   (is (= [1 2] ((eval `(fnk [[:x ~'x] [:y ~'y]] [~'x ~'y])) {:x {:x 1} :y {:y 2}})))
   (is (thrown? Throwable (eval `(fnk [{:y ~'x} {:y ~'y}] [~'x ~'y]))))
   (is (thrown? Throwable (eval `(fnk [{:x ~'x} {:y ~'x}] [~'x]))))
@@ -84,12 +100,12 @@
 
 (deftest fnk-out-schemata-test
   ;; Are somehow breaks the metadata on fnk forms.
-  (is (= true (second (pfnk/io-schemata (fnk [])))))
-  (is (= true (second (pfnk/io-schemata (fnk [] (hash-map :x :y))))))
-  (is (= {:o1 true :o2 {:i true :j {:q true}}} (second (pfnk/io-schemata (fnk  [x] {:o1 x :o2 {:i x :j {:q 2}}})))))
-  (is (= {:o1 true :o2 true} (second (pfnk/io-schemata (fnk ^{:output-schema {:o1 true :o2 true}} [x])))))
-  (is (= {:o1 true :o2 true} (second (pfnk/io-schemata (fnk ^{:output-schema {:o1 true :o2 true}} [x])))))
-  (is (= {:o1 true :o2 true} (second (pfnk/io-schemata (fnk ^{:output-schema {:o1 true :o2 true}} [x])))))
-  (is (= {:o1 true :o2 true} (second (pfnk/io-schemata (fnk ^{:output-schema {:o1 true :o2 true}} [x]
-                                                         {:o1 x :o2 {:i x :j {:q 2}}})))))
-  (is (fn? (eval `(fnk ^{:output-schema {:o1 true}} [] {:o1 2})))))
+  (is (= s/Any (pfnk/output-schema (fnk []))))
+  (is (= s/Any (pfnk/output-schema (fnk [] (hash-map :x :y)))))
+  (is (= {:o1 s/Any :o2 {:i s/Any :j {:q s/Any}}} (pfnk/output-schema (fnk [x] {:o1 x :o2 {:i x :j {:q 2}}}))))
+  (is (= {:o1 s/Any :o2 s/Any} (pfnk/output-schema (fnk f :- {:o1 s/Any :o2 s/Any} [x]))))
+  (is (= {:o1 s/Any :o2 s/Any} (pfnk/output-schema (fnk f :- {:o1 s/Any :o2 s/Any} [x]
+                                                     {:o1 x :o2 {:i x :j {:q 2}}}))))
+  (is (fn? (eval `(fnk f :- {:o1 s/Any} [] {:o1 2})))))
+
+(use-fixtures :once schema-test/validate-schemas)

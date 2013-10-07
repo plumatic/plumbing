@@ -23,9 +23,13 @@
    an example use."
   (require
    [clojure.set :as set]
+   [schema.core :as s]
+   [schema.macros :as sm]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]))
 
+
+;; TODO: turn & into extra schema.
 
 ;;; Helpers
 
@@ -58,15 +62,16 @@
    and body-form wraps body with destructuring for this binding as necessary."
   [map-sym binding key-path body-form]
   (cond (symbol? binding)
-        {:schema-entry [(keyword binding) true]
+        {:schema-entry [(keyword binding) s/Any] ;; TODO schema processing
          :body-form `(let [~binding (safe-get ~map-sym ~(keyword binding) ~key-path)]
                        ~body-form)}
 
         (map? binding)
         (let [[bound-sym opt-val-expr] (first binding)
               bound-key (keyword bound-sym)]
-          (schema/assert-iae "optional binding has more than 1 entry: %s" binding)
-          {:schema-entry [bound-key false]
+          (schema/assert-iae (= 1 (count binding))
+                             "optional binding has more than 1 entry: %s" binding)
+          {:schema-entry [(s/optional-key bound-key) s/Any] ;; TODO: schema processing.
            :body-form `(let [~bound-sym (get ~map-sym ~bound-key ~opt-val-expr)]
                          ~body-form)})
 
@@ -118,12 +123,13 @@
                                              [[] body-form]
                                              (reverse bindings))
         final-body-form (if more-sym
-                          `(let [~more-sym (dissoc ~as-sym ~@(map (comp keyword first)
+                          `(let [~more-sym (dissoc ~as-sym ~@(map (comp keyword s/explicit-schema-key first)
                                                                   input-schema-elts))]
                              ~bound-body-form)
                           bound-body-form)]
     (schema/assert-iae (not (some #{'&} (map first input-schema-elts))) "Cannot bind to &")
-    (assert-distinct (concat (map first input-schema-elts) (remove nil? [more-sym as-sym])))
+    (assert-distinct (concat (map (comp symbol name s/explicit-schema-key first) input-schema-elts)
+                             (remove nil? [more-sym as-sym])))
     {:input-schema (into {} input-schema-elts)
      :map-sym as-sym
      :body-form final-body-form}))
@@ -226,14 +232,14 @@
   (schema/assert-iae (positional-info fnk)
                      "Called positional-fn on a fnk without a positional form")
   (let [input-schema (pfnk/input-schema fnk)
-        missing-args (remove (set arg-ks) (keys input-schema))
-        [missing-opt missing-req] ((juxt filter remove) #(false? (input-schema %)) missing-args)
-        extra-args (remove (partial contains? input-schema) arg-ks)
+        missing-args (remove (comp (set arg-ks) s/explicit-schema-key) (keys input-schema))
+        [missing-opt missing-req] ((juxt filter remove) s/optional-key? missing-args)
+        extra-args (remove (partial schema/possibly-contains? input-schema) arg-ks)
         arg-syms (mapv (comp symbol name) arg-ks)
         [pos-fn pos-args] (efficient-call-forms
                            fnk
                            (merge (zipmap arg-ks arg-syms)
-                                  (zipmap missing-opt (repeat +none+))))]
+                                  (zipmap (map s/explicit-schema-key missing-opt) (repeat +none+))))]
     (schema/assert-iae (and (empty? missing-req) (empty? extra-args))
                        "Invalid positional args %s missing %s, with extra %s"
                        arg-ks missing-req extra-args)
@@ -259,21 +265,24 @@
      (positional-fnk-form
       name?
       io-schemata
-      (into {} (for [k (keys input-schema)] [k (symbol (name k))]))
+      (into {} (for [k (map s/explicit-schema-key (keys input-schema))] [k (symbol (name k))]))
       body))
   ([name? [input-schema :as io-schemata] arg-sym-map body]
-     (let [[opt-ks req-ks] ((juxt filter remove) #(false? (input-schema %)) (keys input-schema))
-           pos-args (mapv #(safe-get arg-sym-map % []) (keys input-schema))]
+     (let [[opt-ks req-ks] ((juxt filter remove) s/optional-key? (keys input-schema))
+           pos-args (mapv #(safe-get arg-sym-map % []) (map s/explicit-schema-key (keys input-schema)))]
        `(let [pos-fn# (fn ~@(when name? [(symbol (str name? "-positional"))])
                         ~pos-args
                         ~@body)]
           (vary-meta (pfnk/fn->fnk
                       (fn [m#]
                         (plumbing.core/letk [~(into (mapv (comp symbol name) req-ks)
-                                                    (mapv #(hash-map (symbol (name %)) +none+) opt-ks)) m#]
-                          (pos-fn# ~@(map (comp symbol name) (keys input-schema)))))
+                                                    (mapv #(hash-map (symbol (name %)) +none+)
+                                                          (map s/explicit-schema-key opt-ks)))
+                                             m#]
+                          (pos-fn# ~@(mapv (comp symbol name s/explicit-schema-key)
+                                           (keys input-schema)))))
                       ~io-schemata)
-                     assoc ::positional-info [pos-fn# ~(vec (keys input-schema))])))))
+                     assoc ::positional-info [pos-fn# ~(mapv s/explicit-schema-key(keys input-schema))])))))
 
 ;;; Generating fnk bodies
 
@@ -292,8 +301,10 @@
   [name? bind body]
   (let [{:keys [map-sym body-form input-schema]} (letk-input-schema-and-body-form
                                                   bind [] `(do ~@body))
-        schema [input-schema (or (:output-schema (meta bind))
-                                 (schema/guess-expr-output-schema (last body)))]]
+        explicit-output-schema (if name? (sm/extract-schema-form name?) `s/Any)
+        schema [input-schema (if (= explicit-output-schema `s/Any)
+                               (schema/guess-expr-output-schema (last body))
+                               explicit-output-schema)]]
     (if (not-any? #{'& :as} bind) ;; If we can make a positional fnk form, do it.
       (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body bind `(do ~@body))]
         (positional-fnk-form name? schema bind-sym-map [bound-body]))

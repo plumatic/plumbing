@@ -1,6 +1,7 @@
 (ns plumbing.core-test
   (:use clojure.test plumbing.core)
   (:require
+   [schema.core :as s]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
 
@@ -350,11 +351,11 @@
     (is (thrown? Throwable ((fnk [a] a) {:b 3})))
 
     (doseq [f [(fnk [] {:a 1 :b {:b1 2}})
-               (fnk ^{:output-schema {:a true :b {:b1 true}}} []
+               (fnk f :- {:a s/Any :b {:b1 s/Any}} []
                  (hash-map :a 1 :b {:b1 2} :c 3))]]
-      (is (= (pfnk/output-schema f) {:a true :b {:b1 true}})))
+      (is (= (pfnk/output-schema f) {:a s/Any :b {:b1 s/Any}})))
     (let [a :k]
-      (is (= (pfnk/output-schema (fnk [a] {a a})) true)))))
+      (is (= (pfnk/output-schema (fnk [a] {a a})) s/Any)))))
 
 (defnk keyfn-test-docstring "whoa" [dude {wheres :foo} :as my & car]
   [dude wheres my car])
@@ -366,7 +367,7 @@
   (is (= [11 :foo {:dude 11 :sweet 17} {:sweet 17}]
          (keyfn-test-docstring {:dude 11 :sweet 17})))
   (is (= [:foo :sf] (keyfn-test-no-docstring {:foo :foo})))
-  (is (= [{:foo true :city false} true]
+  (is (= [{:foo s/Any (s/optional-key :city) s/Any} s/Any]
          (pfnk/io-schemata keyfn-test-no-docstring)))
   (is (thrown? Throwable (keyfn-test-docstring :wheres :mycar))))
 
@@ -386,6 +387,8 @@
 (deftest ^:slow repeated-bindings-test
   (is (thrown? Exception (eval '(fnk [x [:x y]] (+ x y)))))
   (is (thrown? Exception (eval '(fnk [{x {:y 1}} [:x y]] (+ x y)))))
+  (is (thrown? Exception (eval '(fnk [x :as x] (+ x y)))))
+  (is (thrown? Exception (eval '(fnk [x & x] (+ x y)))))
   (is (thrown? Exception (eval '(fnk [{x {:y 1}} x] (+ x y)))))
   (is (thrown? Exception (eval '(fnk [x [:x y] :as m] (+ x y)))))
   (is (thrown? Exception (eval '(fnk [{x {:y 1}} [:x y] :as m] (+ x y)))))

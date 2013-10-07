@@ -22,6 +22,7 @@
    For more details and examples of Graphs, see test/plumbing/graph_examples_test.clj."
   (:require
    [lazymap.core :as lazymap]
+   [schema.core :as s]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]
@@ -50,7 +51,7 @@
           graph (->> (if-not (map? graph-nodes)
                        (map first graph-nodes)
                        (->> canonical-nodes
-                            (plumbing/map-vals (comp keys pfnk/input-schema))
+                            (plumbing/map-vals (comp (partial map s/explicit-schema-key) keys pfnk/input-schema))
                             map/topological-sort
                             reverse))
                      (mapcat #(find canonical-nodes %))
@@ -160,7 +161,7 @@
 (defn restricted-call
   "Call fnk f on the subset of keys its input schema explicitly asks for"
   [f in-m]
-  (f (select-keys in-m (keys (pfnk/input-schema f)))))
+  (f (select-keys in-m (map s/explicit-schema-key (keys (pfnk/input-schema f))))))
 
 (defn interpreted-eager-compile
   "Compile graph specification g to a corresponding fnk that returns an
@@ -223,10 +224,10 @@
   (let [is (pfnk/input-schema g)
         os (pfnk/output-schema instance-fn)]
     (schema/assert-iae (map? os) "instance-fn must have output metadata")
-    (let [extra-ks (remove #(contains? is %) (keys os))]
+    (let [extra-ks (remove #(schema/possibly-contains? is %) (keys os))]
       (schema/assert-iae (empty? extra-ks) "instance-fn provides unused keys: %s" (vec extra-ks)))
     (doseq [[k s] os]
-      (schema/assert-satisfies-schema (get is k) s))))
+      (schema/assert-satisfies-schema (or (get is k) (get is (s/optional-key k))) s))))
 
 (defn comp-partial-fn
   "Return a new pfnk representing the composition #(f (merge % (other %)))"
@@ -257,7 +258,7 @@
       (->graph
        (map/map-leaves
         (fn [node-fn]
-          (if (some os (keys (pfnk/input-schema node-fn)))
+          (if (some os (map s/explicit-schema-key (keys (pfnk/input-schema node-fn))))
             (comp-partial-fn node-fn instance-fn)
             node-fn))
         g)))))
@@ -294,7 +295,7 @@
                   (swap! pm assoc-in ks (/ (- (System/nanoTime) start) 1000000.0))
                   res))
               [(assoc (pfnk/input-schema f)
-                 profile-key true)
+                 profile-key s/Any)
                (pfnk/output-schema f)]))
            (->graph g))
      profile-key (plumbing/fnk [] (atom {})))))

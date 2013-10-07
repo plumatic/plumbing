@@ -3,6 +3,7 @@
    by example."
   (:use clojure.test plumbing.core)
   (:require
+   [schema.core :as s]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]))
 
@@ -10,28 +11,33 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Input and output schemata
 
-;; Input and output schemata are about describing the shape of nested maps
-;; with keyword keys that are inputs and outputs of keyword functions.
+;; Input and output schemas describe the shape of nested maps with keyword keys
+;; that are inputs and outputs of keyword functions, using the relevant
+;; portions of the prismatic/schema library.
 
-;; An input schema is a nested map with true and false at the leaves
-;; True = required, false = optional
+;; The structure of an input map is described using a nested map with keyword
+;; keys, value schemas at the leaves, and (s/optional-key) for optional keys.
 
 (def input-schema-1
-  {:a false
-   :b true
-   :c {:c1 true :c2 false}})
+  {(s/optional-key :a) s/Any
+   :b s/Any
+   :c {:c1 s/Any (s/optional-key :c2) s/Any}})
 
-;; An output schema is similar, but always has true at the leaves
-;; (More keys might be returned, we don't need to say)
+;; Fnk and graph understand only this subset of schema; additional constructs
+;; are allowed, but fnk cannot 'see through' them to reason about their
+;; semantics.
+
+;; Output schemas are similar, except that the output schemas for Graphs
+;; must consist of only required keys at the top level.
 
 (def output-schema-1
-  {:b true
-   :c {:c1 true :c3 true}})
+  {:b s/Any
+   :c {:c1 s/Any :c3 s/Any}})
 
 
 (def output-schema-2
-  {:b true
-   :c true})
+  {:b s/Any
+   :c s/Any})
 
 ;; plumbing.fnk.schema has library functions for building, composing,
 ;; and checking schemata
@@ -41,7 +47,7 @@
   (is (do (schema/assert-satisfies-schema input-schema-1 output-schema-1) true)))
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Fnk
 
 ;; For our purposes, a keyword function is an ordinary clojure fn? that
@@ -51,6 +57,8 @@
 
 ;; In addition, a keyword function must respond to the pfnk/io-schemata
 ;; call, returning a pair of an input schema and output schema.
+;; (fnks also carry general function schemas via prismatic/schema, and
+;;  the pfnk/io-schemata protocol is just a convencience method on top of this).
 
 ;; We can manually define a simple fnk by attaching io-schemata metadata
 ;; to a fn satisfying the above properties:
@@ -60,30 +68,35 @@
    (fn [{:keys [a b o] :or {o 10} :as m}]
      (assert (every? #(contains? m %) [:a :b]))
      {:x (+ a b o)})
-   [{:a true :b true :o false}
-    {:x true}]))
+   [{:a s/Any :b s/Any (s/optional-key :o) s/Any}
+    {:x s/Any}]))
 
 
 (defn test-simple-keyword-function [f]
   (is (= {:x 13}
          (f {:a 1 :b 2})))
 
-  ;; a keyword function knows its io-schemata
-  (is (= [{:a true :b true :o false}
-          {:x true}]
+  ;; a keyword function has an ordinary prismatic/schema
+  (is (= (s/=> {:x s/Any} {:a s/Any :b s/Any (s/optional-key :o) s/Any})
+         (s/fn-schema f)))
+
+  ;; for convience, you can also extract a pair of input and output scheams
+  (is (= [{:a s/Any :b s/Any (s/optional-key :o) s/Any}
+          {:x s/Any}]
          (pfnk/io-schemata f)))
 
-  ;; we can also ask for just the input-schema or output-schema
-  (is (= {:a true :b true :o false}
+  ;; or the input-schema or output-schema individually.
+  (is (= {:a s/Any :b s/Any (s/optional-key :o) s/Any}
          (pfnk/input-schema f)))
-  (is (= {:x true}
+  (is (= {:x s/Any}
          (pfnk/output-schema f)))
 
   ;; a keyword function should throw if required keys not given.
   (is (thrown? Throwable (f {:a 3}))))
 
 (deftest a-manual-keyword-function-test
-  (test-simple-keyword-function a-manual-keyword-function))
+  (testing "manual keyword fn"
+    (test-simple-keyword-function a-manual-keyword-function)))
 
 
 ;; As a shortcut for defining keyword functions, we've defined macros
@@ -103,7 +116,8 @@
 ;; schema from the literal map in its body.
 
 (deftest a-simple-fnk-test
-  (test-simple-keyword-function a-simple-fnk))
+  (testing "fnk macro keyword fn"
+    (test-simple-keyword-function a-simple-fnk)))
 
 
 (defnk a-simple-fnk2
@@ -116,20 +130,21 @@
 (deftest a-simple-fnk2-test
   ;; true is the trivial output schema, which puts no constraints
   ;; on its output.
-  (is (= true
+  (is (= s/Any
          (pfnk/output-schema a-simple-fnk2))))
 
 ;; For these cases, we can provide explicit metadata to hint the
 ;; output schema of the fnk.
 
-(defnk a-simple-fnk3
+(defnk a-simple-fnk3 :- {:x s/Any}
   "This fnk is like a-simple-fnk2, but uses an explicit output
    schema hint, and is equivalent to a-simple-fnk"
-  ^{:output-schema {:x true}} [a b {o 10}]
+  [a b {o 10}]
   (hash-map :x (+ a b o)))
 
 (deftest a-simple-fnk3-test
-  (test-simple-keyword-function a-simple-fnk3))
+  (testing "fnk with explicit output schema"
+    (test-simple-keyword-function a-simple-fnk3)))
 
 
 ;; fnks also have support for nested bindings, and nested maps
@@ -153,9 +168,9 @@
                         :b {:b1 12}
                         :c 2})))
 
-  (is (= {:a true :b {:b1 true :b2 false} :c true}
+  (is (= {:a s/Any :b {:b1 s/Any (s/optional-key :b2) s/Any} :c s/Any}
          (pfnk/input-schema a-nested-fnk)))
-  (is (= {:sum true :products {:as true :bs true :cs true}}
+  (is (= {:sum s/Any :products {:as s/Any :bs s/Any :cs s/Any}}
          (pfnk/output-schema a-nested-fnk)))
 
   (is (thrown? Throwable (a-nested-fnk {:a 1 :b {:b2 10} :c 3}))) ;; :b1 is missing
@@ -171,9 +186,9 @@
 
 (deftest a-fancier-nested-fnk-test
   ;; :as and & are not reflected in input schema currently.
-  (is (= {:a true :b {:b1 true}}
+  (is (= {:a s/Any :b {:b1 s/Any}}
          (pfnk/input-schema a-fancier-nested-fnk)))
-  (is (= true
+  (is (= s/Any
          (pfnk/output-schema a-fancier-nested-fnk)))
 
   (is (= [1 2 {:b1 2 :b2 3} {:a 1 :b {:b1 2 :b2 3} :c 4} {:c 4}]
