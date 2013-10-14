@@ -1,4 +1,4 @@
-## 0.2.0
+## 0.1.1
  * Fix bug when aliasing optional values with arg names, i.e. `(let [a 1] ((fnk [{a a}] a) {}))`
  * Implement well-defined semantics for optional values that reference other symbols bound within a (let/(de)fnk) form, matching Clojure: symbols are bound in the order given, so that an optional value can reference a symbol bound within the same destructuring form iff that symbol appears earlier in the form.
  * Add update-in-when, grouped-map, conk-when, cons-when, rsort-by, as->> to plumbing.core

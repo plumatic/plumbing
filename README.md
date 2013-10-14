@@ -4,7 +4,7 @@
 
 This first release includes our '[Graph](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
 
-Leiningen dependency (Clojars): [prismatic/plumbing "0.1.0"]
+Leiningen dependency (Clojars): [prismatic/plumbing "0.1.1"]
 **This is an alpha release.  We  are using it internally in production, but the API and organizational structure are subject to change.  Comments and suggestions are much appreciated.**
 
 Check back often, because we'll keep adding more useful namespaces and functions as we work through cleaning up and open-sourcing our stack of Clojure libraries.
@@ -55,7 +55,7 @@ We can "compile" this Graph to produce a single function (equivalent to `stats`)
 (thrown? Throwable (stats-eager {:ys [1 2 3]}))
 ```
 
-Moreover, as of the latest 0.1.0 release, `stats-eager` is *fast* -- only about 30% slower than the hand-coded `stats` if `xs` has a single element, and within 5% of `stats` if `xs` has ten elements.
+Moreover, as of the 0.1.0 release, `stats-eager` is *fast* -- only about 30% slower than the hand-coded `stats` if `xs` has a single element, and within 5% of `stats` if `xs` has ten elements.
 
 Unlike the opaque `stats` fn, however, we can modify and extend `stats-graph` using ordinary operations on maps:
 
