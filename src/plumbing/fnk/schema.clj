@@ -1,16 +1,26 @@
 (ns plumbing.fnk.schema
-  "A very simple type system for nested maps with keyword keys, used by fnk and kin.
+  "A very simple type system for a subset of schemas consisting of nested
+   maps with optional or required keyword keys; used by fnk and kin.
 
-   Input schemata specify required and optional arguments to a fnk using a nested
-   map structure that parallels the desired input shape.  The leaves of an input schema
-   are true (for a required key) or false (for an optional key).  Non-leaf keys are always
-   required.  See 'satisfies-schema?' below for examples.
+   Since schemas are turing-complete and not really designed for type inference,
+   (and for simplicity) we err on the side of completeness (allowing all legal programs)
+   at the cost of soundness.
 
-   Similarly, output schemata specify the keys outputted by a fnk (if the fnk outputs a map)
-   using a similar nested map structure.  The leaves of an output schema are always true
-   (for keys guaranteed to be in the output).  If the output schema is just 'true', then
-   no claims are made about the output of the function (i.e., it may not even be a map).")
+   These operations also bake in some logic specific to reasoning about Graphs,
+   namely that all input keys to a node must be explicitly mentioned as optional or
+   required, or provided via `instance`, and will thus deliberately drop extra key
+   schemas on inputs as appropriate.  Output schemas may not have optional keys."
+  (:require
+   [schema.core :as s]
+   [schema.macros :as macros]))
 
+(def Schema (s/protocol s/Schema))
+(def InputSchema {(s/either Schema schema.core.OptionalKey s/Keyword) Schema})
+(def OutputSchema {s/Keyword Schema})
+(def IOSchemata [(s/one InputSchema 'input) (s/one OutputSchema 'output)])
+
+(def GraphInputSchema {(s/either schema.core.OptionalKey s/Keyword) Schema})
+(def GraphIOSchemata [(s/one GraphInputSchema 'input) (s/one OutputSchema 'output)])
 
 ;;; Helper
 
@@ -20,23 +30,64 @@
   `(when-not ~form (throw (IllegalArgumentException. (format ~@format-args)))))
 
 
+;;; Punt on non-maps.
+
+(defn non-map-union [s1 s2]
+  (cond (= s1 s2) s1
+        (= s1 s/Any) s2
+        (= s2 s/Any) s1
+        :else (s/both s1 s2)))
+
+(defn non-map-diff
+  "Return a difference of schmas s1 and s2, where one is not a map.
+   Punt for now, assuming s2 always satisfies s1."
+  [s1 s2]
+  nil)
+
+(defn map-schema? [m]
+  (instance? clojure.lang.APersistentMap m))
+
 ;;; Input schemata
 
-(defn union-input-schemata
-  "Returns a minimal input schema schema that entails satisfaction of both s1 and s2"
-  [i1 i2]
-  (cond (and (map? i1) (map? i2)) (merge-with union-input-schemata i1 i2)
-        (map? i1) i1
-        (map? i2) i2
-        :else (or i1 i2)))
+(defn- merge-on-with
+  "Like merge-with, but also projects keys to a smaller space and merges them similar to the
+   values."
+  [key-project key-combine val-combine & maps]
+  (->> (apply concat maps)
+       (reduce
+        (fn [m [k v]]
+          (let [pk (key-project k)]
+            (if-let [[ok ov] (get m pk)]
+              (assoc m pk [(key-combine ok k) (val-combine ov v)])
+              (assoc m pk [k v]))))
+        {})
+       vals
+       (into {})))
 
-(defn required-toplevel-keys
+(s/defn union-input-schemata :- InputSchema
+  "Returns a minimal input schema schema that entails satisfaction of both s1 and s2"
+  [i1 :- InputSchema i2 :- InputSchema]
+  (merge-on-with
+   #(if (s/specific-key? %) (s/explicit-schema-key %) :extra)
+   (fn [k1 k2]
+     (cond (s/required-key? k1) k1
+           (s/required-key? k2) k2
+           (s/optional-key? k1) (do (assert-iae (= k1 k2)) k1)
+           :else (assert-iae false "Only one extra schem allowed")))
+   (fn [s1 s2]
+     (if (and (map-schema? s1) (map-schema? s2))
+       (union-input-schemata s1 s2)
+       (non-map-union s1 s2)))
+   i1 i2))
+
+(s/defn required-toplevel-keys :- [s/Keyword]
   "Which top-level keys are required (i.e., non-false) by this input schema."
-  [input-schema]
+  [input-schema :- InputSchema]
   (keep
-   (fn [[k v]]
-     (when v k))
-   input-schema))
+   (fn [k]
+     (when (s/required-key? k)
+       (s/explicit-schema-key k)))
+   (keys input-schema)))
 
 
 
@@ -48,72 +99,85 @@
   [expr]
   (if (and (map? expr) (every? keyword? (keys expr)))
     (into {} (for [[k v] expr] [k (guess-expr-output-schema v)]))
-    true))
+    s/Any))
 
 ;;; Combining inputs and outputs.
 
-(defn assert-satisfies-schema
-  "Does this value satisfy this schema?
-   schema may be an input or output schema, and value may be an output schema or actual value.
+(s/defn schema-diff ;; don't validate since it returns better errors.
+  "Subtract output-schema from input-schema, returning nil if it's possible that an object
+   satisfying the output-schema satisfies the input-schema, or otherwise a description
+   of the part(s) of input-schema not met by output-schema.  Strict about the map structure
+   of output-schema matching input-schema, but loose about everything else (only looks at
+   required keys of output-schema."
+  [input-schema output-schema] ;; not schematized since it returns more helpful errors
+  (cond (not (map-schema? input-schema))
+        (non-map-diff input-schema output-schema)
 
-   For example:
-   (satisfies-schema? {:a {:a1 true :b1 false} :b false} {:a {:a1 9 :a3 17}})
-   (not (satisfies-schema? {:a {:a1 true :a2 false} :b false} {:b 999}))
-   (not (satisfies-schema? {:a {:a1 true :a2 false} :b false} {:a {:a2 4242})))"
-  [schema value & [keyseq]]
-  (when-not (map? schema) ;; sanity check
-    (assert-iae (or (true? schema) (false? schema)) "Schema leaf is not true or false: %s" schema))
-  (when (map? schema)
-    (assert-iae (map? value) "Not a map %s keyseq: %s" value keyseq)
-    (doseq [[ik iv] schema]
-      (assert-iae (keyword? ik) "Schema has non-keyword: %s" ik)
-      (when-not (false? iv)
-        (if-let [[_ ov] (find value ik)]
-          (assert-satisfies-schema iv ov (conj (or keyseq []) ik))
-          (assert-iae false "Failed on keyseq: %s. Value is missing. \n%s \n%s" (conj (or keyseq []) ik) schema value))))))
+        (not (map-schema? output-schema))
+        (macros/validation-error input-schema output-schema (list 'map? (s/explain output-schema)))
 
+        :else
+        (->> (for [[k v] input-schema
+                   :when (s/specific-key? k)
+                   :let [required? (s/required-key? k)
+                         raw-k (s/explicit-schema-key k)
+                         present? (contains? output-schema raw-k)]
+                   :when (or required? present?)
+                   :let [fail (if-not present?
+                                'missing-required-key
+                                (schema-diff v (get output-schema raw-k)))]
+                   :when fail]
+               [k fail])
+             (into {})
+             not-empty)))
 
-(defn filter-and-match-schemata
-  "Remove all keys provided by output schema os from input schema is, and throw
-   if any matching sub-schema from os cannot satisfy the corresponding input
-   schema in is."
-  [is os]
-
-  (reduce
-   (fn [res [k ov]]
-     (if-let [[_ iv] (find res k)]
-       (do (assert-satisfies-schema iv ov [k])
-           (dissoc res k))
-       res))
-   is
-   os))
+(defn assert-satisfies-schema [input-schema output-schema]
+  (let [fails (schema-diff input-schema output-schema)]
+    (when fails (throw (RuntimeException. (str fails))))))
 
 
-(defn compose-schemata
+(s/defn compose-schemata
   "Given pairs of input and output schemata for fnks f1 and f2,
-   return a pair of input and output schemata for #(f2 (merge % (f1 %)))"
-  [[i2 o2] [i1 o1]]
-  (assert-iae (map? o1) "Schema is not a map: %s" o1)
-  [(union-input-schemata (filter-and-match-schemata i2 o1) i1)
+   return a pair of input and output schemata for #(f2 (merge % (f1 %))).
+   f1's output schema must not contain any optional keys."
+  [[i2 o2] :- IOSchemata [i1 o1] :- IOSchemata]
+  (assert-iae (map-schema? o1) "Schema is not a map: %s" o1)
+  (assert-iae (every? keyword? (keys o1)) "Schema has non-simple keys" o1)
+  (assert-satisfies-schema (select-keys i2 (keys o1)) o1)
+  [(union-input-schemata (apply dissoc i2 (concat (keys o1) (map s/optional-key (keys o1)))) i1)
    o2])
 
-()
+(defn schema-key [m k]
+  (cond (contains? m k)
+        k
 
-(defn sequence-schemata
+        (contains? m (s/optional-key k))
+        (s/optional-key k)
+
+        :else nil))
+
+(defn possibly-contains? [m k]
+  (boolean (schema-key m k)))
+
+(s/defn split-schema
+  "Return a pair [ks-part non-ks-part], with any extra schema removed."
+  [s :- InputSchema ks :- [s/Keyword]]
+  (let [ks (set ks)]
+    (for [in? [true false]]
+      (into {} (for [[k v] s
+                     :when (and (s/specific-key? k)
+                                (= in? (contains? ks (s/explicit-schema-key k))))]
+                 [k v])))))
+
+(s/defn sequence-schemata :- GraphIOSchemata
   "Given pairs of input and output schemata for fnks f1 and f2, and a keyword k,
    return a pair of input and output schemata for #(let [v1 (f1 %)] (assoc v1 k (f2 (merge-disjoint % v1))))"
-  [[i1 o1] [k [i2 o2]]]
-  (let [o2 {k o2}]
-    (assert-iae (not (contains? i1 k)) "Duplicate key output (possibly due to a misordered graph) %s for input %s from input %s" k i2 i1)
-    (assert-iae (not (contains? i2 k)) "Node outputs a key %s in its inputs %s" k i2)
-    (assert-iae (not (contains? o1 k)) "Node outputs a duplicate key %s given inputs %s" k i1)
-    [(reduce
-      (fn [in [new-in-k new-in-v]]
-        (if (contains? o1 new-in-k)
-          (do
-            (assert-satisfies-schema new-in-v (o1 new-in-k))
-            in)
-          (assoc in new-in-k (union-input-schemata (in new-in-k) new-in-v))))
-      i1
-      i2)
-     (merge o1 o2)]))
+  [[i1 o1] :- GraphIOSchemata
+   [k [i2 o2]] :- [(s/one s/Keyword "key") (s/one IOSchemata "inner-schemas")]]
+  (assert-iae (not (possibly-contains? i1 k)) "Duplicate key output (possibly due to a misordered graph) %s for input %s from input %s" k (s/explain i2) (s/explain i1))
+  (assert-iae (not (possibly-contains? i2 k)) "Node outputs a key %s in its inputs %s" k (s/explain i2))
+  (assert-iae (not (possibly-contains? o1 k)) "Node outputs a duplicate key %s given inputs %s" k (s/explain i1))
+  (let [[used unused] (split-schema i2 (keys o1))]
+    (assert-satisfies-schema used o1)
+    [(union-input-schemata unused i1)
+     (assoc o1 k o2)]))

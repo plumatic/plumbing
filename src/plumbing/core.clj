@@ -1,6 +1,7 @@
 (ns plumbing.core
   "Utility belt for Clojure in the wild"
   (:require
+   [schema.macros :as sm]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
@@ -361,18 +362,19 @@
   "Keyword fn, using letk.  Stores input and output schemata in metadata.
    Fn accepts a single explicit map i.e., (f {:foo :bar})
    Explicit top-level map structure will be recorded in output spec, or
-   to capture implicit structure use ^{:output-schema output-schema}
-   metadata on the binding form."
+   to capture implicit structure use an explicit prismatic/schema hint on the
+   function name."
   [& args]
   (let [[name? [bind & body]] (if (symbol? (first args))
-                                [(first args) (next args)]
+                                (sm/extract-arrow-schematized-element &env args)
                                 [nil args])]
     (fnk-impl/fnk-form name? bind body)))
 
 (defmacro defnk
   "Analogy: fn:fnk :: defn::defnk"
-  [name & args]
-  (let [take-if (fn [p s] (if (p (first s)) [(first s) (next s)] [nil s]))
+  [& defnk-args]
+  (let [[name args] (sm/extract-arrow-schematized-element &env defnk-args)
+        take-if (fn [p s] (if (p (first s)) [(first s) (next s)] [nil s]))
         [docstring? args] (take-if string? args)
         [attr-map? [bind & body]] (take-if map? args)]
     (schema/assert-iae (symbol? name) "Name for defnk is not a symbol: %s" name)

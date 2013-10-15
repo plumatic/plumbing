@@ -1,11 +1,10 @@
 (ns plumbing.graph-examples-test
-  (:use plumbing.core clojure.test)
+  (:use clojure.test plumbing.core)
   (:require
-   [plumbing.fnk.schema :as schema]
+   [schema.core :as s]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.graph :as graph]
-   [plumbing.map :as map]
-   ))
+   [plumbing.map :as map]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Motivation
@@ -151,11 +150,11 @@
 
 (deftest stats-schema-test
   ;; stats-graph takes a map with one required key, :xs
-  (is (= {:xs true}
+  (is (= {:xs s/Any}
          (pfnk/input-schema stats-graph)))
 
   ;; stats-graph outputs a map with four keys, :n, :m, :m2, and :v
-  (is (= {:n true :m true :m2 true :v true}
+  (is (= {:n s/Any :m s/Any :m2 s/Any :v s/Any}
          (pfnk/output-schema stats-graph))))
 
 
@@ -205,16 +204,16 @@
    (fn [{:keys [a b] :as m}]
      (assert (every? #(contains? m %) [:a :b]))
      {:x (+ a b)})
-   [{:a true :b true}
-    {:x true}]))
+   [{:a s/Any :b s/Any}
+    {:x s/Any}]))
 
 (defn test-simple-keyword-function [f]
   (is (= {:x 3}
          (f {:a 1 :b 2})))
 
   ;; a keyword function knows its io-schemata
-  (is (= [{:a true :b true}
-          {:x true}]
+  (is (= [{:a s/Any :b s/Any}
+          {:x s/Any}]
          (pfnk/io-schemata f)))
 
   ;; a keyword function should throw if required keys not given.
@@ -336,10 +335,10 @@
 
 (deftest a-nested-graph-test
   (let [f (graph/eager-compile a-nested-graph)]
-    (is (= [{:a true :b true}
-            {:x true
-             :y {:y1 true :y2 true}
-             :z true}]
+    (is (= [{:a s/Any :b s/Any}
+            {:x s/Any
+             :y {:y1 s/Any :y2 s/Any}
+             :z s/Any}]
            (pfnk/io-schemata f)))
     (is (= -6
            (- (* 1 (inc 1)) (* 1 (inc 1) (dec 5)))
@@ -522,8 +521,8 @@
              {:b {:b1 (* c d)}})
         composed (graph/comp-partial-fn f1 f2)]
     ;; the final function does not require :b, since it is provided to f1 by f2.
-    (is (= [{:a true :c true :d true}
-            {:x true}]
+    (is (= [{:a s/Any :c s/Any :d s/Any}
+            {:x s/Any}]
            (pfnk/io-schemata composed)))
 
     (is (= {:x 20}

@@ -2,6 +2,7 @@
   "A compilation method for graphs that avoids maps for speed."
   (:use plumbing.core)
   (:require
+   [schema.core :as s]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl])
@@ -36,7 +37,7 @@
   (->> g
        (map (fn [[kw f]]
               (let [f-sym (-> kw name (str "-fn") gensym)
-                    arg-forms (map-from-keys g-value-syms (keys (pfnk/input-schema f)))
+                    arg-forms (map-from-keys g-value-syms (map s/explicit-schema-key (keys (pfnk/input-schema f))))
                     [f arg-forms] (fnk-impl/efficient-call-forms f arg-forms)]
                 [[f-sym f] [(g-value-syms kw) (cons f-sym arg-forms)]])))
        (apply map vector)))
@@ -50,7 +51,10 @@
 (defn graph-form
   "Construct [body-form bindings-needed-for-eval] for a positional graph."
   [g arg-keywords]
-  (let [value-syms (->> g pfnk/io-schemata (apply merge) keys
+  (let [value-syms (->> g
+                        pfnk/io-schemata
+                        (mapcat keys)
+                        (map s/explicit-schema-key)
                         (map-from-keys (comp gensym name)))
         [needed-bindings value-bindings] (graph-let-bindings g value-syms)
         record-type (def-graph-record g)]
@@ -64,7 +68,7 @@
 (defn positional-flat-compile
   "Positional compile for a flat (non-nested) graph."
   [g]
-  (let [arg-ks (-> g pfnk/input-schema keys)
+  (let [arg-ks (->> g pfnk/input-schema keys (map s/explicit-schema-key))
         [positional-fn-form eval-bindings] (graph-form g arg-ks)
         pos-fn-sym (gensym "pos")]
     (eval-bound
