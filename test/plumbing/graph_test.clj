@@ -187,6 +187,10 @@
   (is (= 5 (:z ((lazy-compile (graph :x (fnk [a]) :y (fnk [b] (inc b)) :z (fnk [y] (inc y)))) {:b 3}))))
   (is (thrown? Exception (:x ((lazy-compile (graph :x (fnk [a]) :y (fnk [b] (inc b)) :z (fnk [y] (inc y)))) {:b 3})))))
 
+(deftest bind-non-map-with-as-test
+  (is (= (:y (run (graph :x (fnk [] {:a "1"}) :y (fnk [[:x [:a :as q]]] q)) {}))
+         "1")))
+
 (defn chain-graph [n]
   (for-map [i (range n)]
     (keyword (str "x" (inc i)))
