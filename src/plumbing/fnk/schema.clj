@@ -110,8 +110,7 @@
    of output-schema matching input-schema, but loose about everything else (only looks at
    required keys of output-schema."
   [input-schema output-schema] ;; not schematized since it returns more helpful errors
-  (cond (or (not (map-schema? input-schema))
-            (empty? input-schema)) ;; allow [:x as y] where x is not a map
+  (cond (not (map-schema? input-schema))
         (non-map-diff input-schema output-schema)
 
         (not (map-schema? output-schema))

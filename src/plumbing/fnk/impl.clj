@@ -130,7 +130,9 @@
     (schema/assert-iae (not (some #{'&} (map first input-schema-elts))) "Cannot bind to &")
     (assert-distinct (concat (map (comp symbol name s/explicit-schema-key first) input-schema-elts)
                              (remove nil? [more-sym as-sym])))
-    {:input-schema (into {} input-schema-elts)
+    {:input-schema (if (or more-sym (seq input-schema-elts) (empty? key-path))
+                     (into {} input-schema-elts)
+                     s/Any) ;; allow [:a :as :b] inner bindings without requiring :a be a map
      :map-sym as-sym
      :body-form final-body-form}))
 
@@ -161,7 +163,7 @@
         (vector? binding)
         (let [[k & more] binding
               {:keys [map-sym body-form]} (letk-input-schema-and-body-form
-                                           (vec more) [] body-form)]
+                                           (vec more) [k] body-form)]
           [[k
             (with-meta map-sym
               (if (= (last (butlast binding)) :as) (meta (last binding)) {}))]
