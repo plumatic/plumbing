@@ -29,7 +29,10 @@
   (is (= (map-vals inc {:a 0 :b 0})
          {:a 1 :b 1}))
   (is (= (map-vals inc [[:a 0] [:b 0]])
-         {:a 1 :b 1})))
+         {:a 1 :b 1}))
+  (is (= (map-vals inc (sorted-map :a 0 :b 0))
+         {:a 1 :b 1}))
+  (is (sorted? (map-vals inc (sorted-map :a 0 :b 0)))))
 
 (deftest map-keys-test
   (is (= (map-keys str {:a 1 :b 1})
