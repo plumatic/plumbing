@@ -34,7 +34,9 @@
   "Build map k -> (f v) for [k v] in map, preserving the initial type"
   [f m]
   (cond 
-    (sorted? m)
+    (instance? clojure.lang.PersistentArrayMap m)
+    (persistent! (reduce-kv (fn [out-m k v] (assoc! out-m k (f v))) (transient {}) m))
+    (instance? clojure.lang.PersistentTreeMap m)
     (reduce-kv (fn [out-m k v] (assoc out-m k (f v))) (sorted-map) m)
     (map? m)
     (persistent! (reduce-kv (fn [out-m k v] (assoc! out-m k (f v))) (transient {}) m))
