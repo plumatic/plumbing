@@ -2,6 +2,7 @@
   (:use clojure.test plumbing.core)
   (:require
    [schema.core :as s]
+   [schema.test :as schema-test]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
 
@@ -416,3 +417,5 @@
 (deftest dont-shadow-nested-test
   (let [m {:x 1}]
     (is (= 3 ((fnk [[:m x]] (+ x (:x m))) {:m {:x 2}})))))
+
+(use-fixtures :once schema-test/validate-schemas)

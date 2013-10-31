@@ -3,6 +3,7 @@
   (:require
    [clojure.walk :as walk]
    [schema.core :as s]
+   [schema.test :as schema-test]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
 
@@ -120,8 +121,8 @@
                ;; Fnks with hand-crafted schemas.
                :gm (pfnk/fn->fnk (fn [m] {:gmy (+ (:x m) (:ga m))
                                           :gmz (- 0 1 (:x m) (:ga m))})
-                                 [{:ga true :x true}      ;; input schema
-                                  {:gmy true :gmz true}]) ;; output schema
+                                 [{:ga s/Any :x s/Any}      ;; input schema
+                                  {:gmy s/Any :gmz s/Any}]) ;; output schema
                ;; Fnks that depend on nested outputs.
                :gb (fnk [[:gm gmy gmz]] (+ gmy gmz 10))
                ;; Fnks with properly un-shadowed variables.
@@ -195,7 +196,7 @@
   (for-map [i (range n)]
     (keyword (str "x" (inc i)))
     (let [p (keyword (str "x" i))]
-      (pfnk/fn->fnk (fn [m] (inc (p m))) [{p true} true]))))
+      (pfnk/fn->fnk (fn [m] (inc (p m))) [{p s/Any} s/Any]))))
 
 (deftest chain-graph-test
   (is (= 100 (:x100 ((eager-compile (chain-graph 100)) {:x0 0}))))
@@ -290,3 +291,5 @@
       (println k)
       (dotimes [_ 5]
         (println (time (sum tk (repeatedly 10 #(f {:x0 1})))))))))
+
+(use-fixtures :once schema-test/validate-schemas)

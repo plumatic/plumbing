@@ -16,11 +16,12 @@
 
 (def Schema (s/protocol s/Schema))
 (def InputSchema {(s/either Schema schema.core.OptionalKey s/Keyword) Schema})
-(def OutputSchema {s/Keyword Schema})
+(def OutputSchema Schema)
 (def IOSchemata [(s/one InputSchema 'input) (s/one OutputSchema 'output)])
 
 (def GraphInputSchema {(s/either schema.core.OptionalKey s/Keyword) Schema})
-(def GraphIOSchemata [(s/one GraphInputSchema 'input) (s/one OutputSchema 'output)])
+(def MapOutputSchema {s/Keyword Schema})
+(def GraphIOSchemata [(s/one GraphInputSchema 'input) (s/one MapOutputSchema 'output)])
 
 ;;; Helper
 
@@ -136,13 +137,12 @@
     (when fails (throw (RuntimeException. (str fails))))))
 
 
-(s/defn compose-schemata
+(s/defn ^:always-validate compose-schemata
   "Given pairs of input and output schemata for fnks f1 and f2,
    return a pair of input and output schemata for #(f2 (merge % (f1 %))).
    f1's output schema must not contain any optional keys."
-  [[i2 o2] :- IOSchemata [i1 o1] :- IOSchemata]
-  (assert-iae (map-schema? o1) "Schema is not a map: %s" o1)
-  (assert-iae (every? keyword? (keys o1)) "Schema has non-simple keys" o1)
+  [[i2 o2] :- IOSchemata
+   [i1 o1] :- [(s/one InputSchema 'input) (s/one MapOutputSchema 'output)]]
   (assert-satisfies-schema (select-keys i2 (keys o1)) o1)
   [(union-input-schemata (apply dissoc i2 (concat (keys o1) (map s/optional-key (keys o1)))) i1)
    o2])
