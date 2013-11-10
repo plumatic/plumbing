@@ -33,13 +33,13 @@
 (defn map-vals
   "Build map k -> (f v) for [k v] in map, preserving the initial type"
   [f m]
-  (cond 
-    (sorted? m)
-    (reduce-kv (fn [out-m k v] (assoc out-m k (f v))) (sorted-map) m)
-    (map? m)
-    (persistent! (reduce-kv (fn [out-m k v] (assoc! out-m k (f v))) (transient {}) m))
-    :else
-    (for-map [[k v] m] k (f v))))
+  (cond
+   (sorted? m)
+   (reduce-kv (fn [out-m k v] (assoc out-m k (f v))) (sorted-map) m)
+   (map? m)
+   (persistent! (reduce-kv (fn [out-m k v] (assoc! out-m k (f v))) (transient {}) m))
+   :else
+   (for-map [[k v] m] k (f v))))
 
 (defn map-keys
   "Build map (f k) -> v for [k v] in map m"
@@ -357,22 +357,38 @@
   (reduce
    (fn [cur-body-form [bind-form value-form]]
      (let [{:keys [map-sym body-form]} (fnk-impl/letk-input-schema-and-body-form
-                                        bind-form [] cur-body-form)]
+                                        &env
+                                        (fnk-impl/ensure-schema-metadata &env bind-form)
+                                        []
+                                        cur-body-form)]
        `(let [~map-sym ~value-form] ~body-form)))
    `(do ~@body)
    (reverse (partition 2 bindings))))
 
 (defmacro fnk
-  "Keyword fn, using letk.  Stores input and output schemata in metadata.
-   Fn accepts a single explicit map i.e., (f {:foo :bar})
+  "Keyword fn, using letk.  Generates a prismatic/schema schematized fn that
+   accepts a single explicit map i.e., (f {:foo :bar}).
+
    Explicit top-level map structure will be recorded in output spec, or
    to capture implicit structure use an explicit prismatic/schema hint on the
-   function name."
+   function name.
+
+   Inividual inputs can also be schematized by putting :- schemas after the
+   binding symbol.  Schemas can also be used on & more symbols to describe
+   additional map inputs.
+
+   Eventually, schemas will probably be allowed or on entire [] bindings
+   to override the automatically generated schema for the contentx (caveat emptor),
+   but this is not yet supported.
+
+   By default, input schemas allow for arbitrary additional mappings
+   ({s/Keyword s/Any}) unless explicit binding or & more schemas are provided."
   [& args]
-  (let [[name? [bind & body]] (if (symbol? (first args))
-                                (sm/extract-arrow-schematized-element &env args)
-                                [nil args])]
-    (fnk-impl/fnk-form name? bind body)))
+  (let [[name? more-args] (if (symbol? (first args))
+                            (sm/extract-arrow-schematized-element &env args)
+                            [nil args])
+        [bind body] (sm/extract-arrow-schematized-element &env more-args)]
+    (fnk-impl/fnk-form &env name? bind body)))
 
 (defmacro defnk
   "Analogy: fn:fnk :: defn::defnk"
@@ -380,9 +396,10 @@
   (let [[name args] (sm/extract-arrow-schematized-element &env defnk-args)
         take-if (fn [p s] (if (p (first s)) [(first s) (next s)] [nil s]))
         [docstring? args] (take-if string? args)
-        [attr-map? [bind & body]] (take-if map? args)]
+        [attr-map? args] (take-if map? args)
+        [bind body] (sm/extract-arrow-schematized-element &env args)]
     (schema/assert-iae (symbol? name) "Name for defnk is not a symbol: %s" name)
-    (let [f (fnk-impl/fnk-form name bind body)]
+    (let [f (fnk-impl/fnk-form &env name bind body)]
       `(def ~(with-meta name (merge (meta name) (assoc-when (or attr-map? {}) :doc docstring?)))
          ~f))))
 

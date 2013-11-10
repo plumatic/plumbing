@@ -5,6 +5,15 @@
    [schema.test :as schema-test]
    [plumbing.fnk.pfnk :as pfnk]))
 
+(deftest explicit-schema-key-map-test
+  (is (= {:foo true :bar false}
+         (explicit-schema-key-map
+          {:foo s/Any (s/optional-key :bar) s/Any s/Keyword s/Keyword}))))
+
+(deftest split-schema-keys-test
+  (is (= [[:foo :bar] [:baz :bat]]
+         (split-schema-keys
+          (array-map :foo true :baz false :bar true :bat false)))))
 
 (deftest merge-on-with-test
   (is (= {0 5 4 9 9 12}
@@ -33,9 +42,9 @@
          (set (required-toplevel-keys {:a {:a1 String} :b Long (s/optional-key :c) Object})))))
 
 (deftest guess-expr-output-schema-test
-  (is (= s/Any (@#'guess-expr-output-schema "foo")))
-  (is (= {:a s/Any :b s/Any} (@#'guess-expr-output-schema {:a (+ 1 1) :b false})))
-  (is (= s/Any (@#'guess-expr-output-schema {'a (+ 1 1)}))))
+  (is (= `s/Any (@#'guess-expr-output-schema "foo")))
+  (is (= {:a `s/Any :b `s/Any} (@#'guess-expr-output-schema {:a (+ 1 1) :b false})))
+  (is (= `s/Any (@#'guess-expr-output-schema {'a (+ 1 1)}))))
 
 (deftest compose-schemata-test
   (is (= [{:a s/Any :c s/Any :d s/Any}
@@ -78,19 +87,22 @@
 
 (deftest fnk-input-schemata-test
   (are [in fnk-form] (= in (pfnk/input-schema fnk-form))
-       {:x s/Any :y s/Any}
+       {:x s/Any :y s/Any s/Keyword s/Any}
        (fnk [x y])
 
-       {:x s/Any (s/optional-key :y) s/Any :z s/Any}
+       {:x s/Any (s/optional-key :y) s/Any :z s/Any s/Keyword s/Any}
        (fnk [x {y 2} z])
 
-       {:x s/Any (s/optional-key :y) s/Any :z s/Any :q {:r s/Any}}
+       {:x s/Any (s/optional-key :y) s/Any :z s/Any :q {:r s/Any s/Keyword s/Any} s/Keyword s/Any}
        (fnk [x {y 2} z [:q r] :as m & more])
 
-       {(s/optional-key :x) s/Any :y {:alias s/Any}}
+       {(s/optional-key :x) s/Any :y {:alias s/Any s/Keyword s/Any} s/Keyword s/Any}
        (fnk [ {x 1} [:y alias]])
 
-       {(s/optional-key :o1) s/Any :o2 s/Any :o3 {:x s/Any (s/optional-key :y) s/Any :z s/Any :q {:r s/Any}}}
+       {(s/optional-key :o1) s/Any
+        :o2 s/Any
+        :o3 {:x s/Any (s/optional-key :y) s/Any :z s/Any :q {:r s/Any s/Keyword s/Any} s/Keyword s/Any}
+        s/Keyword s/Any}
        (fnk [{o1 1} o2 [:o3 x {y 2} z [:q r]]]))
   (is (= [1 2] ((eval `(fnk [[:x ~'x] [:y ~'y]] [~'x ~'y])) {:x {:x 1} :y {:y 2}})))
   (is (thrown? Throwable (eval `(fnk [{:y ~'x} {:y ~'y}] [~'x ~'y]))))

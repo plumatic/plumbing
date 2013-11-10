@@ -68,7 +68,7 @@
    (fn [{:keys [a b o] :or {o 10} :as m}]
      (assert (every? #(contains? m %) [:a :b]))
      {:x (+ a b o)})
-   [{:a s/Any :b s/Any (s/optional-key :o) s/Any}
+   [{:a s/Any :b s/Any (s/optional-key :o) s/Any s/Keyword s/Any}
     {:x s/Any}]))
 
 
@@ -76,17 +76,13 @@
   (is (= {:x 13}
          (f {:a 1 :b 2})))
 
-  ;; a keyword function has an ordinary prismatic/schema
-  (is (= (s/=> {:x s/Any} {:a s/Any :b s/Any (s/optional-key :o) s/Any})
-         (s/fn-schema f)))
-
   ;; for convience, you can also extract a pair of input and output scheams
-  (is (= [{:a s/Any :b s/Any (s/optional-key :o) s/Any}
+  (is (= [{:a s/Any :b s/Any (s/optional-key :o) s/Any s/Keyword s/Any}
           {:x s/Any}]
          (pfnk/io-schemata f)))
 
   ;; or the input-schema or output-schema individually.
-  (is (= {:a s/Any :b s/Any (s/optional-key :o) s/Any}
+  (is (= {:a s/Any :b s/Any (s/optional-key :o) s/Any s/Keyword s/Any}
          (pfnk/input-schema f)))
   (is (= {:x s/Any}
          (pfnk/output-schema f)))
@@ -168,7 +164,10 @@
                         :b {:b1 12}
                         :c 2})))
 
-  (is (= {:a s/Any :b {:b1 s/Any (s/optional-key :b2) s/Any} :c s/Any}
+  (is (= {:a s/Any
+          :b {:b1 s/Any (s/optional-key :b2) s/Any s/Keyword s/Any}
+          :c s/Any
+          s/Keyword s/Any}
          (pfnk/input-schema a-nested-fnk)))
   (is (= {:sum s/Any :products {:as s/Any :bs s/Any :cs s/Any}}
          (pfnk/output-schema a-nested-fnk)))
@@ -186,7 +185,7 @@
 
 (deftest a-fancier-nested-fnk-test
   ;; :as and & are not reflected in input schema currently.
-  (is (= {:a s/Any :b {:b1 s/Any}}
+  (is (= {:a s/Any :b {:b1 s/Any s/Keyword s/Any} s/Keyword s/Any}
          (pfnk/input-schema a-fancier-nested-fnk)))
   (is (= s/Any
          (pfnk/output-schema a-fancier-nested-fnk)))

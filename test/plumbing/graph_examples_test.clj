@@ -150,7 +150,7 @@
 
 (deftest stats-schema-test
   ;; stats-graph takes a map with one required key, :xs
-  (is (= {:xs s/Any}
+  (is (= {:xs s/Any s/Keyword s/Any}
          (pfnk/input-schema stats-graph)))
 
   ;; stats-graph outputs a map with four keys, :n, :m, :m2, and :v
@@ -204,7 +204,7 @@
    (fn [{:keys [a b] :as m}]
      (assert (every? #(contains? m %) [:a :b]))
      {:x (+ a b)})
-   [{:a s/Any :b s/Any}
+   [{:a s/Any :b s/Any s/Keyword s/Any}
     {:x s/Any}]))
 
 (defn test-simple-keyword-function [f]
@@ -212,7 +212,7 @@
          (f {:a 1 :b 2})))
 
   ;; a keyword function knows its io-schemata
-  (is (= [{:a s/Any :b s/Any}
+  (is (= [{:a s/Any :b s/Any s/Keyword s/Any}
           {:x s/Any}]
          (pfnk/io-schemata f)))
 
@@ -335,7 +335,7 @@
 
 (deftest a-nested-graph-test
   (let [f (graph/eager-compile a-nested-graph)]
-    (is (= [{:a s/Any :b s/Any}
+    (is (= [{:a s/Any :b s/Any s/Keyword s/Any}
             {:x s/Any
              :y {:y1 s/Any :y2 s/Any}
              :z s/Any}]
@@ -521,7 +521,7 @@
              {:b {:b1 (* c d)}})
         composed (graph/comp-partial-fn f1 f2)]
     ;; the final function does not require :b, since it is provided to f1 by f2.
-    (is (= [{:a s/Any :c s/Any :d s/Any}
+    (is (= [{:a s/Any :c s/Any :d s/Any s/Keyword s/Any}
             {:x s/Any}]
            (pfnk/io-schemata composed)))
 
