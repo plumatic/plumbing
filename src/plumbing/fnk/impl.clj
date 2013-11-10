@@ -378,7 +378,7 @@
         output-schema (if (any-schema? explicit-output-schema)
                         (schema/guess-expr-output-schema (last body))
                         explicit-output-schema)
-        fn-name (vary-meta (or name? 'fnk) assoc :schema output-schema)]
+        fn-name (vary-meta (or name? (gensym "fnk")) assoc :schema output-schema)]
     (if (not-any? #{'& :as} bind) ;; If we can make a positional fnk form, do it.
       (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body env bind `(do ~@body))]
         (positional-fnk-form fn-name input-schema external-input-schema bind-sym-map [bound-body]))
