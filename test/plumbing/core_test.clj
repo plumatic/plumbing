@@ -403,11 +403,12 @@
       (is (thrown? Exception (f {:a "hi" :b {:c 1 :z "3"}})))
       (is (thrown? Exception (f {:a "hi" :b {:c 1} :d :e})))))
 
-  (comment ;; not yet supported, difficulties with positional fnks
-    (testing "schema override on top-level map bindings"
-      (doseq [[t f] {"no-as" (fnk [a :- String {b :- String "1"}] :- {:a s/Number (s/optional-key :b) String (s/optional-key :e) String}
+  (testing "schema override on top-level map bindings"
+    (let [override {:a s/Number (s/optional-key :b) String (s/optional-key :e) String}]
+      (doseq [[t f] {"no-as" (fnk [a :- String {b :- String "1"}] :- override
                                [a b])
-                     "with-as" (fnk [a :- String {b :- String "1"} [:c d :- s/Number] :as m] :- {:a s/Number (s/optional-key :b) String (s/optional-key :e) String})}]
+                     "with-as" (fnk [a :- String {b :- String "1"} :as m] :- override
+                                 [a b])}]
         (testing t
           (is (= override (pfnk/input-schema f)))
           (is (= [2 "1"] (f {:a 2})))
@@ -415,7 +416,15 @@
           (is (= [2 "2"] (f {:a 2 :b "2" :e "asdf"})))
           (is (thrown? Exception (f {:a "2"})))
           (is (thrown? Exception (f {:a 2 :b 2})))
-          (is (thrown? Exception (f {:a 2 :z :huh}))))))))
+          (is (thrown? Exception (f {:a 2 :z :huh})))))))
+
+  (testing "schema override on inner map bindings"
+    (let [f (fnk [a :- String [:b c] :- {:c String}]
+              [a c])]
+      (is (= {:a String :b {:c String} s/Keyword s/Any} (pfnk/input-schema f)))
+      (is (= ["1" "2"] (f {:a "1" :b {:c "2"}})))
+      (is (thrown? Exception (f {:a "1" :b {:c 2}})))
+      (is (thrown? Exception (f {:a "1" :b {:c "2" :d "3"}}))))))
 
 (defnk keyfn-test-docstring "whoa" [dude {wheres :foo} :as my & car]
   [dude wheres my car])

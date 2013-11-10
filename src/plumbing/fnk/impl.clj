@@ -65,9 +65,6 @@
 (defn- any-schema? [s]
   (= `s/Any s))
 
-(defn- schematized? [x]
-  (not (any-schema? (schema-macros/extract-schema-form x))))
-
 (defn- assert-unschematized [x]
   (let [schema (schema-macros/extract-schema-form x)]
     (schema/assert-iae (any-schema? schema) "Schema metadata not allowed on %s :- %s" x schema)))
@@ -94,8 +91,9 @@
 ;; TODO: unify this with positional version.
 (defn letk-arg-bind-sym-and-body-form
   "Given a single element of a single letk binding form and a current body form, return
-   a map {:schema-entry :body-form} where schema-entry is a pair [bound-key required?],
-   and body-form wraps body with destructuring for this binding as necessary."
+   a map {:schema-entry :body-form} where schema-entry is a tuple
+   [bound-key schema external-schema?], and body-form wraps body with destructuring
+   for this binding as necessary."
   [env map-sym binding key-path body-form]
   (cond (symbol? binding)
         {:schema-entry [(keyword binding) (schema-macros/extract-schema-form binding)]
@@ -116,6 +114,7 @@
         (vector? binding)
         (let [[bound-key & more] binding
               {inner-input-schema :input-schema
+               inner-external-input-schema :external-input-schema
                inner-map-sym :map-sym
                inner-body-form :body-form} (letk-input-schema-and-body-form
                                             env
@@ -125,7 +124,7 @@
           (schema/assert-iae
            (keyword? bound-key)
            "First element to nested binding not a keyword: %s" bound-key)
-          {:schema-entry [bound-key inner-input-schema]
+          {:schema-entry [bound-key inner-input-schema inner-external-input-schema]
            :body-form `(let [~inner-map-sym (safe-get ~map-sym ~bound-key ~key-path)]
                          ~inner-body-form)})
 
@@ -144,27 +143,34 @@
          sym))]))
 
 (defn letk-input-schema-and-body-form
-  "Given a single letk binding form, value form, key path, and body form, return a map
-   {:input-schema :map-sym :body-form} where input-schema is the schema imposed by
-   binding-form, map-sym is the symbol which it expects the bound value to be bound to, and
-   body-form wraps body in the bindings from binding-form from map-sym."
+  "Given a single letk binding form, value form, key path, and body
+   form, return a map {:input-schema :external-input-schema :map-sym :body-form}
+   where input-schema is the schema imposed by binding-form, exteranl-input-schema
+   is like input-schema but includes user overrides for binding vectors,
+   map-sym is the symbol which it expects the bound value to be bound to,
+   and body-form wraps body in the bindings from binding-form from map-sym."
   [env binding-form key-path body-form]
   (schema/assert-iae (vector? binding-form) "Binding form is not vector: %s" binding-form)
   (let [binding-schema (schema-macros/extract-schema-form binding-form)
         [binding-form more-sym] (extract-special-arg env '& binding-form)
         [bindings as-sym]       (extract-special-arg env :as binding-form)
         as-sym (or as-sym (ensure-schema-metadata env (gensym "map")))
-        [input-schema-elts bound-body-form] (reduce
-                                             (fn [[input-schema-elts cur-body] binding]
-                                               (let [{:keys [schema-entry body-form]}
-                                                     (letk-arg-bind-sym-and-body-form
-                                                      env as-sym binding key-path cur-body)]
-                                                 [(conj input-schema-elts schema-entry)
-                                                  body-form]))
-                                             [[] body-form]
-                                             (reverse
-                                              (schema-macros/process-arrow-schematized-args
-                                               env bindings)))
+        [input-schema-elts
+         external-input-schema-elts
+         bound-body-form] (reduce
+                           (fn [[input-schema-elts external-input-schema-elts cur-body] binding]
+                             (let [{:keys [schema-entry body-form]}
+                                   (letk-arg-bind-sym-and-body-form
+                                    env as-sym binding key-path cur-body)
+                                   [bound-key input-schema external-input-schema] schema-entry]
+                               [(conj input-schema-elts [bound-key input-schema])
+                                (conj external-input-schema-elts
+                                      [bound-key (or external-input-schema input-schema)])
+                                body-form]))
+                           [[] [] body-form]
+                           (reverse
+                            (schema-macros/process-arrow-schematized-args
+                             env bindings)))
         explicit-schema-keys (->> input-schema-elts
                                   (map first)
                                   (filter s/specific-key?)
@@ -172,32 +178,28 @@
         final-body-form (if more-sym
                           `(let [~more-sym (dissoc ~as-sym ~@explicit-schema-keys)]
                              ~bound-body-form)
-                          bound-body-form)]
+                          bound-body-form)
+        make-input-schema (fn [elts]
+                            (if-not (or more-sym (seq elts) (empty? key-path))
+                              `s/Any ;; allow [:a :as :b] inner bindings without requiring :a be a map
+                              (merge
+                               (into {} elts)
+                               (let [more-schema (if more-sym
+                                                   (schema-macros/extract-schema-form more-sym)
+                                                   `s/Any)]
+                                 (if (any-schema? more-schema)
+                                   {`s/Keyword `s/Any}
+                                   (do (schema/assert-iae (map? more-schema)
+                                                          "& %s schema must be a map" more-sym)
+                                       more-schema))))))]
     (when as-sym (assert-unschematized as-sym))
     (schema/assert-iae (not (some #{'&} (map first input-schema-elts))) "Cannot bind to &")
     (assert-distinct (concat (map k->sym explicit-schema-keys)
                              (remove nil? [more-sym as-sym])))
-    {:input-schema (cond
-                    ;; not yet supported, poses problems since explicit
-                    ;; schema will not yet be evaluated.
-                    ;;(not (any-schema? binding-schema))
-                    ;;binding-schema
-
-                    (not (or more-sym (seq input-schema-elts) (empty? key-path)))
-                    `s/Any ;; allow [:a :as :b] inner bindings without requiring :a be a map
-
-                    :else
-                    (merge
-                     (into {} input-schema-elts)
-                     (let [more-schema (if more-sym
-                                         (schema-macros/extract-schema-form more-sym)
-                                         `s/Any)]
-                       (if (any-schema? more-schema)
-                         {`s/Keyword `s/Any}
-                         (do (schema/assert-iae (map? more-schema)
-                                                "& %s schema must be a map" more-sym)
-                             more-schema)))))
-
+    {:input-schema (make-input-schema input-schema-elts)
+     :external-input-schema (if-not (any-schema? binding-schema)
+                              binding-schema
+                              (make-input-schema external-input-schema-elts))
      :map-sym as-sym
      :body-form final-body-form}))
 
@@ -334,10 +336,11 @@
      (positional-fnk-form
       fn-name
       input-schema
+      input-schema
       (into {} (for [k (keys (schema/explicit-schema-key-map input-schema))] [k (k->sym k)]))
       body))
 
-  ([fn-name input-schema arg-sym-map body]
+  ([fn-name input-schema external-input-schema arg-sym-map body]
      (let [[req-ks opt-ks] (-> input-schema schema/explicit-schema-key-map schema/split-schema-keys)
            explicit-schema-keys (vec (keys (schema/explicit-schema-key-map input-schema)))
            pos-args (mapv #(safe-get arg-sym-map % []) explicit-schema-keys)]
@@ -346,7 +349,7 @@
                         ~@body)]
           (vary-meta (schema-macros/fn
                        ~fn-name
-                       [m# :- ~input-schema]
+                       [m# :- ~external-input-schema]
                        (plumbing.core/letk [~(into (mapv k->sym req-ks)
                                                    (mapv (fn [k] {(k->sym k) +none+}) opt-ks))
                                             m#]
@@ -368,8 +371,9 @@
    positional version).  If '& or :as are used, no such positional
    function is generated."
   [env name? bind body]
-  (let [{:keys [map-sym body-form input-schema]} (letk-input-schema-and-body-form
-                                                  env bind [] `(do ~@body))
+  (let [{:keys [map-sym body-form input-schema external-input-schema]}
+        (letk-input-schema-and-body-form env bind [] `(do ~@body))
+
         explicit-output-schema (if name? (schema-macros/extract-schema-form name?) `s/Any)
         output-schema (if (any-schema? explicit-output-schema)
                         (schema/guess-expr-output-schema (last body))
@@ -377,9 +381,9 @@
         fn-name (vary-meta (or name? 'fnk) assoc :schema output-schema)]
     (if (not-any? #{'& :as} bind) ;; If we can make a positional fnk form, do it.
       (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body env bind `(do ~@body))]
-        (positional-fnk-form fn-name input-schema bind-sym-map [bound-body]))
+        (positional-fnk-form fn-name input-schema external-input-schema bind-sym-map [bound-body]))
       `(schema-macros/fn
          ~fn-name
-         [~(schema-override map-sym input-schema)]
+         [~(schema-override map-sym external-input-schema)]
          (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
          ~body-form))))

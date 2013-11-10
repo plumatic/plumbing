@@ -375,11 +375,8 @@
 
    Inividual inputs can also be schematized by putting :- schemas after the
    binding symbol.  Schemas can also be used on & more symbols to describe
-   additional map inputs.
-
-   Eventually, schemas will probably be allowed or on entire [] bindings
-   to override the automatically generated schema for the contentx (caveat emptor),
-   but this is not yet supported.
+   additional map inputs, or on entire [] bindings to override the automatically
+   generated schema for the contents (caveat emptor).
 
    By default, input schemas allow for arbitrary additional mappings
    ({s/Keyword s/Any}) unless explicit binding or & more schemas are provided."
