@@ -15,7 +15,7 @@
    [schema.macros :as macros]))
 
 (def Schema (s/protocol s/Schema))
-(def InputSchema {(s/either Schema schema.core.OptionalKey s/Keyword) Schema})
+(def InputSchema {(s/either (s/eq s/Keyword) schema.core.OptionalKey s/Keyword) Schema})
 (def OutputSchema Schema)
 (def IOSchemata [(s/one InputSchema 'input) (s/one OutputSchema 'output)])
 
@@ -50,6 +50,23 @@
 
 ;;; Input schemata
 
+(s/defn explicit-schema-key-map
+  "Given a possibly-unevaluated map schema, return a map from bare keyword to true
+   (for required) or false (for optional)"
+  [s] :- {s/Keyword boolean}
+  (->> s
+       (keep (fn [[k v]]
+               (when (s/specific-key? k)
+                 [(s/explicit-schema-key k) (s/required-key? k)])))
+       (into {})))
+
+(s/defn split-schema-keys
+  "Given output of explicit-schema-key-map, split into seq [req opt]."
+  [s :- {s/Keyword boolean}] :- [(s/one [s/Keyword] 'required) (s/one [s/Keyword] 'optional)]
+  (->> s
+       ((juxt filter remove) val)
+       (mapv (partial mapv key))))
+
 (defn- merge-on-with
   "Like merge-with, but also projects keys to a smaller space and merges them similar to the
    values."
@@ -74,7 +91,8 @@
      (cond (s/required-key? k1) k1
            (s/required-key? k2) k2
            (s/optional-key? k1) (do (assert-iae (= k1 k2)) k1)
-           :else (assert-iae false "Only one extra schem allowed")))
+           (= k1 k2) k1
+           :else (assert-iae false "Only one extra schema allowed")))
    (fn [s1 s2]
      (if (and (map-schema? s1) (map-schema? s2))
        (union-input-schemata s1 s2)
@@ -100,7 +118,7 @@
   [expr]
   (if (and (map? expr) (every? keyword? (keys expr)))
     (into {} (for [[k v] expr] [k (guess-expr-output-schema v)]))
-    s/Any))
+    `s/Any))
 
 ;;; Combining inputs and outputs.
 

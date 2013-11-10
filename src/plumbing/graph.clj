@@ -51,17 +51,18 @@
           graph (->> (if-not (map? graph-nodes)
                        (map first graph-nodes)
                        (->> canonical-nodes
-                            (plumbing/map-vals (comp (partial map s/explicit-schema-key) keys pfnk/input-schema))
+                            (plumbing/map-vals pfnk/input-schema-keys)
                             map/topological-sort
                             reverse))
                      (mapcat #(find canonical-nodes %))
                      (apply array-map))]
       (assert (every? keyword? (keys graph)))
       (with-meta graph
-        {::io-schemata (reduce schema/sequence-schemata
-                               [{} {}]
-                               (for [[k node] graph]
-                                 [k (pfnk/io-schemata node)]))
+        {::io-schemata (update-in (reduce schema/sequence-schemata
+                                          [{} {}]
+                                          (for [[k node] graph]
+                                            [k (pfnk/io-schemata node)]))
+                                  [0] assoc s/Keyword s/Any)
          ::self graph}))))
 
 ;; Any Clojure map can be treated as a graph directly, without calling ->graph
@@ -161,7 +162,7 @@
 (defn restricted-call
   "Call fnk f on the subset of keys its input schema explicitly asks for"
   [f in-m]
-  (f (select-keys in-m (map s/explicit-schema-key (keys (pfnk/input-schema f))))))
+  (f (select-keys in-m (pfnk/input-schema-keys f))))
 
 (defn interpreted-eager-compile
   "Compile graph specification g to a corresponding fnk that returns an
@@ -258,7 +259,7 @@
       (->graph
        (map/map-leaves
         (fn [node-fn]
-          (if (some os (map s/explicit-schema-key (keys (pfnk/input-schema node-fn))))
+          (if (some os (pfnk/input-schema-keys node-fn))
             (comp-partial-fn node-fn instance-fn)
             node-fn))
         g)))))

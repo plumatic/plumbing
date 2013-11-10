@@ -3,6 +3,7 @@
   (:use plumbing.core)
   (:require
    [schema.core :as s]
+   [schema.macros :as sm]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl])
@@ -37,7 +38,7 @@
   (->> g
        (map (fn [[kw f]]
               (let [f-sym (-> kw name (str "-fn") gensym)
-                    arg-forms (map-from-keys g-value-syms (map s/explicit-schema-key (keys (pfnk/input-schema f))))
+                    arg-forms (map-from-keys g-value-syms (pfnk/input-schema-keys f))
                     [f arg-forms] (fnk-impl/efficient-call-forms f arg-forms)]
                 [[f-sym f] [(g-value-syms kw) (cons f-sym arg-forms)]])))
        (apply map vector)))
@@ -45,7 +46,7 @@
 (defn eval-bound
   "Evaluate a form with some symbols bound to some values."
   [form bindings]
-  ((eval `(fn [~(->> bindings (mapv first))] ~form))
+  ((eval `(fn [~(mapv first bindings)] ~form))
    (map second bindings)))
 
 (defn graph-form
@@ -53,8 +54,8 @@
   [g arg-keywords]
   (let [value-syms (->> g
                         pfnk/io-schemata
-                        (mapcat keys)
-                        (map s/explicit-schema-key)
+                        (mapcat schema/explicit-schema-key-map)
+                        (map key)
                         (map-from-keys (comp gensym name)))
         [needed-bindings value-bindings] (graph-let-bindings g value-syms)
         record-type (def-graph-record g)]
@@ -68,13 +69,15 @@
 (defn positional-flat-compile
   "Positional compile for a flat (non-nested) graph."
   [g]
-  (let [arg-ks (->> g pfnk/input-schema keys (map s/explicit-schema-key))
+  (let [arg-ks (->> g pfnk/input-schema-keys)
         [positional-fn-form eval-bindings] (graph-form g arg-ks)
         pos-fn-sym (gensym "pos")]
-    (eval-bound
-     `(let [~pos-fn-sym ~positional-fn-form]
-        ~(fnk-impl/positional-fnk-form
-          nil
-          (pfnk/io-schemata g)
-          (list `(~pos-fn-sym ~@(mapv (comp symbol name) arg-ks)))))
-     eval-bindings)))
+    (vary-meta ;; workaround evaluation quirks
+     (eval-bound
+      `(let [~pos-fn-sym ~positional-fn-form]
+         ~(fnk-impl/positional-fnk-form
+           (fnk-impl/schema-override 'graph-positional (pfnk/output-schema g))
+           (pfnk/input-schema g)
+           (list `(~pos-fn-sym ~@(mapv (comp symbol name) arg-ks)))))
+      eval-bindings)
+     assoc :schema (let [[is os] (pfnk/io-schemata g)] (sm/=> os is)))))

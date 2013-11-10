@@ -2,6 +2,7 @@
   (:use clojure.test plumbing.core)
   (:require
    [schema.core :as s]
+   [schema.macros :as sm]
    [schema.test :as schema-test]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
@@ -361,6 +362,70 @@
     (let [a :k]
       (is (= (pfnk/output-schema (fnk [a] {a a})) s/Any)))))
 
+(deftest fnk-input-schema-test
+  (testing "simple fnk with one string key"
+    (doseq [[t f] {"no-as" (fnk [a :- String] a)
+                   "with-as" (fnk [a :- String :as b] a)}]
+      (testing t
+        (is (= {:a String s/Keyword s/Any}
+               (pfnk/input-schema f)))
+        (is (= "hi" (f {:a "hi"})))
+        (is (= "hi" (f {:a "hi" :b 123})))
+        (is (thrown? Exception (f {:a :lo})))
+        (is (thrown? Exception (f {:a "hi" "b" "no-string-keys"})))))
+    (is (= :lo ((fnk ^:never-validate foo [a :- String] a) {:a :lo}))))
+
+  (testing "schemas on nested and optional bindings"
+    (doseq [[t f] {"no-as" (fnk [a :- String {b :- String "1"} [:c d :- s/Number]]
+                             [a b d])
+                   "with-as" (fnk [a :- String {b :- String "1"} [:c d :- s/Number] :as m]
+                               [a b d])}]
+      (testing t
+        (is (= {:a String
+                (s/optional-key :b) String
+                :c {:d s/Number s/Keyword s/Any}
+                s/Keyword s/Any}
+               (pfnk/input-schema f)))
+        (is (= ["hi" "1" 2] (f {:a "hi" :c {:d 2}})))
+        (is (= ["hi" "1" 2] (f {:a "hi" :c {:d 2 :e 3} :f :g})))
+        (is (= ["hi" "bye" 2] (f {:a "hi" :b "bye" :c {:d 2}})))
+        (is (thrown? Exception (f {:a "hi" :c {:d "2"}})))
+        (is (thrown? Exception (f {:a "hi" :b :bye :c {:d 2}}))))))
+
+  (testing "schemas on & bindings"
+    (let [f (fnk [a :- String [:b c & more :- {s/Keyword s/Number}] & more :- {}]
+              [a c])]
+      (is (= {:a String
+              :b {:c s/Any s/Keyword s/Number}}
+             (pfnk/input-schema f)))
+      (is (= ["hi" 1] (f {:a "hi" :b {:c 1}})))
+      (is (= ["hi" 1] (f {:a "hi" :b {:c 1 :z 3}})))
+      (is (thrown? Exception (f {:a "hi" :b {:c 1 :z "3"}})))
+      (is (thrown? Exception (f {:a "hi" :b {:c 1} :d :e})))))
+
+  (testing "schema override on top-level map bindings"
+    (let [override {:a s/Number (s/optional-key :b) String (s/optional-key :e) String}]
+      (doseq [[t f] {"no-as" (fnk [a :- String {b :- String "1"}] :- override
+                               [a b])
+                     "with-as" (fnk [a :- String {b :- String "1"} :as m] :- override
+                                 [a b])}]
+        (testing t
+          (is (= override (pfnk/input-schema f)))
+          (is (= [2 "1"] (f {:a 2})))
+          (is (= [2 "2"] (f {:a 2 :b "2"})))
+          (is (= [2 "2"] (f {:a 2 :b "2" :e "asdf"})))
+          (is (thrown? Exception (f {:a "2"})))
+          (is (thrown? Exception (f {:a 2 :b 2})))
+          (is (thrown? Exception (f {:a 2 :z :huh})))))))
+
+  (testing "schema override on inner map bindings"
+    (let [f (fnk [a :- String [:b c] :- {:c String}]
+              [a c])]
+      (is (= {:a String :b {:c String} s/Keyword s/Any} (pfnk/input-schema f)))
+      (is (= ["1" "2"] (f {:a "1" :b {:c "2"}})))
+      (is (thrown? Exception (f {:a "1" :b {:c 2}})))
+      (is (thrown? Exception (f {:a "1" :b {:c "2" :d "3"}}))))))
+
 (defnk keyfn-test-docstring "whoa" [dude {wheres :foo} :as my & car]
   [dude wheres my car])
 
@@ -371,7 +436,7 @@
   (is (= [11 :foo {:dude 11 :sweet 17} {:sweet 17}]
          (keyfn-test-docstring {:dude 11 :sweet 17})))
   (is (= [:foo :sf] (keyfn-test-no-docstring {:foo :foo})))
-  (is (= [{:foo s/Any (s/optional-key :city) s/Any} s/Any]
+  (is (= [{:foo s/Any (s/optional-key :city) s/Any s/Keyword s/Any} s/Any]
          (pfnk/io-schemata keyfn-test-no-docstring)))
   (is (thrown? Throwable (keyfn-test-docstring :wheres :mycar))))
 

@@ -5,8 +5,9 @@
    using fn->fnk, or using custom binding syntax (of which 'fnk' et al
    are one possible example)."
   (:require
-   [schema.macros :as macros]
-   [schema.core :as schema])
+   [schema.core :as s]
+   [schema.macros :as sm]
+   [plumbing.fnk.schema :as schema])
   (:import
    [schema.core FnSchema One]))
 
@@ -19,11 +20,11 @@
 
 (defn input [^FnSchema s]
   (let [[[is :as args] :as schemas] (.input-schemas s)]
-    (macros/assert-iae (= 1 (count schemas)) "Fnks have a single arity, not %s" (count schemas))
-    (macros/assert-iae (= 1 (count args)) "Fnks take a single argument, not %s" (count args))
-    (macros/assert-iae (instance? One is) "Fnks take a single argument, not variadic")
+    (sm/assert-iae (= 1 (count schemas)) "Fnks have a single arity, not %s" (count schemas))
+    (sm/assert-iae (= 1 (count args)) "Fnks take a single argument, not %s" (count args))
+    (sm/assert-iae (instance? One is) "Fnks take a single argument, not variadic")
     (let [s (.schema ^One is)]
-      (macros/assert-iae (map? s) "Fnks take a map argument, not %s" (class s))
+      (sm/assert-iae (map? s) "Fnks take a map argument, not %s" (class s))
       s)))
 
 (defn output [^FnSchema s]
@@ -32,7 +33,7 @@
 (extend-type clojure.lang.Fn
   PFnk
   (io-schemata [this]
-    ((juxt input output) (schema/fn-schema this))))
+    ((juxt input output) (s/fn-schema this))))
 
 (defn input-schema [pfnk]
   (first (io-schemata pfnk)))
@@ -40,10 +41,12 @@
 (defn output-schema [pfnk]
   (second (io-schemata pfnk)))
 
-;; TODO: needed given s/fn ?
+(defn input-schema-keys [f]
+  (-> f input-schema schema/explicit-schema-key-map keys))
+
 (defn fn->fnk
   "Make a keyword function into a PFnk, by associating input and output schema metadata."
   [f [input-schema output-schema :as io]]
-  (schema/schematize-fn f (schema/=> output-schema input-schema)))
+  (s/schematize-fn f (sm/=> output-schema input-schema)))
 
 (set! *warn-on-reflection* false)

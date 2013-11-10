@@ -7,16 +7,16 @@
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
 
-(defn convert-old-schema [s]
+(defn convert-old-schema [input? s]
   (if (map? s)
-    (into {}
+    (into (if input? {s/Keyword s/Any} {})
           (for [[k v] s]
             (if (false? v)
               [(s/optional-key k) s/Any]
-              [k (convert-old-schema v)])))
+              [k (convert-old-schema input? v)])))
     (do (assert (true? s)) s/Any)))
 
-(def convert-old-schemas (partial mapv convert-old-schema))
+(def convert-old-schemas (partial mapv convert-old-schema [true false]))
 
 (deftest graph-construction-test
   ;; io-schemata works correctly for flat graphs
@@ -204,26 +204,26 @@
 
 
 (deftest comp-partial-fn-test
-  (let [in  (fnk [a b {c 2} :as m] m)]
+  (let [in (fnk [a b {c 2} :as m] m)]
     (let [out (comp-partial-fn in (fnk [d a {q 2}] {:b d :e (inc a)}))]
       (is (= {:a 1 :b 5 :d 5 :e 2}
              (out {:a 1 :d 5})))
       (is (= {:a 1 :b 5 :c 4 :d 5 :e 2}
              (out {:a 1 :c 4 :d 5})))
-      (is (= (convert-old-schema {:a true :d true :c false :q false})
+      (is (= (convert-old-schema true {:a true :d true :c false :q false})
              (pfnk/input-schema out))))
     (let [out (comp-partial-fn in (fnk [d a {q 2}] {:b d :e (inc a) :c q}))]
       (is (= {:a 1 :b 5 :c 2 :d 5 :e 2}
              (out {:a 1 :d 5})))
       (is (= {:a 1 :b 5 :c 2 :d 5 :e 2}
              (out {:a 1 :c 4 :d 5})))
-      (is (= (convert-old-schema {:a true :d true :q false})
+      (is (= (convert-old-schema true {:a true :d true :q false})
              (pfnk/input-schema out)))))
 
   (let [in2 (fnk [[:a a1] b] (+ a1 b))]
     (let [out (comp-partial-fn in2 (fnk [x] {:a {:a1 x} :b (inc x)}))]
       (is (= 3 (out {:x 1})))
-      (is (= {:x s/Any} (pfnk/input-schema out))))
+      (is (= {:x s/Any s/Keyword s/Any} (pfnk/input-schema out))))
     (is (thrown? Exception (comp-partial-fn in2 (fnk [x] {:a x :b (inc x)})))))
 
   (is (= 10 ((comp-partial-fn (fnk [x {y 2} z] (+ x y z)) (fnk [] {:x 7}))
@@ -245,7 +245,7 @@
   (let [raw-g {:x (fnk [a] (* a 2))
                :y (fnk [x] (+ x 1))}
         inst-g (instance raw-g [z] {:a (+ z 5)})]
-    (is (= {:z s/Any} (pfnk/input-schema inst-g)))
+    (is (= {:z s/Any s/Keyword s/Any} (pfnk/input-schema inst-g)))
     (is (= {:x s/Any :y s/Any} (select-keys (pfnk/output-schema inst-g) [:x :y])))
 
     (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y])))
@@ -255,12 +255,12 @@
   (let [raw-g {:x (fnk [[:a a1]] (* a1 2))
                :y (fnk [x {o 1}] (+ x o))}]
     (let [inst-g (instance raw-g [z] {:a {:a1 (+ z 5)}})]
-      (is (= {:z s/Any (s/optional-key :o) s/Any} (pfnk/input-schema inst-g)))
+      (is (= {:z s/Any (s/optional-key :o) s/Any s/Keyword s/Any} (pfnk/input-schema inst-g)))
       (is (= {:x s/Any :y s/Any} (select-keys (pfnk/output-schema inst-g) [:x :y])))
       (is (= {:x 16 :y 17} (select-keys (run inst-g {:z 3}) [:x :y]))))
     (testing "optional keys"
       (let [inst-o (instance raw-g [z] {:a {:a1 (+ z 5)} :o 10})]
-        (is (= {:z s/Any} (pfnk/input-schema inst-o)))
+        (is (= {:z s/Any s/Keyword s/Any} (pfnk/input-schema inst-o)))
         (is (= {:x 16 :y 26} (select-keys (run inst-o {:z 3}) [:x :y])))))
     (is (thrown? Exception (instance raw-g [z] {:a z})))))
 
