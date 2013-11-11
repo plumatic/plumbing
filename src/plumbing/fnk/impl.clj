@@ -85,7 +85,7 @@
 
     2 (let [[[[sym _]] [[schema v]]] ((juxt filter remove) #(= (val %) :-) binding)]
         (schema/assert-iae (and (symbol? sym) schema)
-                           "Bad schematized binding %s: should look like {a :- Number 2)" binding)
+                           "Bad schematized binding %s: should look like {a :- Number 2}" binding)
         {(schema-macros/normalized-metadata env sym schema) v})))
 
 ;; TODO: unify this with positional version.
@@ -139,13 +139,13 @@
      (when (seq special-binding)
        (let [[sym extra-garbage] (schema-macros/extract-arrow-schematized-element env (next special-binding))]
          (schema/assert-iae (symbol? sym) "Argument to %s not a symbol: %s" special-arg-signifier binding-form)
-         (schema/assert-iae (empty? extra-garbage) "Got illegal special binding %s" special-binding )
+         (schema/assert-iae (empty? extra-garbage) "Got illegal special binding: %s" special-binding )
          sym))]))
 
 (defn letk-input-schema-and-body-form
   "Given a single letk binding form, value form, key path, and body
    form, return a map {:input-schema :external-input-schema :map-sym :body-form}
-   where input-schema is the schema imposed by binding-form, exteranl-input-schema
+   where input-schema is the schema imposed by binding-form, external-input-schema
    is like input-schema but includes user overrides for binding vectors,
    map-sym is the symbol which it expects the bound value to be bound to,
    and body-form wraps body in the bindings from binding-form from map-sym."
