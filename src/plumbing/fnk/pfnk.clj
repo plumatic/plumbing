@@ -20,11 +20,11 @@
 
 (defn input [^FnSchema s]
   (let [[[is :as args] :as schemas] (.input-schemas s)]
-    (sm/assert-iae (= 1 (count schemas)) "Fnks have a single arity, not %s" (count schemas))
-    (sm/assert-iae (= 1 (count args)) "Fnks take a single argument, not %s" (count args))
-    (sm/assert-iae (instance? One is) "Fnks take a single argument, not variadic")
+    (schema/assert-iae (= 1 (count schemas)) "Fnks have a single arity, not %s" (count schemas))
+    (schema/assert-iae (= 1 (count args)) "Fnks take a single argument, not %s" (count args))
+    (schema/assert-iae (instance? One is) "Fnks take a single argument, not variadic")
     (let [s (.schema ^One is)]
-      (sm/assert-iae (map? s) "Fnks take a map argument, not %s" (class s))
+      (schema/assert-iae (map? s) "Fnks take a map argument, not %s" (class s))
       s)))
 
 (defn output [^FnSchema s]
