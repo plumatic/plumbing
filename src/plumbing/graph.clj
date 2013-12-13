@@ -188,7 +188,7 @@
   (simple-hierarchical-compile
    g
    false
-   (fn [m] (into (lazymap/lazy-hash-map) m))
+   (fn [m] (reduce-kv assoc (lazymap/lazy-hash-map) m)) ;; into is extremely slow on lazymaps.
    (fn [m k f] (lazymap/delay-assoc m k (delay (restricted-call f m))))))
 
 ;; TODO: move out.
