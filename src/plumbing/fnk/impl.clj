@@ -41,7 +41,9 @@
   (when-not (map? m)
     (throw (RuntimeException. (format "Expected a map at key-path %s, got type %s" key-path (class m)))))
   (let [[_ v :as p] (find m k)]
-    (when-not p (throw (RuntimeException. (format "Key %s not found in %s" k (keys m)))))
+    (when-not p (throw (ex-info (format "Key %s not found in %s" k (keys m)) {:error :missing-key
+                                                                              :key   k
+                                                                              :map   m})))
     v))
 
 (defn assert-distinct

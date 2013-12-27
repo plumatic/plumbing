@@ -152,7 +152,8 @@
 
 (defn assert-satisfies-schema [input-schema output-schema]
   (let [fails (schema-diff input-schema output-schema)]
-    (when fails (throw (RuntimeException. (str fails))))))
+    (when fails (throw (ex-info (str fails) {:error    :does-not-satisfy-schema
+                                             :failures fails})))))
 
 
 (s/defn ^:always-validate compose-schemata
