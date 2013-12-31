@@ -376,14 +376,14 @@
     (is (= :lo ((fnk ^:never-validate foo [a :- String] a) {:a :lo}))))
 
   (testing "schemas on nested and optional bindings"
-    (doseq [[t f] {"no-as" (fnk [a :- String {b :- String "1"} [:c d :- s/Number]]
+    (doseq [[t f] {"no-as" (fnk [a :- String {b :- String "1"} [:c d :- s/Num]]
                              [a b d])
-                   "with-as" (fnk [a :- String {b :- String "1"} [:c d :- s/Number] :as m]
+                   "with-as" (fnk [a :- String {b :- String "1"} [:c d :- s/Num] :as m]
                                [a b d])}]
       (testing t
         (is (= {:a String
                 (s/optional-key :b) String
-                :c {:d s/Number s/Keyword s/Any}
+                :c {:d s/Num s/Keyword s/Any}
                 s/Keyword s/Any}
                (pfnk/input-schema f)))
         (is (= ["hi" "1" 2] (f {:a "hi" :c {:d 2}})))
@@ -393,10 +393,10 @@
         (is (thrown? Exception (f {:a "hi" :b :bye :c {:d 2}}))))))
 
   (testing "schemas on & bindings"
-    (let [f (fnk [a :- String [:b c & more :- {s/Keyword s/Number}] & more :- {}]
+    (let [f (fnk [a :- String [:b c & more :- {s/Keyword s/Num}] & more :- {}]
               [a c])]
       (is (= {:a String
-              :b {:c s/Any s/Keyword s/Number}}
+              :b {:c s/Any s/Keyword s/Num}}
              (pfnk/input-schema f)))
       (is (= ["hi" 1] (f {:a "hi" :b {:c 1}})))
       (is (= ["hi" 1] (f {:a "hi" :b {:c 1 :z 3}})))
@@ -404,7 +404,7 @@
       (is (thrown? Exception (f {:a "hi" :b {:c 1} :d :e})))))
 
   (testing "schema override on top-level map bindings"
-    (let [override {:a s/Number (s/optional-key :b) String (s/optional-key :e) String}]
+    (let [override {:a s/Num (s/optional-key :b) String (s/optional-key :e) String}]
       (doseq [[t f] {"no-as" (fnk [a :- String {b :- String "1"}] :- override
                                [a b])
                      "with-as" (fnk [a :- String {b :- String "1"} :as m] :- override
