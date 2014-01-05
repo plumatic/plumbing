@@ -124,8 +124,6 @@
   (hash-map :x (+ a b o)))
 
 (deftest a-simple-fnk2-test
-  ;; true is the trivial output schema, which puts no constraints
-  ;; on its output.
   (is (= s/Any
          (pfnk/output-schema a-simple-fnk2))))
 
@@ -141,6 +139,23 @@
 (deftest a-simple-fnk3-test
   (testing "fnk with explicit output schema"
     (test-simple-keyword-function a-simple-fnk3)))
+
+;; You can also provide schema information on the inputs, with
+;; validation like schema.core/defn.  See (doc fnk) for details.
+
+(defnk a-schematized-fnk :- (s/pred odd?)
+  [a :- long b :- int]
+  (+ a b))
+
+(deftest a-schematized-fnk-test
+  (is (= [{:a long :b int s/Keyword s/Any} (s/pred odd?)]
+         (pfnk/io-schemata a-schematized-fnk)))
+  (testing "No validation by default"
+    (is (= 2 (a-schematized-fnk {:a 1 :b 1}))))
+  (s/with-fn-validation
+    (is (= 3 (a-schematized-fnk {:a 1 :b (int 2)})))
+    (is (thrown? Exception (a-schematized-fnk {:a 1 :b 2})))
+    (is (thrown? Exception (a-schematized-fnk {:a 1 :b (int 1)})))))
 
 
 ;; fnks also have support for nested bindings, and nested maps

@@ -1,9 +1,10 @@
 (ns plumbing.fnk.pfnk-test
-  (:use clojure.test plumbing.core plumbing.fnk.pfnk))
+  (:use clojure.test plumbing.core plumbing.fnk.pfnk)
+  (:require [schema.core :as s]))
 
 (deftest meta-round-trip-test
-  (let [i-schema {:x true}
-        o-schema {:y true}
+  (let [i-schema {:x s/Any}
+        o-schema {:y s/Any}
         schemata [i-schema o-schema]
         f (fn->fnk (fn [m] {:y (inc (safe-get m :x))}) schemata)]
     (is (= {:y 2} (f {:x 1})))
