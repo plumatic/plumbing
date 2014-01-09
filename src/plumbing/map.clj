@@ -21,7 +21,7 @@
   ([m1 m2]
      (doseq [k (keys m1)]
        (when (contains? m2 k) (throw (RuntimeException. (str "Duplicate key " k)))))
-     (into m2 m1))
+     (into (or m2 {}) m1))
   ([m1 m2 & maps]
      (reduce merge-disjoint m1 (cons m2 maps))))
 

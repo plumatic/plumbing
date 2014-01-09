@@ -7,39 +7,27 @@
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl]))
 
-(defn convert-old-schema [input? s]
-  (if (map? s)
-    (into (if input? {s/Keyword s/Any} {})
-          (for [[k v] s]
-            (if (false? v)
-              [(s/optional-key k) s/Any]
-              [k (convert-old-schema input? v)])))
-    (do (assert (true? s)) s/Any)))
-
-(def convert-old-schemas (partial mapv convert-old-schema [true false]))
-
 (deftest graph-construction-test
   ;; io-schemata works correctly for flat graphs
-  (is (= (convert-old-schemas
-          [{:x true :z true :q false :y false :r false}
-           {:foo {:foox true :fooy true} :bar true}])
+  (is (= [{:x s/Any :z s/Any
+           (s/optional-key :q) s/Any (s/optional-key :y) long (s/optional-key :r) s/Any
+           s/Keyword s/Any}
+          {:foo {:foox s/Any :fooy s/Any} :bar s/Any}]
          (pfnk/io-schemata
-          (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
+          (graph :foo (fnk [x {y :- long 1} {q 2}] {:foox x :fooy y})
                  :bar (fnk [foo z {q 4} {r 1}] [foo z])))))
 
   ;; io-schemata works correctly for nested graphs
-  (is (= (convert-old-schemas
-          [{:x true :q false :y false}
-           {:foo {:foox true :fooy true} :bar {:a true :baz {:foo true}}}])
+  (is (= [{:x s/Any (s/optional-key :q) s/Any (s/optional-key :y) s/Any s/Keyword s/Any}
+          {:foo {:foox s/Any :fooy s/Any} :bar {:a long :baz {:foo s/Any}}}]
          (pfnk/io-schemata
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
-                 :bar {:a (fnk [foo] (inc foo))
+                 :bar {:a (fnk f :- long [foo] (inc foo))
                        :baz {:foo (fnk [x] x)}}))))
 
   ;; io-schemata works correctly for inline graphs
-  (is (= (convert-old-schemas
-          [{:x true :q false :y false :b true}
-           {:foo {:foox true :fooy true} :a true :baz {:foo true} :z true}])
+  (is (= [{:x s/Any (s/optional-key :q) s/Any (s/optional-key :y) s/Any :b s/Any s/Keyword s/Any}
+          {:foo {:foox s/Any :fooy s/Any} :a s/Any :baz {:foo s/Any} :z s/Any}]
          (pfnk/io-schemata
           (graph :foo (fnk [x {y 1} {q 2}] {:foox x :fooy y})
                  (graph
@@ -210,14 +198,16 @@
              (out {:a 1 :d 5})))
       (is (= {:a 1 :b 5 :c 4 :d 5 :e 2}
              (out {:a 1 :c 4 :d 5})))
-      (is (= (convert-old-schema true {:a true :d true :c false :q false})
+      (is (= {:a s/Any :d s/Any
+              (s/optional-key :c) s/Any (s/optional-key :q) s/Any
+              s/Keyword s/Any}
              (pfnk/input-schema out))))
     (let [out (comp-partial-fn in (fnk [d a {q 2}] {:b d :e (inc a) :c q}))]
       (is (= {:a 1 :b 5 :c 2 :d 5 :e 2}
              (out {:a 1 :d 5})))
       (is (= {:a 1 :b 5 :c 2 :d 5 :e 2}
              (out {:a 1 :c 4 :d 5})))
-      (is (= (convert-old-schema true {:a true :d true :q false})
+      (is (= {:a s/Any :d s/Any (s/optional-key :q) s/Any s/Keyword s/Any}
              (pfnk/input-schema out)))))
 
   (let [in2 (fnk [[:a a1] b] (+ a1 b))]

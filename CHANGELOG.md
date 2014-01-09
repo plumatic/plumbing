@@ -1,5 +1,6 @@
 ## 0.2.0
- * Replace fnk/graph's internal schema format with `prismatic/schema`.
+ * Replace fnk/graph's internal schema format with `prismatic/schema`.  This is a breaking change if (and only if) you've explicitly written old-style fnk/graph schemas like `{:x true :y false}`, or code for manipulating such schemas.
+ * Drop support for Clojure 1.4.x
 
 ## 0.1.1
  * Fix bug when aliasing optional values with arg names, i.e. `(let [a 1] ((fnk [{a a}] a) {}))`

@@ -329,11 +329,16 @@
    arg-sym-map from keywords to symbols can also be passed to provide explicit
    symbols for each arg, and propagate argument tag megadata into the fn. Example:
 
-   (def f (eval (i/positional-fnk-form 'foo [{:x true :y false} true]
+   (def f (eval (i/positional-fnk-form 'foo {:x s/Any (s/optional-key :y) s/Any}
                    [`(+ ~'x (if (= ~'y i/+none+) 5 ~'y))])))
 
    (= [6 3] [(f {:x 1}) (f {:x 1 :y 2})])
-   (= [6 3] [((i/positional-fn f [:x]) 1) ((i/positional-fn f [:y :x]) 2 1)])"
+   (= [6 3] [((i/positional-fn f [:x]) 1) ((i/positional-fn f [:y :x]) 2 1)]).
+
+   Has a second form that takes both an internal input-schema and arg-sym-map
+   used to construct the main body of the function (derived from the binding
+   form structure), plus an 'external' schema used for validation and exposed
+   to the outside world."
   ([fn-name input-schema body]
      (positional-fnk-form
       fn-name

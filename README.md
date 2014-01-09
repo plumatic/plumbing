@@ -4,7 +4,9 @@
 
 This first release includes our '[Graph](http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
 
-Leiningen dependency (Clojars): [prismatic/plumbing "0.1.1"]
+*New in 0.2.0: support for schema.core/defn-style schemas on fnks and Graphs.  See `(doc fnk)` for details.*
+
+Leiningen dependency (Clojars): [prismatic/plumbing "0.2.0"]
 **This is an alpha release.  We  are using it internally in production, but the API and organizational structure are subject to change.  Comments and suggestions are much appreciated.**
 
 Check back often, because we'll keep adding more useful namespaces and functions as we work through cleaning up and open-sourcing our stack of Clojure libraries.
@@ -42,7 +44,7 @@ A Graph is just a map from keywords to keyword functions ([learn more](#fnk)).  
 We can "compile" this Graph to produce a single function (equivalent to `stats`), which also checks that the map represents a valid Graph:
 
 ```clojure
-(require '[plumbing.graph :as graph])
+(require '[plumbing.graph :as graph] '[schema.core :as s])
 (def stats-eager (graph/eager-compile stats-graph))
 
 (= {:n 4
@@ -97,13 +99,15 @@ We can also ask a Graph for information about its inputs and outputs (automatica
 (require '[plumbing.fnk.pfnk :as pfnk])
 
 ;; stats-graph takes a map with one required key, :xs
-(= {:xs true}
+(= {:xs s/Any}
    (pfnk/input-schema stats-graph))
 
 ;; stats-graph outputs a map with four keys, :n, :m, :m2, and :v
-(= {:n true :m true :m2 true :v true}
+(= {:n s/Any :m s/Any :m2 s/Any :v s/Any}
    (pfnk/output-schema stats-graph))
 ```
+
+If schemas are provided on the inputs and outputs of the node functions, these propagate through into the Graph schema as expected.
 
 We can also have higher-order functions on Graphs to wrap the behavior on each step. For instance, we can automatically profile each sub-function in 'stats' to see how long it takes to execute:
 
@@ -223,7 +227,7 @@ For announcements of new releases, you can also follow on [@PrismaticEng](http:/
 
 ## Supported Clojure versions
 
-Plumbing is currently supported on Clojure 1.4.0 and 1.5.x.
+Plumbing is currently supported on Clojure 1.5.x.
 
 ## License
 

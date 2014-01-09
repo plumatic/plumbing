@@ -324,10 +324,11 @@
 ;; is itself a graph, and use fnk's nested binding syntax to pull
 ;; keys out of subgraphs.  Like in the flat case, to the extent possible,
 ;; everything is checked at compile-time to ensure the composition is
-;; well-formed.
+;; well-formed.  Schemas on the function inputs and outputs propagate
+;; to the graph schema.
 
 (def a-nested-graph
-  {:x (fnk [a] (inc a))
+  {:x (fnk xf :- long [a :- long] (inc a))
    :y {:y1 (fnk [a x] (* a x))
        :y2 (fnk [b y1] (* y1 (dec b)))}
    :z (fnk [x [:y y1 y2]] ;; nested binding!
@@ -335,8 +336,8 @@
 
 (deftest a-nested-graph-test
   (let [f (graph/eager-compile a-nested-graph)]
-    (is (= [{:a s/Any :b s/Any s/Keyword s/Any}
-            {:x s/Any
+    (is (= [{:a long :b s/Any s/Keyword s/Any}
+            {:x long
              :y {:y1 s/Any :y2 s/Any}
              :z s/Any}]
            (pfnk/io-schemata f)))
@@ -578,7 +579,7 @@
                    (swap! (:shutdown-hooks m) conj shutdown))
                  (assert (contains? r :resource))
                  (:resource r)))
-             [(assoc (pfnk/input-schema node-fn) :shutdown-hooks true)
+             [(assoc (pfnk/input-schema node-fn) :shutdown-hooks s/Any)
               (pfnk/output-schema node-fn)]))
           g)
     :shutdown-hooks (fnk [] (atom nil))))
