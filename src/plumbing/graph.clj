@@ -81,7 +81,7 @@
 
 (defn graph
   "An ordered constructor for graphs, which enforces that the Graph is provided
-   in a vaid topological ordering.  This is a sanity check, and also enforces
+   in a valid topological ordering.  This is a sanity check, and also enforces
    defining graphs in a readable way.  Most explicit graphs should be created
    with this constructor.
 
