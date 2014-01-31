@@ -50,7 +50,7 @@
 
 ;;; Input schemata
 
-(s/defn explicit-schema-key-map
+(macros/defn explicit-schema-key-map
   "Given a possibly-unevaluated map schema, return a map from bare keyword to true
    (for required) or false (for optional)"
   [s] :- {s/Keyword boolean}
@@ -60,7 +60,7 @@
                  [(s/explicit-schema-key k) (s/required-key? k)])))
        (into {})))
 
-(s/defn split-schema-keys
+(macros/defn split-schema-keys
   "Given output of explicit-schema-key-map, split into seq [req opt]."
   [s :- {s/Keyword boolean}] :- [(s/one [s/Keyword] 'required) (s/one [s/Keyword] 'optional)]
   (->> s
@@ -82,7 +82,7 @@
        vals
        (into {})))
 
-(s/defn union-input-schemata :- InputSchema
+(macros/defn union-input-schemata :- InputSchema
   "Returns a minimal input schema schema that entails satisfaction of both s1 and s2"
   [i1 :- InputSchema i2 :- InputSchema]
   (merge-on-with
@@ -99,7 +99,7 @@
        (non-map-union s1 s2)))
    i1 i2))
 
-(s/defn required-toplevel-keys :- [s/Keyword]
+(macros/defn required-toplevel-keys :- [s/Keyword]
   "Which top-level keys are required (i.e., non-false) by this input schema."
   [input-schema :- InputSchema]
   (keep
@@ -122,7 +122,7 @@
 
 ;;; Combining inputs and outputs.
 
-(s/defn schema-diff ;; don't validate since it returns better errors.
+(macros/defn schema-diff ;; don't validate since it returns better errors.
   "Subtract output-schema from input-schema, returning nil if it's possible that an object
    satisfying the output-schema satisfies the input-schema, or otherwise a description
    of the part(s) of input-schema not met by output-schema.  Strict about the map structure
@@ -156,7 +156,7 @@
                                              :failures fails})))))
 
 
-(s/defn ^:always-validate compose-schemata
+(macros/defn ^:always-validate compose-schemata
   "Given pairs of input and output schemata for fnks f1 and f2,
    return a pair of input and output schemata for #(f2 (merge % (f1 %))).
    f1's output schema must not contain any optional keys."
@@ -178,7 +178,7 @@
 (defn possibly-contains? [m k]
   (boolean (schema-key m k)))
 
-(s/defn split-schema
+(macros/defn split-schema
   "Return a pair [ks-part non-ks-part], with any extra schema removed."
   [s :- InputSchema ks :- [s/Keyword]]
   (let [ks (set ks)]
@@ -188,7 +188,7 @@
                                 (= in? (contains? ks (s/explicit-schema-key k))))]
                  [k v])))))
 
-(s/defn sequence-schemata :- GraphIOSchemata
+(macros/defn sequence-schemata :- GraphIOSchemata
   "Given pairs of input and output schemata for fnks f1 and f2, and a keyword k,
    return a pair of input and output schemata for #(let [v1 (f1 %)] (assoc v1 k (f2 (merge-disjoint % v1))))"
   [[i1 o1] :- GraphIOSchemata
