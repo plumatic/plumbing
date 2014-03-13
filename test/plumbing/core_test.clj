@@ -234,22 +234,30 @@
   (let [side-effect (atom [])]
     (is (= (range 10)
            (->> (range 10)
-                (?>> false (do (swap! side-effect conj :bad) map) inc))))
+                (?>> false
+                     ((do (swap! side-effect conj :bad) map) inc)
+                     (map inc)))))
     (is (empty? @side-effect))
-    (is (= (range 1 11)
+    (is (= (range 2 12)
            (->> (range 10)
-                (?>> true (do (swap! side-effect conj :good) map) inc))))
+                (?>> true
+                     ((do (swap! side-effect conj :good) map) inc)
+                     (map inc)))))
     (is (= @side-effect [:good]))))
 
 (deftest ?>-test
   (let [side-effect (atom [])]
     (is (= {:a 1}
            (-> {:a 1}
-               (?> false (do (swap! side-effect conj :bad) assoc) :b 1))))
+               (?> false
+                   ((do (swap! side-effect conj :bad) assoc) :b 1)
+                   (dissoc :a)))))
     (is (empty? @side-effect))
-    (is (= {:a 1 :b 1}
+    (is (= {:b 1}
            (-> {:a 1}
-               (?> true (do (swap! side-effect conj :good) assoc) :b 1))))
+               (?> true
+                   ((do (swap! side-effect conj :good) assoc) :b 1)
+                   (dissoc :a)))))
     (is (= @side-effect [:good]))))
 
 (deftest fn->-test
