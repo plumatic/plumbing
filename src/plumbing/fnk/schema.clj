@@ -90,7 +90,7 @@
    (fn [k1 k2]
      (cond (s/required-key? k1) k1
            (s/required-key? k2) k2
-           (s/optional-key? k1) (do (assert-iae (= k1 k2)) k1)
+           (s/optional-key? k1) (do (assert (= k1 k2)) k1)
            (= k1 k2) k1
            :else (assert-iae false "Only one extra schema allowed")))
    (fn [s1 s2]
