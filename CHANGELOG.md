@@ -1,3 +1,9 @@
+## 0.2.2 
+ * Don't depend on a specific Clojure version, and add support for Clojure 1.6.x
+
+## 0.2.1
+ * Fix for issues with AOT compilation after introducing schema
+
 ## 0.2.0
  * Replace fnk/graph's internal schema format with `prismatic/schema`.  This is a breaking change if (and only if) you've explicitly written old-style fnk/graph schemas like `{:x true :y false}`, or code for manipulating such schemas.
  * Drop support for Clojure 1.4.x

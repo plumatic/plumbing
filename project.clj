@@ -4,12 +4,11 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"
             :distribution :repo}
   :url "https://github.com/Prismatic/plumbing"
-  :dependencies [[org.clojure/clojure "1.5.1"]
-                 [prismatic/schema "0.2.0"]
+  :dependencies [[prismatic/schema "0.2.1"]
                  [de.kotka/lazymap "3.1.0" :exclusions [org.clojure/clojure]]]
-  :profiles {:1.4 {:dependencies [[org.clojure/clojure "1.4.0"]]}
-             :dev {}}
+  :profiles {:dev {:dependencies [[org.clojure/clojure "1.5.1"]]}
+             :1.6 {:dependencies [[org.clojure/clojure "1.6.0-RC1"]]}}
+  :aliases {"all" ["with-profile" "dev:dev,1.6"]}
   :lein-release {:deploy-via :shell
                  :shell ["lein" "deploy" "clojars"]}
-  :jvm-opts ^:replace []
-  :aliases {"all" ["with-profile" "dev:dev,1.4"]})
+  :jvm-opts ^:replace [])
