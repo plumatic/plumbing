@@ -296,6 +296,15 @@
     (is (= 1 (get-and-set! a 2)))
     (is (= 2 @a))))
 
+(deftest mapply-test
+  (letfn [(f [& {:as m}]
+            (for-map [[k v] m] v k))
+          (g [a b c & {:as m}]
+            {:init [a b c] :m m})]
+    (is (= {42 :foo 90 :bar} (mapply f {:bar 90 :foo 42})))
+    (is (= {:init [1 2 3]
+            :m nil}
+           (mapply g 1 2 3 {})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; fnk

@@ -342,6 +342,12 @@
 (defn millis ^long []
   (System/currentTimeMillis))
 
+(defn mapply
+  "Like apply, but applies a map to a function with positional map
+  arguments. Can take optional initial args just like apply."
+  ([f m] (apply f (apply concat m)))
+  ([f arg & args] (apply f arg (concat (butlast args) (apply concat (last args))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; fnk
 
