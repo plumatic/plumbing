@@ -1,3 +1,6 @@
+## 0.2.3
+ * Add `update` and `mapply` to plumbing.core
+
 ## 0.2.2 
  * Don't depend on a specific Clojure version, and add support for Clojure 1.6.x
 
