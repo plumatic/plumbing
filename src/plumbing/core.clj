@@ -306,7 +306,7 @@
   "Like fn, but memoized (including recursive calls).
 
    The clojure.core memoize correctly caches recursive calls when you do a top-level def
-   of your memoized function, but if you want an annoymous fibonacci function, you must use
+   of your memoized function, but if you want an anonymous fibonacci function, you must use
    memoized-fn rather than memoize to cache the recursive calls."
   [name args & body]
   `(let [a# (atom {})]
