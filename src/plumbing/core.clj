@@ -319,6 +319,12 @@
              (swap! a# assoc args# v#)
              v#))))))
 
+(defmacro defmemo
+  "Like defn, but memoized (including recursive calls)."
+  [name args & body]
+  `(def ~name
+     (memoized-fn ~name ~args ~@body)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Miscellaneous
 

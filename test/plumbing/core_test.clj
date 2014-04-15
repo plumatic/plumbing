@@ -282,6 +282,17 @@
             10)))
     (is (= 11 @calls))))
 
+(deftest defmemo-test
+  (let [calls (atom 0)]
+    (plumbing.core/defmemo factorial [x]
+      (swap! calls inc)
+      (if (zero? x) 1 (* x (factorial (dec x)))))
+    (is (= 120
+           (factorial 5)))
+    (is (= 24
+           (factorial 4)))
+    (is (= 6 @calls))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Miscellaneous
 
