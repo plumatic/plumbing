@@ -7,7 +7,7 @@
   :dependencies [[prismatic/schema "0.2.1"]
                  [de.kotka/lazymap "3.1.0" :exclusions [org.clojure/clojure]]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.5.1"]]}
-             :1.6 {:dependencies [[org.clojure/clojure "1.6.0-RC1"]]}}
+             :1.6 {:dependencies [[org.clojure/clojure "1.6.0"]]}}
   :aliases {"all" ["with-profile" "dev:dev,1.6"]}
   :lein-release {:deploy-via :shell
                  :shell ["lein" "deploy" "clojars"]}

@@ -227,7 +227,7 @@ For announcements of new releases, you can also follow on [@PrismaticEng](http:/
 
 ## Supported Clojure versions
 
-Plumbing is currently supported on Clojure 1.5.x.
+Plumbing is currently supported on Clojure 1.5.x and 1.6.x.
 
 ## License
 
