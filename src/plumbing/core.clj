@@ -264,17 +264,17 @@
 ;;; Control flow
 
 (defmacro ?>>
-  "Conditional double-arrow operation (->> nums (?>> inc-all? map inc))"
-  [do-it? f & args]
+  "Conditional double-arrow operation (->> nums (?>> inc-all? (map inc)))"
+  [do-it? & args]
   `(if ~do-it?
-     (~f ~@args)
+     (->> ~(last args) ~@(butlast args))
      ~(last args)))
 
 (defmacro ?>
-  "Conditional single-arrow operation (-> m (?> add-kv? assoc :k :v))"
-  [arg do-it? f & rest]
+  "Conditional single-arrow operation (-> m (?> add-kv? (assoc :k :v)))"
+  [arg do-it? & rest]
   `(if ~do-it?
-     (~f ~arg ~@rest)
+     (-> ~arg ~@rest)
      ~arg))
 
 (defmacro fn->
