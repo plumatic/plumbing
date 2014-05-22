@@ -46,7 +46,7 @@ We can "compile" this Graph to produce a single function (equivalent to `stats`)
 
 ```clojure
 (require '[plumbing.graph :as graph] '[schema.core :as s])
-(def stats-eager (graph/eager-compile stats-graph))
+(def stats-eager (graph/compile stats-graph))
 
 (= {:n 4
     :m 3
@@ -64,7 +64,7 @@ Unlike the opaque `stats` fn, however, we can modify and extend `stats-graph` us
 
 ```clojure
 (def extended-stats
-  (graph/eager-compile
+  (graph/compile
     (assoc stats-graph
       :sd (fnk [^double v] (Math/sqrt v)))))
 
@@ -113,7 +113,7 @@ If schemas are provided on the inputs and outputs of the node functions, these p
 We can also have higher-order functions on Graphs to wrap the behavior on each step. For instance, we can automatically profile each sub-function in 'stats' to see how long it takes to execute:
 
 ```clojure
-(def profiled-stats (graph/eager-compile (graph/profiled ::profile-data stats-graph)))
+(def profiled-stats (graph/compile (graph/profiled ::profile-data stats-graph)))
 
 ;;; times in milliseconds for each step:
 (= {:n 1.001, :m 0.728, :m2 0.996, :v 0.069}
