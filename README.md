@@ -4,6 +4,7 @@
 
 This first release includes our '[Graph](http://blog.getprismatic.com/prismatics-graph-at-strange-loop/)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
 
+*New in 0.2.3: support for ClojureScript*
 *New in 0.2.0: support for schema.core/defn-style schemas on fnks and Graphs.  See `(doc fnk)` for details.*
 
 Leiningen dependency (Clojars): [prismatic/plumbing "0.2.2"]
@@ -119,7 +120,7 @@ We can also have higher-order functions on Graphs to wrap the behavior on each s
    @(::profile-data (profiled-stats {:xs (range 10000)})))
 ```
 
-… and so on.  For more examples and details about Graph, check out the [graph examples test](https://github.com/Prismatic/plumbing/blob/master/test/plumbing/graph_examples_test.clj).  Also, stay tuned for a ClojureScript version of Graph, coming soon.
+… and so on.  For more examples and details about Graph, check out the [graph examples test](https://github.com/Prismatic/plumbing/blob/master/test/plumbing/graph_examples_test.cljx).
 
 <a name="fnk"/>
 ## Bring on (de)fnk
@@ -217,7 +218,7 @@ Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
 	[1 3 5 7 9])
 ```
 
-Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/src/plumbing/core.clj) for many other useful functions.
+Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/src/plumbing/core.cljx) for many other useful functions.
 
 ## Community
 
