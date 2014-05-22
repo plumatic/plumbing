@@ -208,13 +208,13 @@ Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
 (= (let [add-b? false]
      (-> {:a 1}
          (merge {:c 2})
-         (?> add-b? assoc :b 2)))
+         (?> add-b? (assoc :b 2))))
    {:a 1 :c 2})
 
 (= (let [inc-all? true]
      (->> (range 10)
           (filter even?)
-          (?>> inc-all? map inc)))
+          (?>> inc-all? (map inc))))
 	[1 3 5 7 9])
 ```
 

@@ -1,4 +1,5 @@
 ## 0.3.0
+ * **BREAKING**: `?>` and `?>>` require a body expression in parens, and take an arbitrary number of body expressions. 
  * Add ClojureScript support via cljx
  * Add plumbing.graph-async namespace to define asynchronous graphs using core.async channels. A core.async dependency has *not* been added to project.clj and must be supplied by user if this namespace is used.
  * Add `update` and `mapply` to plumbing.core
