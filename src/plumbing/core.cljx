@@ -1,12 +1,19 @@
 (ns plumbing.core
   "Utility belt for Clojure in the wild"
+  #+cljs
+  (:require-macros
+   [plumbing.core :refer [for-map lazy-get]])
   (:require
-   [schema.macros :as sm]
-   [plumbing.fnk.schema :as schema]
-   [plumbing.fnk.pfnk :as pfnk]
-   [plumbing.fnk.impl :as fnk-impl]))
+   [schema.utils :as schema-utils]
+   #+clj [schema.macros :as sm]
+   #+clj [plumbing.fnk.schema :as schema]
+   #+clj [plumbing.fnk.impl :as fnk-impl]))
 
-(set! *warn-on-reflection* true)
+#+clj (set! *warn-on-reflection* true)
+
+(def ^:private +none+
+  "A sentinel value representing missing portions of the input data."
+  ::missing)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Maps
@@ -83,15 +90,16 @@
   "Recursively convert maps in m (including itself)
    to have keyword keys instead of string"
   [x]
-  (condp instance? x
-    clojure.lang.IPersistentMap
-    (for-map [[k v] x]
-      (if (string? k) (keyword k) k) (keywordize-map v))
-    clojure.lang.IPersistentList
-    (map keywordize-map x)
-    clojure.lang.IPersistentVector
-    (into [] (map keywordize-map x))
-    x))
+  (cond
+   (map? x)
+   (for-map [[k v] x]
+     (if (string? k) (keyword k) k) (keywordize-map v))
+   (seq? x)
+   (map keywordize-map x)
+   (vector? x)
+   (mapv keywordize-map x)
+   :else
+   x))
 
 (defmacro lazy-get
   "Like get but lazy about default"
@@ -103,7 +111,11 @@
 (defn safe-get
   "Like get but throw an exception if not found"
   [m k]
-  (lazy-get m k (throw (IllegalArgumentException. (format "Key %s not found in %s" k (mapv key m))))))
+  (lazy-get
+   m k
+   (let [e ^String (schema-utils/format* "Key %s not found in %s" k (mapv key m))]
+     (throw #+clj (IllegalArgumentException. e)
+            #+cljs (js/Error. e)))))
 
 (defn safe-get-in
   "Like get-in but throws exception if not found"
@@ -124,8 +136,8 @@
 (defn update-in-when
   "Like update-in but returns m unchanged if key-seq is not present."
   [m key-seq f & args]
-  (let [found (get-in m key-seq ::sent)]
-    (if-not (identical? ::sent found)
+  (let [found (get-in m key-seq +none+)]
+    (if-not (identical? +none+ found)
       (assoc-in m key-seq (apply f found args))
       m)))
 
@@ -188,6 +200,7 @@
   [f s]
   (keep-indexed (fn [i x] (when (f x) i)) s))
 
+#+clj
 (defn frequencies-fast
   "Like clojure.core/frequencies, but faster.
    Uses Java's equal/hash, so may produce incorrect results if
@@ -198,6 +211,7 @@
       (.put res x (unchecked-inc (int (or (.get res x) 0)))))
     (into {} res)))
 
+#+clj
 (defn distinct-fast
   "Like clojure.core/distinct, but faster.
    Uses Java's equal/hash, so may produce incorrect results if
@@ -211,13 +225,20 @@
    values according to f. If multiple elements of xs return the same
    value under f, the first is returned"
   [f xs]
-  (let [s (java.util.HashSet.)]
-    (for [x xs
-          :let [id (f x)]
-          :when (not (.contains s id))]
-      (do (.add s id)
-          x))))
+  #+clj  (let [s (java.util.HashSet.)]
+           (for [x xs
+                 :let [id (f x)]
+                 :when (not (.contains s id))]
+             (do (.add s id)
+                 x)))
+  #+cljs (let [s (atom #{})]
+           (for [x xs
+                 :let [id (f x)]
+                 :when (not (contains? @s id))]
+             (do (swap! s conj id)
+                 x))))
 
+#+clj
 (defn distinct-id
   "Like distinct but uses reference rather than value identity, very clojurey"
   [xs]
@@ -340,7 +361,8 @@
   (first (swap-pair! a (constantly new-val))))
 
 (defn millis ^long []
-  (System/currentTimeMillis))
+  #+clj  (System/currentTimeMillis)
+  #+cljs (.getTime (js/Date.)))
 
 (defn mapply
   "Like apply, but applies a map to a function with positional map
@@ -416,4 +438,4 @@
       `(def ~(with-meta name (merge (meta name) (assoc-when (or attr-map? {}) :doc docstring?)))
          ~f))))
 
-(set! *warn-on-reflection* false)
+#+clj (set! *warn-on-reflection* false)

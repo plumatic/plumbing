@@ -1,7 +1,9 @@
-## 0.2.3
+## 0.3.0
+ * Add ClojureScript support via cljx
+ * Add plumbing.graph-async namespace to define asynchronous graphs using core.async channels. A core.async dependency has *not* been added to project.clj and must be supplied by user if this namespace is used.
  * Add `update` and `mapply` to plumbing.core
 
-## 0.2.2 
+## 0.2.2
  * Don't depend on a specific Clojure version, and add support for Clojure 1.6.x
 
 ## 0.2.1

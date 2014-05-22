@@ -4,3 +4,7 @@ pom.xml
 pom.xml.asc
 target/**
 .*.swp
+.nrepl-port
+.repl
+out
+.lein-repl-history

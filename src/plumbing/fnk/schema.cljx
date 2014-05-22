@@ -12,9 +12,14 @@
    schemas on inputs as appropriate.  Output schemas may not have optional keys."
   (:require
    [schema.core :as s]
-   [schema.macros :as macros]))
+   [schema.utils :as schema-utils]
+   #+clj [schema.macros :as sm])
+  #+cljs
+  (:require-macros
+   [schema.macros :as sm]
+   [plumbing.fnk.schema :refer [assert-iae]]))
 
-(def Schema (s/protocol s/Schema))
+(def Schema (sm/protocol s/Schema))
 (def InputSchema {(s/either (s/eq s/Keyword) schema.core.OptionalKey s/Keyword) Schema})
 (def OutputSchema Schema)
 (def IOSchemata [(s/one InputSchema 'input) (s/one OutputSchema 'output)])
@@ -23,13 +28,34 @@
 (def MapOutputSchema {s/Keyword Schema})
 (def GraphIOSchemata [(s/one GraphInputSchema 'input) (s/one MapOutputSchema 'output)])
 
-;;; Helper
+;;; Helpers
 
 (defmacro assert-iae
   "Like assert, but throws an IllegalArgumentException not an Error (and also takes args to format)"
   [form & format-args]
-  `(when-not ~form (throw (IllegalArgumentException. (format ~@format-args)))))
+  `(when-not ~form (throw (#+clj IllegalArgumentException. #+cljs js/Error.
+                                 ^String (schema-utils/format* ~@format-args)))))
 
+(defn assert-distinct
+  "Like (assert (distinct? things)) but with a more helpful error message."
+  [things]
+  (let [repeated-things (->> things
+                             frequencies
+                             (filter #(> (val %) 1))
+                             seq)]
+    (assert-iae (empty? repeated-things) "Got repeated items (expected distinct): %s" repeated-things)))
+
+(defn safe-get
+  "Like (get m k), but throws if k is not present in m."
+  [m k key-path]
+  (assert-iae (map? m)
+              "Expected a map at key-path %s, got type %s" key-path (schema-utils/type-of m))
+  (let [[_ v :as p] (find m k)]
+    (when-not p (throw (ex-info ^String (schema-utils/format* "Key %s not found in %s" k (keys m))
+                                {:error :missing-key
+                                 :key   k
+                                 :map   m})))
+    v))
 
 ;;; Punt on non-maps.
 
@@ -46,23 +72,36 @@
   nil)
 
 (defn map-schema? [m]
-  (instance? clojure.lang.APersistentMap m))
+  #+clj  (instance? clojure.lang.APersistentMap m)
+  #+cljs (or (instance? cljs.core.PersistentArrayMap m)
+             (instance? cljs.core.PersistentHashMap m)))
 
 ;;; Input schemata
 
-(macros/defn explicit-schema-key-map
+(sm/defn unwrap-schema-form-key :- (s/maybe (s/pair s/Keyword "k" s/Bool "optional?"))
+  "Given a possibly-unevaluated schema map key form, unpack an explicit keyword
+   and optional? flag, or return nil for a non-explicit key"
+  [k]
+  (cond (s/specific-key? k)
+        [(s/explicit-schema-key k) (s/required-key? k)]
+
+        ;; Deal with `(s/optional-key k) form from impl
+        (and (sequential? k) (not (vector? k)) (= (count k) 2)
+             (= (first k) 'schema.core/optional-key))
+        [(second k) false]))
+
+(sm/defn explicit-schema-key-map
   "Given a possibly-unevaluated map schema, return a map from bare keyword to true
    (for required) or false (for optional)"
-  [s] :- {s/Keyword boolean}
+  [s] :- {s/Keyword s/Bool}
   (->> s
-       (keep (fn [[k v]]
-               (when (s/specific-key? k)
-                 [(s/explicit-schema-key k) (s/required-key? k)])))
+       keys
+       (keep unwrap-schema-form-key)
        (into {})))
 
-(macros/defn split-schema-keys
+(sm/defn split-schema-keys
   "Given output of explicit-schema-key-map, split into seq [req opt]."
-  [s :- {s/Keyword boolean}] :- [(s/one [s/Keyword] 'required) (s/one [s/Keyword] 'optional)]
+  [s :- {s/Keyword s/Bool}] :- [(s/one [s/Keyword] 'required) (s/one [s/Keyword] 'optional)]
   (->> s
        ((juxt filter remove) val)
        (mapv (partial mapv key))))
@@ -82,7 +121,7 @@
        vals
        (into {})))
 
-(macros/defn union-input-schemata :- InputSchema
+(sm/defn union-input-schemata :- InputSchema
   "Returns a minimal input schema schema that entails satisfaction of both s1 and s2"
   [i1 :- InputSchema i2 :- InputSchema]
   (merge-on-with
@@ -99,7 +138,7 @@
        (non-map-union s1 s2)))
    i1 i2))
 
-(macros/defn required-toplevel-keys :- [s/Keyword]
+(sm/defn required-toplevel-keys :- [s/Keyword]
   "Which top-level keys are required (i.e., non-false) by this input schema."
   [input-schema :- InputSchema]
   (keep
@@ -112,17 +151,19 @@
 
 ;;; Output schemata
 
+
 (defn guess-expr-output-schema
   "Guess an output schema for an expr.  Currently just looks for literal map structure and
    all keyword keys."
   [expr]
   (if (and (map? expr) (every? keyword? (keys expr)))
     (into {} (for [[k v] expr] [k (guess-expr-output-schema v)]))
-    `s/Any))
+    'schema.core/Any))
 
 ;;; Combining inputs and outputs.
 
-(macros/defn schema-diff ;; don't validate since it returns better errors.
+
+(defn schema-diff ;; don't validate since it returns better errors.
   "Subtract output-schema from input-schema, returning nil if it's possible that an object
    satisfying the output-schema satisfies the input-schema, or otherwise a description
    of the part(s) of input-schema not met by output-schema.  Strict about the map structure
@@ -133,7 +174,7 @@
         (non-map-diff input-schema output-schema)
 
         (not (map-schema? output-schema))
-        (macros/validation-error input-schema output-schema (list 'map? (s/explain output-schema)))
+        (sm/validation-error input-schema output-schema (list 'map? (s/explain output-schema)))
 
         :else
         (->> (for [[k v] input-schema
@@ -154,9 +195,7 @@
   (let [fails (schema-diff input-schema output-schema)]
     (when fails (throw (ex-info (str fails) {:error    :does-not-satisfy-schema
                                              :failures fails})))))
-
-
-(macros/defn ^:always-validate compose-schemata
+(sm/defn ^:always-validate compose-schemata
   "Given pairs of input and output schemata for fnks f1 and f2,
    return a pair of input and output schemata for #(f2 (merge % (f1 %))).
    f1's output schema must not contain any optional keys."
@@ -178,7 +217,7 @@
 (defn possibly-contains? [m k]
   (boolean (schema-key m k)))
 
-(macros/defn split-schema
+(sm/defn split-schema
   "Return a pair [ks-part non-ks-part], with any extra schema removed."
   [s :- InputSchema ks :- [s/Keyword]]
   (let [ks (set ks)]
@@ -188,7 +227,7 @@
                                 (= in? (contains? ks (s/explicit-schema-key k))))]
                  [k v])))))
 
-(macros/defn sequence-schemata :- GraphIOSchemata
+(sm/defn sequence-schemata :- GraphIOSchemata
   "Given pairs of input and output schemata for fnks f1 and f2, and a keyword k,
    return a pair of input and output schemata for #(let [v1 (f1 %)] (assoc v1 k (f2 (merge-disjoint % v1))))"
   [[i1 o1] :- GraphIOSchemata
