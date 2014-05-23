@@ -4,10 +4,11 @@
 
 This first release includes our '[Graph](http://blog.getprismatic.com/prismatics-graph-at-strange-loop/)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
 
-*New in 0.2.3: support for ClojureScript*
+*New in 0.3.0: support for ClojureScript*
 *New in 0.2.0: support for schema.core/defn-style schemas on fnks and Graphs.  See `(doc fnk)` for details.*
 
-Leiningen dependency (Clojars): [prismatic/plumbing "0.2.2"]
+Leiningen dependency (Clojars): [prismatic/plumbing "0.3.0"]
+
 **This is an alpha release.  We  are using it internally in production, but the API and organizational structure are subject to change.  Comments and suggestions are much appreciated.**
 
 Check back often, because we'll keep adding more useful namespaces and functions as we work through cleaning up and open-sourcing our stack of Clojure libraries.
@@ -219,6 +220,34 @@ Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
 ```
 
 Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/src/plumbing/core.cljx) for many other useful functions.
+
+## ClojureScript
+
+As of 0.3.0, plumbing is available in ClojureScript! The vast majority of the
+library supports ClojureScript, with the only exceptions that are JVM-specific
+optimizations.
+
+Here's an example usage of `for-map`:
+
+```clojure
+(ns plumbing.readme
+  (:require [plumbing.core :refer-macros [for-map]]))
+
+(defn js-obj->map
+  "Recursively converts a JavaScript object into a map with keyword keys"
+  [obj]
+  (for-map [k (js-keys obj)
+            :let [v (aget obj k)]]
+    (keyword k) (if (object? v) (js-obj->map v) v)))
+
+(is (= {:a 1 :b {:x "x" :y "y"}}
+       (js-obj->map
+        (js-obj "a" 1
+                "b" (js-obj "x" "x"
+                            "y" "y")))))
+
+;; Note: this is a contrived example; you would normally use `cljs.core/clj->js`
+```
 
 ## Community
 
