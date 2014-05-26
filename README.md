@@ -5,6 +5,7 @@
 This first release includes our '[Graph](http://blog.getprismatic.com/prismatics-graph-at-strange-loop/)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
 
 *New in 0.3.0: support for ClojureScript*
+
 *New in 0.2.0: support for schema.core/defn-style schemas on fnks and Graphs.  See `(doc fnk)` for details.*
 
 Leiningen dependency (Clojars): [prismatic/plumbing "0.3.0"]
@@ -209,13 +210,13 @@ Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
 (= (let [add-b? false]
      (-> {:a 1}
          (merge {:c 2})
-         (?> add-b? assoc :b 2)))
+         (?> add-b? (assoc :b 2))))
    {:a 1 :c 2})
 
 (= (let [inc-all? true]
      (->> (range 10)
           (filter even?)
-          (?>> inc-all? map inc)))
+          (?>> inc-all? (map inc))))
 	[1 3 5 7 9])
 ```
 
