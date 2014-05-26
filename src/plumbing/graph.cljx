@@ -20,6 +20,7 @@
    from keywords in the input map.
 
    For more details and examples of Graphs, see test/plumbing/graph_examples_test.cljx."
+  (:refer-clojure :exclude [compile])
   (:require
    #+clj [lazymap.core :as lazymap]
    [schema.core :as s]
@@ -217,6 +218,14 @@
    (fn [m] (into (lazymap/lazy-hash-map) m))
    (fn [m k f] (lazymap/delay-assoc m k (future (restricted-call f m))))))
 
+(defn compile
+  "Compile graph specification g to a corresponding fnk using the a default
+   compile strategy for host.
+   Clojure: eager-compile
+   ClojureScript: interpreted-eager-compile"
+  [g]
+  #+clj  (eager-compile g)
+  #+cljs (interpreted-eager-compile g))
 
 (defn run
   "Eagerly run a graph on an input by compiling and then executing on this input."
@@ -286,7 +295,6 @@
   ([g bind m]
      `(comp-partial ~g (plumbing/fnk ~bind ~m))))
 
-#+clj
 (defn profiled
   "Modify graph spec g, producing a new graph spec with a new top-level key
    'profile-key'.  After each node value is computed, the number of milliseconds
@@ -299,9 +307,11 @@
              (pfnk/fn->fnk
               (fn [m]
                 (let [pm (plumbing/safe-get m profile-key)
-                      start (System/nanoTime)
+                      start #+clj (System/nanoTime) #+cljs (plumbing/millis)
                       res (f (dissoc m profile-key))]
-                  (swap! pm assoc-in ks (/ (- (System/nanoTime) start) 1000000.0))
+                  (swap! pm assoc-in ks
+                         #+clj  (/ (- (System/nanoTime) start) 1000000.0)
+                         #+cljs (- (plumbing/millis) start))
                   res))
               [(assoc (pfnk/input-schema f)
                  profile-key s/Any)

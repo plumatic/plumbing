@@ -154,7 +154,6 @@
               :cg {:cga 12}
               :e 13})))))
 
-
 (deftest interpreted-eager-compile-test
   (test-eager-compile graph/interpreted-eager-compile identity))
 
@@ -302,6 +301,19 @@
            {:a 11 :b -10 :c -110}))
     (doseq [[k t] times]
       (is (approx-= t (get @(:profile-stats execed) k))))))
+
+#+cljs
+(deftest profiled-test
+  (let [stats-graph {:n  (plumbing/fnk [xs]   (count xs))
+                     :m  (plumbing/fnk [xs n] (/ (plumbing/sum identity xs) n))
+                     :m2 (plumbing/fnk [xs n] (/ (plumbing/sum #(* % %) xs) n))
+                     :v  (plumbing/fnk [m m2] (- m2 (* m m)))}
+        compiled (graph/compile (graph/profiled ::profile-stats stats-graph))
+        output (compiled {:xs (range 5000)})
+        profile-stats @(::profile-stats output)]
+    (is (map? profile-stats))
+    (is (= #{:n :m :m2 :v}
+           (set (keys profile-stats))))))
 
 #+clj
 (defn time-graphs "How slow are big chain graphs?" []

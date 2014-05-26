@@ -184,10 +184,8 @@
 ;; 4.  We can automatically profile each sub-function in 'stats' to see how
 ;;     long it takes to execute.
 
-#+clj
-(def profiled-stats (graph/eager-compile (graph/profiled ::profile-data stats-graph)))
+(def profiled-stats (graph/compile (graph/profiled ::profile-data stats-graph)))
 
-#+clj
 (deftest profiled-stats-test
   (is (= (/ 7 2) (:v (profiled-stats {:xs [1 2 3 6]})))))
 
@@ -352,14 +350,13 @@
 ;; well-formed.  Schemas on the function inputs and outputs propagate
 ;; to the graph schema.
 
-#+clj
 (deftest a-nested-graph-test
   (let [a-nested-graph {:x (p/fnk xf :- long [a :- long] (inc a))
                         :y {:y1 (p/fnk [a x] (* a x))
                             :y2 (p/fnk [b y1] (* y1 (dec b)))}
                         :z (p/fnk [x [:y y1 y2]] ;; nested binding!
                              (- y1 y2))}
-        f (graph/eager-compile a-nested-graph)]
+        f (graph/compile a-nested-graph)]
     (is (= [{:a long :b s/Any s/Keyword s/Any}
             {:x long
              :y {:y1 s/Any :y2 s/Any}
