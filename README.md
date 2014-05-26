@@ -5,6 +5,7 @@
 This first release includes our '[Graph](http://blog.getprismatic.com/prismatics-graph-at-strange-loop/)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
 
 *New in 0.2.3: support for ClojureScript*
+
 *New in 0.2.0: support for schema.core/defn-style schemas on fnks and Graphs.  See `(doc fnk)` for details.*
 
 Leiningen dependency (Clojars): [prismatic/plumbing "0.2.2"]
