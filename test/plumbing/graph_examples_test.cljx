@@ -351,14 +351,14 @@
 ;; to the graph schema.
 
 (deftest a-nested-graph-test
-  (let [a-nested-graph {:x (p/fnk xf :- long [a :- long] (inc a))
+  (let [a-nested-graph {:x (p/fnk xf :- s/Int [a :- s/Int] (inc a))
                         :y {:y1 (p/fnk [a x] (* a x))
                             :y2 (p/fnk [b y1] (* y1 (dec b)))}
                         :z (p/fnk [x [:y y1 y2]] ;; nested binding!
                              (- y1 y2))}
         f (graph/compile a-nested-graph)]
-    (is (= [{:a long :b s/Any s/Keyword s/Any}
-            {:x long
+    (is (= [{:a s/Int :b s/Any s/Keyword s/Any}
+            {:x s/Int
              :y {:y1 s/Any :y2 s/Any}
              :z s/Any}]
            (pfnk/io-schemata f)))
