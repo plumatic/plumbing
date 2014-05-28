@@ -13,6 +13,7 @@
                                   [com.keminglabs/cljx "0.3.2"]
                                   [org.clojure/core.async "0.1.298.0-2a82a1-alpha"]]
                    :plugins [[com.keminglabs/cljx "0.3.2"]
+                             [codox "0.8.8"]
                              [lein-cljsbuild "0.3.2"]
                              [com.cemerick/austin "0.1.3"]
                              [com.cemerick/clojurescript.test "0.3.0"]]
@@ -65,5 +66,9 @@
                                  :optimizations :whitespace
 
                                  :pretty-print true}}}}
+
+  :codox {:src-uri-mapping {#"target/generated/src/clj" #(str "src/" % "x")}
+          :src-dir-uri "http://github.com/prismatic/plumbing/blob/master/"
+          :src-linenum-anchor-prefix "L"}
 
   :jvm-opts ^:replace [])

@@ -8,3 +8,4 @@ target/**
 .repl
 out
 .lein-repl-history
+/doc/
