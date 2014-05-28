@@ -8,7 +8,7 @@ This first release includes our '[Graph](http://blog.getprismatic.com/prismatics
 
 *New in 0.2.0: support for schema.core/defn-style schemas on fnks and Graphs.  See `(doc fnk)` for details.*
 
-Leiningen dependency (Clojars): [prismatic/plumbing "0.3.0"]
+Leiningen dependency (Clojars): ```[prismatic/plumbing "0.3.0"]```
 
 **This is an alpha release.  We  are using it internally in production, but the API and organizational structure are subject to change.  Comments and suggestions are much appreciated.**
 
