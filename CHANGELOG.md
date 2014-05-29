@@ -1,3 +1,6 @@
+## 0.3.1
+ * Fix cljs issue where plumbing.fnk.schema was missing from dependency tree
+
 ## 0.3.0
  * **BREAKING**: `?>` and `?>>` require a body expression in parens, and take an arbitrary number of body expressions. 
  * Add ClojureScript support via cljx
