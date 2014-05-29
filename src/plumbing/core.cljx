@@ -6,7 +6,7 @@
   (:require
    [schema.utils :as schema-utils]
    #+clj [schema.macros :as sm]
-   #+clj [plumbing.fnk.schema :as schema]
+   [plumbing.fnk.schema :as schema]
    #+clj [plumbing.fnk.impl :as fnk-impl]))
 
 #+clj (set! *warn-on-reflection* true)
