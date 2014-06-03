@@ -19,7 +19,7 @@ Our first release is plumbing.[Graph], a library for declaratively specifying th
  :v  (fnk [m m2] (- m2 (* m m)))}
 ```
 
-<img src="http://prismatic.squarespace.com/storage/graph_stats_graph.png" alt="A graphical depiction of this example graph" style="display:block; margin-left:auto; margin-right: auto; "align="center">
+<img src="https://raw.github.com/wiki/prismatic/plumbing/images/graph_stats_graph.png" alt="A graphical depiction of this example graph" style="display:block; margin-left:auto; margin-right: auto; "align="center">
      
 This example shows a simple Graph that expresses the computation of univariate statistics of a sequence of input numbers `xs` in four steps.  Dependencies between steps are expressed by argument and keyword names  (e.g., the variance `v` is computed from the mean `m` and mean-square `m2`).   The details of Graph are not vital for this discussion (see the [blog post](Graph) if you're interested), except for the following two high-level constraints on the implementation of `fnk`:
 
