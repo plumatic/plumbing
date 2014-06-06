@@ -295,50 +295,36 @@
      pos-fn)))
 
 (defn positional-fnk-form
-  "Takes an optional name, input schema and a positional fn body that can
-   reference the symbol versions of keywords in input-schema, and
-   produces a form generating a IFn/PFnk that can be called as a keyword function,
+  "Takes an optional name, input schema, seq of ordered [key optional?] pairs,
+   an arg-sym-map from these keywords to symbols, and and a positional fn body
+   that can reference these symbols.
+   Produces a form generating a IFn/PFnk that can be called as a keyword function,
    and has metadata containing the positional function for efficient compilation
    as described in 'efficient-call-forms' and 'positional-fn' above, with
-   argument order the same as in input-schema by default.  An explicit
-   arg-sym-map from keywords to symbols can also be passed to provide explicit
-   symbols for each arg, and propagate argument tag megadata into the fn. Example:
+   argument order the same as in input-schema by default.   Example:
 
    (def f (eval (i/positional-fnk-form 'foo {:x s/Any (s/optional-key :y) s/Any}
                    [`(+ ~'x (if (= ~'y i/+none+) 5 ~'y))])))
 
    (= [6 3] [(f {:x 1}) (f {:x 1 :y 2})])
-   (= [6 3] [((i/positional-fn f [:x]) 1) ((i/positional-fn f [:y :x]) 2 1)]).
-
-   Has a second form that takes both an internal input-schema and arg-sym-map
-   used to construct the main body of the function (derived from the binding
-   form structure), plus an 'external' schema used for validation and exposed
-   to the outside world."
-  ([fn-name input-schema body]
-     (positional-fnk-form
-      fn-name
-      input-schema
-      input-schema
-      (into {} (for [k (keys (schema/explicit-schema-key-map input-schema))] [k (k->sym k)]))
-      body))
-
-  ([fn-name input-schema external-input-schema arg-sym-map body]
-     (let [[req-ks opt-ks] (-> input-schema schema/explicit-schema-key-map schema/split-schema-keys)
-           explicit-schema-keys (vec (keys (schema/explicit-schema-key-map input-schema)))
-           pos-args (mapv #(do (schema-macros/assert-c! (contains? arg-sym-map %))
-                               (arg-sym-map %))
-                          explicit-schema-keys)]
-       `(let [pos-fn# (fn ~(symbol (str fn-name "-positional"))
-                        ~pos-args
-                        ~@body)]
-          (vary-meta (schema-macros/fn
-                       ~fn-name
-                       [m# :- ~external-input-schema]
-                       (plumbing.core/letk [~(into (mapv k->sym req-ks)
-                                                   (mapv (fn [k] {(k->sym k) +none+}) opt-ks))
-                                            m#]
-                         (pos-fn# ~@(mapv k->sym explicit-schema-keys))))
-                     assoc ::positional-info [pos-fn# ~explicit-schema-keys])))))
+   (= [6 3] [((i/positional-fn f [:x]) 1) ((i/positional-fn f [:y :x]) 2 1)])."
+  [fn-name external-input-schema ordered-ks->opt arg-sym-map body]
+  (let [[req-ks opt-ks] (schema/split-schema-keys (into {} ordered-ks->opt))
+        explicit-schema-keys (mapv first ordered-ks->opt)
+        pos-args (mapv #(do (schema-macros/assert-c! (contains? arg-sym-map %))
+                            (arg-sym-map %))
+                       explicit-schema-keys)]
+    `(let [pos-fn# (fn ~(symbol (str fn-name "-positional"))
+                     ~pos-args
+                     ~@body)]
+       (vary-meta (schema-macros/fn
+                    ~fn-name
+                    [m# :- ~external-input-schema]
+                    (plumbing.core/letk [~(into (mapv k->sym req-ks)
+                                                (mapv (fn [k] {(k->sym k) +none+}) opt-ks))
+                                         m#]
+                      (pos-fn# ~@(mapv k->sym explicit-schema-keys))))
+                  assoc ::positional-info [pos-fn# ~explicit-schema-keys]))))
 
 ;;; Generating fnk bodies
 
@@ -366,7 +352,12 @@
     (if (and (not (schema-macros/compiling-cljs?))
              (not-any? #{'& :as} bind)) ;; If we can make a positional fnk form, do it.
       (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body env bind `(do ~@body))]
-        (positional-fnk-form fn-name input-schema external-input-schema bind-sym-map [bound-body]))
+        (positional-fnk-form
+         fn-name
+         external-input-schema
+         (vec (schema/explicit-schema-key-map input-schema))
+         bind-sym-map
+         [bound-body]))
       `(schema-macros/fn
          ~fn-name
          [~(schema-override map-sym external-input-schema)]

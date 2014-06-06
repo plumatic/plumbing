@@ -71,13 +71,20 @@
   [g]
   (let [arg-ks (->> g pfnk/input-schema-keys)
         [positional-fn-form eval-bindings] (graph-form g arg-ks)
-        pos-fn-sym (gensym "pos")]
+        input-schema (pfnk/input-schema g)
+        pos-fn-sym (gensym "pos")
+        input-schema-sym (gensym "input-schema")
+        output-schema-sym (gensym "output-schema")]
     (vary-meta ;; workaround evaluation quirks
      (eval-bound
       `(let [~pos-fn-sym ~positional-fn-form]
          ~(fnk-impl/positional-fnk-form
-           (fnk-impl/schema-override 'graph-positional (pfnk/output-schema g))
-           (pfnk/input-schema g)
+           (fnk-impl/schema-override 'graph-positional output-schema-sym)
+           input-schema-sym
+           (vec (schema/explicit-schema-key-map input-schema))
+           (into {} (for [k (keys (schema/explicit-schema-key-map input-schema))] [k (symbol (name k))]))
            (list `(~pos-fn-sym ~@(mapv (comp symbol name) arg-ks)))))
-      eval-bindings)
+      (into eval-bindings
+            [[input-schema-sym input-schema]
+             [output-schema-sym (pfnk/output-schema g)]]))
      assoc :schema (let [[is os] (pfnk/io-schemata g)] (sm/=> os is)))))

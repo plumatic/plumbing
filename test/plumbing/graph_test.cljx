@@ -169,6 +169,20 @@
     (is (not= {:x 2} o))))
 
 #+clj
+(do ;; test defschema with eager-compile -- there were some issues previously
+  (ns test (:require [schema.core :as s]))
+  (s/defschema Foo {s/Keyword s/Num})
+
+  (ns plumbing.graph-test)
+  (deftest eager-compile-defschema-test
+    (let [g {:foo (plumbing/fnk [bar :- test/Foo])}
+          f (graph/eager-compile g)]
+      (is (= [{:bar test/Foo s/Keyword s/Any}
+              {:foo s/Any}]
+             (pfnk/io-schemata f)
+             (pfnk/io-schemata g))))))
+
+#+clj
 (deftest positional-eager-compile-test
   (let [f (graph/positional-eager-compile
            (graph/graph
