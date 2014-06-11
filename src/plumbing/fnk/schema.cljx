@@ -30,11 +30,11 @@
 
 ;;; Helpers
 
-(defmacro assert-iae
+(defn assert-iae
   "Like assert, but throws an IllegalArgumentException not an Error (and also takes args to format)"
-  [form & format-args]
-  `(when-not ~form (throw (#+clj IllegalArgumentException. #+cljs js/Error.
-                                 ^String (schema-utils/format* ~@format-args)))))
+  [value & format-args]
+  (when-not value (throw (#+clj IllegalArgumentException. #+cljs js/Error.
+                                ^String (apply schema-utils/format* format-args)))))
 
 (defn assert-distinct
   "Like (assert (distinct? things)) but with a more helpful error message."
