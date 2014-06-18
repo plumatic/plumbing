@@ -349,7 +349,7 @@
                         (schema/guess-expr-output-schema (last body))
                         explicit-output-schema)
         fn-name (vary-meta (or name? (gensym "fnk")) assoc :schema output-schema)]
-    (if (and (not (schema-macros/compiling-cljs?))
+    (if (and (not (schema-macros/cljs-env? env))
              (not-any? #{'& :as} bind)) ;; If we can make a positional fnk form, do it.
       (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body env bind `(do ~@body))]
         (positional-fnk-form
