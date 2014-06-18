@@ -1,3 +1,6 @@
+## 0.3.2
+ * Fix cljs compilation issue appearing in some circumstances (No such namespace: js)
+
 ## 0.3.1
  * Fix cljs issue where plumbing.fnk.schema was missing from dependency tree
 
