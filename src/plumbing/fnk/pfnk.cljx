@@ -6,13 +6,11 @@
    are one possible example)."
   (:require
    [schema.core :as s]
-   [plumbing.fnk.schema :as schema]
-   #+clj [schema.macros :as sm]
-   #+clj [plumbing.fnk.schema :refer [assert-iae]])
+   [plumbing.fnk.schema :as schema :refer [assert-iae]]
+   #+clj [schema.macros :as sm])
   #+cljs
   (:require-macros
-   [schema.macros :as sm]
-   [plumbing.fnk.schema :refer [assert-iae]]))
+   [schema.macros :as sm]))
 
 #+clj (set! *warn-on-reflection* true)
 
