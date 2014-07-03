@@ -113,9 +113,7 @@
   [m k]
   (lazy-get
    m k
-   (let [e ^String (schema-utils/format* "Key %s not found in %s" k (mapv key m))]
-     (throw #+clj (IllegalArgumentException. e)
-            #+cljs (js/Error. e)))))
+   (schema/assert-iae false "Key %s not found in %s" k (mapv key m))))
 
 (defn safe-get-in
   "Like get-in but throws exception if not found"

@@ -1,3 +1,6 @@
+## 0.3.3
+ * Properly generate cross-platform assertions, fixing ClojureScript errors that tried to throw Java errors.
+
 ## 0.3.2
  * Fix cljs compilation issue appearing in some circumstances (No such namespace: js)
 

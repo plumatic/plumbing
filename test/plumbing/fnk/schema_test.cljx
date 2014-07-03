@@ -11,7 +11,7 @@
 #+cljs
 (do
   (def Exception js/Error)
-  (def IllegalArgumentException js/Error))
+  (def RuntimeException js/Error))
 
 #+clj ;; the expression-munging doesn't play well with cljs.
 (deftest explicit-schema-key-map-test
@@ -96,15 +96,15 @@
          (fnk-schema/sequence-schemata
           [{:a s/Any} {:c s/Any}]
           [:o2 [{(s/optional-key :b) s/Any :c s/Any} {:o21 s/Any}]])))
-  (is (thrown? IllegalArgumentException
+  (is (thrown? RuntimeException
                (fnk-schema/sequence-schemata
                 [{:a s/Any} {:c s/Any}]
                 [:o2 [{(s/optional-key :b) s/Any :c s/Any :o2 s/Any} {:o21 s/Any}]])))
-  (is (thrown? IllegalArgumentException
+  (is (thrown? RuntimeException
                (fnk-schema/sequence-schemata
                 [{:a s/Any} {:c s/Any :o2 s/Any}]
                 [:o2 [{(s/optional-key :b) s/Any :c s/Any} {:o21 s/Any}]])))
-  (is (thrown? IllegalArgumentException
+  (is (thrown? RuntimeException
                (fnk-schema/sequence-schemata
                 [{:a s/Any :o2 s/Any} {:c s/Any}]
                 [:o2 [{(s/optional-key :b) s/Any :c s/Any} {:o21 s/Any}]]))))
