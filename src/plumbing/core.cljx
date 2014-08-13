@@ -80,7 +80,7 @@
    (including at the top-level)."
   [m [k & ks]]
   (when m
-    (if-let [res (and ks (dissoc-in (m k) ks))]
+    (if-let [res (and ks (dissoc-in (get m k) ks))]
       (assoc m k res)
       (let [res (dissoc m k)]
         (when-not (empty? res)
