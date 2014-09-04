@@ -373,6 +373,16 @@
                                  [e] inp]
                           [a b c d e])))))
 
+(deftest when-letk-test
+  (is (= "123" (p/when-letk [[a b c] {:a 1 :b 2 :c 3}] (str a b c))))
+  (is (= 5 (p/when-letk [[five] {:five 5}] 1 2 3 4 five)))
+  (is (nil? (p/when-letk [[a b c] nil] (throw (Exception.))))))
+
+(deftest if-letk-test
+  (is (= "then" (p/if-letk [[a b c] {:a 1 :b 2 :c "then"}] c (throw (Exception.)))))
+  (is (= "else" (p/if-letk [[a b c] nil] (throw (Exception.)) "else")))
+  (is (nil? (p/if-letk [[a b c] nil] (throw (Exception.))))))
+
 (deftest fnk-test
   (testing "error on invalid input"
     (is (thrown? Throwable ((p/fnk [a] a) {:b 1}))))
