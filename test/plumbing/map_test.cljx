@@ -90,6 +90,16 @@
   (is (= {:c {:d 10} :e 4}
          (map/keep-leaves #(when (even? %) %) {:a {:b 5} :c {:d 10 :e {:f 5}} :e 4}))))
 
+(def some-var "hey hey")
+
+(deftest keyword-map-test
+  (is (= {} (map/keyword-map)) "works with no args")
+  (is (= {:x 42} (let [x (* 2 3 7)] (map/keyword-map x))))
+  (is (= {:some-var "hey hey"
+          :$ \$}
+         (let [$ \$]
+           (map/keyword-map some-var $)))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Java mutable Maps

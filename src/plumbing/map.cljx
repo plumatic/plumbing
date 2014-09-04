@@ -103,7 +103,18 @@
    Empty maps produced by this pruning are themselves pruned from the output."
   ([f m] (keep-leaves-and-path (fn [_ l] (f l)) m)))
 
+(defmacro keyword-map
+  "Expands to a map whose keys are keywords with the same name as the given
+  symbols, e.g.:
 
+    (let [x 41, y (inc x)]
+      (keyword-map x y))
+
+    ;; => {:x 41, :y 42}"
+  [& syms]
+  (when-not (every? symbol? syms)
+    (throw (ex-info "Arguments to keyword-map must be symbols!" {:args syms})))
+  (zipmap (map #(keyword (name %)) syms) syms))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Java mutable Maps
