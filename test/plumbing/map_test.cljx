@@ -5,7 +5,9 @@
    [plumbing.map :as map]
    [clojure.string :as str]
    #+clj [clojure.test :refer :all]
-   #+cljs [cemerick.cljs.test :refer-macros [is deftest testing use-fixtures]]))
+   #+cljs [cemerick.cljs.test :refer-macros [is deftest testing use-fixtures]])
+  #+cljs
+  (:require-macros [plumbing.map :as map]))
 
 #+cljs
 (do
