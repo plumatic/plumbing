@@ -5,7 +5,9 @@
    [plumbing.map :as map]
    [clojure.string :as str]
    #+clj [clojure.test :refer :all]
-   #+cljs [cemerick.cljs.test :refer-macros [is deftest testing use-fixtures]]))
+   #+cljs [cemerick.cljs.test :refer-macros [is deftest testing use-fixtures]])
+  #+cljs
+  (:require-macros [plumbing.map :as map]))
 
 #+cljs
 (do
@@ -89,6 +91,16 @@
          (map/keep-leaves (constantly nil) {:a {:b 1} :c {:d 2} :e 10})))
   (is (= {:c {:d 10} :e 4}
          (map/keep-leaves #(when (even? %) %) {:a {:b 5} :c {:d 10 :e {:f 5}} :e 4}))))
+
+(def some-var "hey hey")
+
+(deftest keyword-map-test
+  (is (= {} (map/keyword-map)) "works with no args")
+  (is (= {:x 42} (let [x (* 2 3 7)] (map/keyword-map x))))
+  (is (= {:some-var "hey hey"
+          :$ \$}
+         (let [$ \$]
+           (map/keyword-map some-var $)))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
