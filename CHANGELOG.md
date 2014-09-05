@@ -1,3 +1,6 @@
+## 0.3.4
+ * Add `plumbing.map/keyword-map`, `plumbing.core/if-letk`, `plumbing.core/when-letk`
+
 ## 0.3.3
  * Properly generate cross-platform assertions, fixing ClojureScript errors that tried to throw Java errors.
 
