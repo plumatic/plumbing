@@ -401,6 +401,30 @@
    `(do ~@body)
    (reverse (partition 2 bindings))))
 
+(defmacro if-letk
+  "bindings => binding-form test
+
+  If test is true, evaluates then with binding-form bound to the value of 
+  test, if not, yields else"
+  ([bindings then]
+     `(if-letk ~bindings ~then nil))
+  ([bindings then else]
+     (assert (vector? bindings) "if-letk requires a vector for its binding")
+     (assert (= 2 (count bindings)) "if-letk requires exactly 2 forms in binding vector")
+     (let [form (bindings 0) tst (bindings 1)]
+       `(let [temp# ~tst]
+          (if temp#
+            (letk [~form temp#]
+                  ~then)
+            ~else)))))
+
+(defmacro when-letk
+  "bindings => binding-form test
+
+  When test is true, evaluates body with binding-form bound to the value of test"
+  [bindings & body]
+    `(if-letk ~bindings (do ~@body)))
+
 (defmacro fnk
   "Keyword fn, using letk.  Generates a prismatic/schema schematized fn that
    accepts a single explicit map i.e., (f {:foo :bar}).
