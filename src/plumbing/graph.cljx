@@ -175,7 +175,7 @@
 (defn interpreted-eager-compile
   "Compile graph specification g to a corresponding fnk that returns an
    ordinary Clojure map of the node result fns on a given input.  The
-   compilation is must faster than 'eager-compile', but the compiled fn
+   compilation is much faster than 'eager-compile', but the compiled fn
    will typically be much slower."
   [g]
   (simple-hierarchical-compile
