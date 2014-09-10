@@ -122,7 +122,7 @@
       (if-not (seq special-bindings)
         [more-bindings special-args-map]
         (do
-          (schema/assert-iae (special-arg-set arg-signifier) "Got illegal special arg:" arg-signifier)
+          (schema/assert-iae (special-arg-set arg-signifier) "Got illegal special arg: " arg-signifier)
           (let [[sym remaining-bindings] (schema-macros/extract-arrow-schematized-element env other-bindings)]
             (schema/assert-iae (symbol? sym) "Argument to %s not a symbol: %s" arg-signifier binding-form)
             (recur (assoc special-args-map arg-signifier sym)
