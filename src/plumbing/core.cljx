@@ -433,7 +433,7 @@
    to capture implicit structure use an explicit prismatic/schema hint on the
    function name.
 
-   Inividual inputs can also be schematized by putting :- schemas after the
+   Individual inputs can also be schematized by putting :- schemas after the
    binding symbol.  Schemas can also be used on & more symbols to describe
    additional map inputs, or on entire [] bindings to override the automatically
    generated schema for the contents (caveat emptor).
