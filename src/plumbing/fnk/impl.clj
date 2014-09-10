@@ -109,17 +109,25 @@
 
         :else (throw (IllegalArgumentException. (format "bad binding: %s" binding)))))
 
-(defn- extract-special-arg
-  "Extract a trailing & sym or :as sym, possibly with schema metadata. Returns
-   [more-bindings extracted-symbol]"
-  [env special-arg-signifier binding-form]
-  (let [[more-bindings special-binding] (split-with #(not= % special-arg-signifier) binding-form)]
-    [more-bindings
-     (when (seq special-binding)
-       (let [[sym extra-garbage] (schema-macros/extract-arrow-schematized-element env (next special-binding))]
-         (schema/assert-iae (symbol? sym) "Argument to %s not a symbol: %s" special-arg-signifier binding-form)
-         (schema/assert-iae (empty? extra-garbage) "Got illegal special binding: %s" special-binding )
-         sym))]))
+(defn- extract-special-args
+  "Extract trailing & sym and :as sym, possibly with schema metadata. Returns
+  [more-bindings special-args-map] where special-args-map is a map from each
+  special symbol found to the symbol that was found."
+  [env special-arg-signifier-set binding-form]
+  {:pre [(set? special-arg-signifier-set)]}
+  (let [[more-bindings special-bindings] (split-with (complement special-arg-signifier-set) binding-form)]
+    (loop [special-args-map {}
+           special-arg-set special-arg-signifier-set
+           [arg-signifier & other-bindings :as special-bindings] special-bindings]
+      (if-not (seq special-bindings)
+        [more-bindings special-args-map]
+        (do
+          (schema/assert-iae (special-arg-set arg-signifier) "Got illegal special arg:" arg-signifier)
+          (let [[sym remaining-bindings] (schema-macros/extract-arrow-schematized-element env other-bindings)]
+            (schema/assert-iae (symbol? sym) "Argument to %s not a symbol: %s" arg-signifier binding-form)
+            (recur (assoc special-args-map arg-signifier sym)
+                   (disj special-arg-set arg-signifier)
+                   remaining-bindings)))))))
 
 (defn letk-input-schema-and-body-form
   "Given a single letk binding form, value form, key path, and body
@@ -131,8 +139,7 @@
   [env binding-form key-path body-form]
   (schema/assert-iae (vector? binding-form) "Binding form is not vector: %s" binding-form)
   (let [binding-schema (schema-macros/extract-schema-form binding-form)
-        [binding-form more-sym] (extract-special-arg env '& binding-form)
-        [bindings as-sym]       (extract-special-arg env :as binding-form)
+        [bindings {more-sym '& as-sym :as}] (extract-special-args env #{'& :as} binding-form)
         as-sym (or as-sym (ensure-schema-metadata env (gensym "map")))
         [input-schema-elts
          external-input-schema-elts

@@ -219,3 +219,19 @@
 
   (is (= [1 2 {:b1 2 :b2 3} {:a 1 :b {:b1 2 :b2 3} :c 4} {:c 4}]
          (a-fancier-nested-fnk {:a 1 :b {:b1 2 :b2 3} :c 4}))))
+
+(p/defnk special-binding-fnk-with-schemas-1
+  [a :- s/Keyword :as m & r :- {s/Symbol s/Keyword}]
+  [a r m])
+
+(p/defnk special-binding-fnk-with-schemas-2
+  [a :- s/Keyword & r :- {s/Symbol s/Keyword} :as m]
+  [a r m])
+
+(deftest special-binding-fnk-with-schemas-test
+  (is (= {:a s/Keyword s/Symbol s/Keyword}
+         (pfnk/input-schema special-binding-fnk-with-schemas-1)
+         (pfnk/input-schema special-binding-fnk-with-schemas-2)))
+  (is (= [:foo {'bar :bar} {:a :foo 'bar :bar}]
+         (special-binding-fnk-with-schemas-1 {:a :foo 'bar :bar})
+         (special-binding-fnk-with-schemas-2 {:a :foo 'bar :bar}))))
