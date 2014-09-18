@@ -445,7 +445,8 @@
                             (sm/extract-arrow-schematized-element &env args)
                             [nil args])
         [bind body] (sm/extract-arrow-schematized-element &env more-args)]
-    (fnk-impl/fnk-form &env name? bind body)))
+    (vary-meta (fnk-impl/fnk-form &env name? bind body)
+               #(merge (meta &form) %))))
 
 (defmacro defnk
   "Analogy: fn:fnk :: defn::defnk"
