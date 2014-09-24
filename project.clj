@@ -17,7 +17,6 @@
                              [lein-cljsbuild "0.3.2"]
                              [com.cemerick/austin "0.1.3"]
                              [com.cemerick/clojurescript.test "0.3.0"]]
-                   :hooks [cljx.hooks leiningen.cljsbuild]
                    :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl
                                                      cljx.repl-middleware/wrap-cljx]}
                    :cljx {:builds [{:source-paths ["src"]
@@ -34,12 +33,14 @@
                                     :rules :cljs}]}}
              :1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}}
 
-  :aliases {"all" ["with-profile" "dev:dev,1.5"]}
+  :aliases {"all" ["with-profile" "dev:dev,1.5"]
+            "deploy" ["do" "clean," "cljx" "once," "deploy" "clojars"]
+            "test" ["do" "clean," "cljx" "once," "test," "with-profile" "dev" "cljsbuild" "test"]}
 
   :lein-release {:deploy-via :shell
-                 :shell ["lein" "deploy" "clojars"]}
+                 :shell ["lein" "deploy"]}
 
-  :prep-tasks ["cljx" "javac" "compile"]
+  :auto-clean false
 
   :source-paths ["target/generated/src/clj" "src"]
 
