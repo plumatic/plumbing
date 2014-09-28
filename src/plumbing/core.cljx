@@ -404,7 +404,7 @@
 (defmacro if-letk
   "bindings => binding-form test
 
-  If test is true, evaluates then with binding-form bound to the value of 
+  If test is true, evaluates then with binding-form bound to the value of
   test, if not, yields else"
   ([bindings then]
      `(if-letk ~bindings ~then nil))
@@ -459,5 +459,29 @@
     (let [f (fnk-impl/fnk-form &env name bind body)]
       `(def ~(with-meta name (merge (meta name) (assoc-when (or attr-map? {}) :doc docstring?)))
          ~f))))
+
+;;---------------------------
+;; Support for partial fnks
+;;--------------------------
+
+(defn partialk
+  "Analogy: partial:partialk"
+  ([f k v & {:as pargs}]
+     (fn [kargs]
+       (f (merge kargs (assoc pargs k v)))))
+  ([f pargs]
+     (fn [kargs]
+       (f (merge kargs pargs)))))
+
+(defn partialk-select
+  "Like partialk, but allows specifying
+   what keys to use from the map the partial fnk
+   is being applied to."
+  ([kkeys f k v & {:as pargs}]
+     (fn [kargs]
+       (f (-> (select-keys kargs kkeys) (merge (assoc pargs k v))))))
+  ([kkeys f pargs]
+     (fn [kargs]
+       (f (-> (select-keys kargs kkeys) (merge pargs))))))
 
 #+clj (set! *warn-on-reflection* false)
