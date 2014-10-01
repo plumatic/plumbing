@@ -90,18 +90,18 @@
              (= (first k) 'schema.core/optional-key))
         [(second k) false]))
 
-(sm/defn explicit-schema-key-map
+(sm/defn explicit-schema-key-map :- {s/Keyword s/Bool}
   "Given a possibly-unevaluated map schema, return a map from bare keyword to true
    (for required) or false (for optional)"
-  [s] :- {s/Keyword s/Bool}
+  [s]
   (->> s
        keys
        (keep unwrap-schema-form-key)
        (into {})))
 
-(sm/defn split-schema-keys
+(sm/defn split-schema-keys :- [(s/one [s/Keyword] 'required) (s/one [s/Keyword] 'optional)]
   "Given output of explicit-schema-key-map, split into seq [req opt]."
-  [s :- {s/Keyword s/Bool}] :- [(s/one [s/Keyword] 'required) (s/one [s/Keyword] 'optional)]
+  [s :- {s/Keyword s/Bool}]
   (->> s
        ((juxt filter remove) val)
        (mapv (partial mapv key))))
