@@ -7,7 +7,8 @@
    [schema.utils :as schema-utils]
    #+clj [schema.macros :as sm]
    [plumbing.fnk.schema :as schema]
-   #+clj [plumbing.fnk.impl :as fnk-impl]))
+   #+clj [plumbing.fnk.impl :as fnk-impl])
+  (:refer-clojure :exclude [update]))
 
 #+clj (set! *warn-on-reflection* true)
 
