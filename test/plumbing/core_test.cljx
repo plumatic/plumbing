@@ -107,7 +107,7 @@
 
 (deftest safe-get-test
   (is (= 2 (p/safe-get {:a 2} :a)))
-  (is (thrown? Exception (p/safe-get {:a 2} :b)))+
+  (is (thrown? Exception (p/safe-get {:a 2} :b)))
   (is (= 2 (p/safe-get-in {:a {:b 2}} [:a :b])))
   (is (thrown? Exception (p/safe-get-in {:a {:b 2}} [:b])))
   (is (thrown? Exception (p/safe-get-in {:a {:b 2}} [:a :c])))
@@ -121,8 +121,7 @@
   (is (= nil (p/update-in-when nil [:a] inc)))
   (is (= {:a {:b 2}} (p/update-in-when {:a {:b 2}} [:a :c] inc)))
   (is (= {} (p/update-in-when {} [:foo :bar] inc)))
-  (is (= {:foo 2 :bar 1})
-      (p/update-in-when {:foo 1 :bar 1} [:foo] inc))
+  (is (= {:foo 2 :bar 1} (p/update-in-when {:foo 1 :bar 1} [:foo] inc)))
   (is (= {:a {:b 3 :z 5}} (p/update-in-when {:a {:b 2 :z 5}} [:a :b] inc))))
 
 (deftest grouped-map-test
@@ -334,7 +333,7 @@
       (is (= m om))
       (is (= {:g 22} more))
       (reset! called? true))
-    (is (= @called?))
+    (is @called?)
     (p/letk [[:as m] om]
       (is (= m om)))
     (p/letk [[a & m] om]
