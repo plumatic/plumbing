@@ -201,7 +201,7 @@
    (fn [m k f] (lazymap/delay-assoc m k (delay (restricted-call f m))))))
 
 #+clj ;; TODO: move out.
-(defn par-compile [g]
+(defn par-compile
   "Experimental.  Launches one future per node at startup; we probably woudln't
    use this in production, and will release more sophisticated parallel
    compilations later.
@@ -212,6 +212,7 @@
    starting immediately (and attempts to extract values from the lazymap will
    block until each value is computed).  Besides this lazy behavior,
    the lazymap can be used interchangeably with an ordinary Clojure map."
+  [g]
   (simple-hierarchical-compile
    g
    true
