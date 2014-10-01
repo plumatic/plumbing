@@ -110,9 +110,9 @@
 (do
   (deftest update-key!-test
     (let [m (java.util.HashMap. {:a 1 :b 2})]
-      (is 2 (= (map/update-key! m :a inc)))
+      (map/update-key! m :a inc)
       (is (= {:a 2 :b 2} (into {} m)))
-      (is 2 (= (map/update-key! m :c conj "foo")))
+      (map/update-key! m :c conj "foo")
       (is (= {:a 2 :b 2 :c ["foo"]} (into {} m)))))
 
   (deftest get!-test
