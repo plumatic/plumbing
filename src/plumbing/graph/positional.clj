@@ -3,7 +3,6 @@
   (:use plumbing.core)
   (:require
    [schema.core :as s]
-   [schema.macros :as sm]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.impl :as fnk-impl])
@@ -87,4 +86,4 @@
       (into eval-bindings
             [[input-schema-sym input-schema]
              [output-schema-sym (pfnk/output-schema g)]]))
-     assoc :schema (let [[is os] (pfnk/io-schemata g)] (sm/=> os is)))))
+     assoc :schema (let [[is os] (pfnk/io-schemata g)] (s/=> os is)))))

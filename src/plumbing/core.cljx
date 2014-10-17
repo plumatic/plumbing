@@ -5,7 +5,7 @@
    [plumbing.core :refer [for-map lazy-get]])
   (:require
    [schema.utils :as schema-utils]
-   #+clj [schema.macros :as sm]
+   #+clj [schema.macros :as schema-macros]
    [plumbing.fnk.schema :as schema]
    #+clj [plumbing.fnk.impl :as fnk-impl])
   (:refer-clojure :exclude [update]))
@@ -405,7 +405,7 @@
 (defmacro if-letk
   "bindings => binding-form test
 
-  If test is true, evaluates then with binding-form bound to the value of 
+  If test is true, evaluates then with binding-form bound to the value of
   test, if not, yields else"
   ([bindings then]
      `(if-letk ~bindings ~then nil))
@@ -416,7 +416,7 @@
        `(let [temp# ~tst]
           (if temp#
             (letk [~form temp#]
-                  ~then)
+              ~then)
             ~else)))))
 
 (defmacro when-letk
@@ -424,7 +424,7 @@
 
   When test is true, evaluates body with binding-form bound to the value of test"
   [bindings & body]
-    `(if-letk ~bindings (do ~@body)))
+  `(if-letk ~bindings (do ~@body)))
 
 (defmacro fnk
   "Keyword fn, using letk.  Generates a prismatic/schema schematized fn that
@@ -443,19 +443,19 @@
    ({s/Keyword s/Any}) unless explicit binding or & more schemas are provided."
   [& args]
   (let [[name? more-args] (if (symbol? (first args))
-                            (sm/extract-arrow-schematized-element &env args)
+                            (schema-macros/extract-arrow-schematized-element &env args)
                             [nil args])
-        [bind body] (sm/extract-arrow-schematized-element &env more-args)]
+        [bind body] (schema-macros/extract-arrow-schematized-element &env more-args)]
     (fnk-impl/fnk-form &env name? bind body)))
 
 (defmacro defnk
   "Analogy: fn:fnk :: defn::defnk"
   [& defnk-args]
-  (let [[name args] (sm/extract-arrow-schematized-element &env defnk-args)
+  (let [[name args] (schema-macros/extract-arrow-schematized-element &env defnk-args)
         take-if (fn [p s] (if (p (first s)) [(first s) (next s)] [nil s]))
         [docstring? args] (take-if string? args)
         [attr-map? args] (take-if map? args)
-        [bind body] (sm/extract-arrow-schematized-element &env args)]
+        [bind body] (schema-macros/extract-arrow-schematized-element &env args)]
     (schema/assert-iae (symbol? name) "Name for defnk is not a symbol: %s" name)
     (let [f (fnk-impl/fnk-form &env name bind body)]
       `(def ~(with-meta name (merge (meta name) (assoc-when (or attr-map? {}) :doc docstring?)))
