@@ -5,13 +5,11 @@
    using fn->fnk, or using custom binding syntax (of which 'fnk' et al
    are one possible example)."
   (:require
-   [schema.core :as s]
+   [schema.core :as s :include-macros true]
    [plumbing.fnk.schema :as schema]
-   #+clj [schema.macros :as sm]
    #+clj [plumbing.fnk.schema :refer [assert-iae]])
   #+cljs
   (:require-macros
-   [schema.macros :as sm]
    [plumbing.fnk.schema :refer [assert-iae]]))
 
 #+clj (set! *warn-on-reflection* true)
@@ -51,6 +49,6 @@
 (defn fn->fnk
   "Make a keyword function into a PFnk, by associating input and output schema metadata."
   [f [input-schema output-schema :as io]]
-  (s/schematize-fn f (sm/=> output-schema input-schema)))
+  (s/schematize-fn f (s/=> output-schema input-schema)))
 
 #+clj (set! *warn-on-reflection* false)

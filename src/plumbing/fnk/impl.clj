@@ -324,7 +324,7 @@
     `(let [pos-fn# (fn ~(symbol (str fn-name "-positional"))
                      ~pos-args
                      ~@body)]
-       (vary-meta (schema-macros/fn
+       (vary-meta (s/fn
                     ~fn-name
                     [m# :- ~external-input-schema]
                     (plumbing.core/letk [~(into (mapv k->sym req-ks)
@@ -365,7 +365,7 @@
          (vec (schema/explicit-schema-key-map input-schema))
          bind-sym-map
          [bound-body]))
-      `(schema-macros/fn
+      `(s/fn
          ~fn-name
          [~(schema-override map-sym external-input-schema)]
          (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
