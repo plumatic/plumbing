@@ -5,7 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"
             :distribution :repo}
 
-  :dependencies [[prismatic/schema "0.2.4"]
+  :dependencies [[prismatic/schema "0.3.1"]
                  [de.kotka/lazymap "3.1.0" :exclusions [org.clojure/clojure]]]
 
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.6.0"]
@@ -31,9 +31,10 @@
                                    {:source-paths ["test"]
                                     :output-path "target/generated/test/cljs"
                                     :rules :cljs}]}}
-             :1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}}
+             :1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}
+             :1.7 {:dependencies [[org.clojure/clojure "1.7.0-alpha2"]]}}
 
-  :aliases {"all" ["with-profile" "dev:dev,1.5"]
+  :aliases {"all" ["with-profile" "dev:dev,1.5:dev,1.7"]
             "deploy" ["do" "clean," "cljx" "once," "deploy" "clojars"]
             "test" ["do" "clean," "cljx" "once," "test," "with-profile" "dev" "cljsbuild" "test"]}
 
