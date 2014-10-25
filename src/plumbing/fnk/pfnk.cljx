@@ -6,11 +6,7 @@
    are one possible example)."
   (:require
    [schema.core :as s :include-macros true]
-   [plumbing.fnk.schema :as schema]
-   #+clj [plumbing.fnk.schema :refer [assert-iae]])
-  #+cljs
-  (:require-macros
-   [plumbing.fnk.schema :refer [assert-iae]]))
+   [plumbing.fnk.schema :as schema :include-macros true]))
 
 #+clj (set! *warn-on-reflection* true)
 
@@ -21,11 +17,11 @@
 
 (defn input [^schema.core.FnSchema s]
   (let [[[is :as args] :as schemas] (.-input-schemas s)]
-    (assert-iae (= 1 (count schemas)) "Fnks have a single arity, not %s" (count schemas))
-    (assert-iae (= 1 (count args)) "Fnks take a single argument, not %s" (count args))
-    (assert-iae (instance? schema.core.One is) "Fnks take a single argument, not variadic")
+    (schema/assert-iae (= 1 (count schemas)) "Fnks have a single arity, not %s" (count schemas))
+    (schema/assert-iae (= 1 (count args)) "Fnks take a single argument, not %s" (count args))
+    (schema/assert-iae (instance? schema.core.One is) "Fnks take a single argument, not variadic")
     (let [s (.-schema ^schema.core.One is)]
-      (assert-iae (map? s) "Fnks take a map argument, not %s" (type s))
+      (schema/assert-iae (map? s) "Fnks take a map argument, not %s" (type s))
       s)))
 
 (defn output [^schema.core.FnSchema s]

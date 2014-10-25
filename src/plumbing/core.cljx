@@ -6,7 +6,7 @@
   (:require
    [schema.utils :as schema-utils]
    #+clj [schema.macros :as schema-macros]
-   [plumbing.fnk.schema :as schema]
+   [plumbing.fnk.schema :as schema :include-macros true]
    #+clj [plumbing.fnk.impl :as fnk-impl])
   (:refer-clojure :exclude [update]))
 
