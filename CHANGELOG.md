@@ -1,9 +1,10 @@
 ## 0.3.5
- * Bump schema version to 0.3.1, fixing cljs warnings from that project, and move schema.macros calls over to schema.core.
- * Minimum required schema version is now 0.3.0
+ * Fix bug in `safe-get` in ClojureScript due to missing `:include-macros true` in plumbing.core
 
 ## 0.3.4
  * Add `plumbing.map/keyword-map`, `plumbing.core/if-letk`, `plumbing.core/when-letk`
+ * Bump schema version to 0.3.1, fixing cljs warnings from that project, and move schema.macros calls over to schema.core.
+ * Minimum required schema version is now 0.3.0
 
 ## 0.3.3
  * Properly generate cross-platform assertions, fixing ClojureScript errors that tried to throw Java errors.

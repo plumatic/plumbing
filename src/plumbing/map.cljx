@@ -1,15 +1,10 @@
 (ns plumbing.map
   "Common operations on maps (both Clojure immutable and mutable Java stuff)"
   (:refer-clojure :exclude [flatten])
-  #+clj
-  (:require
-   [plumbing.core :as plumbing]
-   [plumbing.fnk.schema :as schema])
-  #+cljs
   (:require
    [plumbing.core :as plumbing :include-macros true]
    [plumbing.fnk.schema :as schema :include-macros true]
-   [clojure.set :as set]))
+   #+cljs [clojure.set :as set]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

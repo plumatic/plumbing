@@ -303,7 +303,7 @@
 
 #+clj
 (deftest ^:slow profiled-test
-  (let [approx-= (fn [x y] (< (Math/abs (- x y)) 5))
+  (let [approx-= (fn [x y] (< (Math/abs (- x y)) 10))
         times {:a 100 :b 200 :c 400}
         raw-g (graph/graph
                :a (plumbing/fnk [i] (Thread/sleep (times :a)) (inc i))
