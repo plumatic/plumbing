@@ -249,6 +249,8 @@
                      r)))]
 
     (if-let [cycle-start (first-duplicate sorted)]
-      (let [[cycle _ _ _] (dfs cycle-start child-map () #(and (seq %) (apply distinct? %)))]
+      (let [[cycle _ _ _] (dfs cycle-start child-map () #(and (seq %)
+                                                              (or (= (count %) 1)
+                                                                  (not= (first cycle-start) (peek %)))))]
         (throw (ex-info (str "Graph contains a cycle.") {:cycle cycle})))
       sorted)))
