@@ -171,7 +171,6 @@
          (map/topological-sort (into {99 []} (for [i (range 99)] [i [(inc i)]])))))
   (is (= (range 99)
          (map/topological-sort (into {} (for [i (range 99)] [i [(inc i)]])))))
-  #+clj
   (testing "include-leaves?"
     (is (= (range 1000)
            (map/topological-sort (into {} (for [i (range 999)] [i [(inc i)]])) true))))
