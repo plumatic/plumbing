@@ -318,7 +318,7 @@
   [fn-name external-input-schema ordered-ks->opt arg-sym-map body]
   (let [[req-ks opt-ks] (schema/split-schema-keys (into {} ordered-ks->opt))
         explicit-schema-keys (mapv first ordered-ks->opt)
-        pos-args (mapv #(do (schema-macros/assert-c! (contains? arg-sym-map %))
+        pos-args (mapv #(do (schema-macros/assert! (contains? arg-sym-map %))
                             (arg-sym-map %))
                        explicit-schema-keys)]
     `(let [pos-fn# (fn ~(symbol (str fn-name "-positional"))
