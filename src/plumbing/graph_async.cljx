@@ -45,7 +45,7 @@
           req-ks (schema/required-toplevel-keys (pfnk/input-schema g))
           edges (concat
                  (for [[k v] g
-                       parent-k (filter g (keys (pfnk/input-schema v)))]
+                       parent-k (filter g (pfnk/input-schema-keys v))]
                    [parent-k k])
                  (for [k (keys g)]
                    [k ::done]))
@@ -69,7 +69,7 @@
                            (if (= ::done k)
                              (>! result (select-keys @results (keys g)))
                              (let [f (g k)
-                                   r (<! (f (select-keys @results (keys (pfnk/input-schema f)))))]
+                                   r (<! (f (select-keys @results (pfnk/input-schema-keys f))))]
                                (swap! results assoc k r)
                                (doseq [c (child-map k)]
                                  (when (empty? (c (swap! remaining-parents
