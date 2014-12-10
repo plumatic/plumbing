@@ -45,7 +45,7 @@
           req-ks (schema/required-toplevel-keys (pfnk/input-schema g))
           edges (concat
                  (for [[k v] g
-                       parent-k (filter g (keys (pfnk/input-schema v)))]
+                       parent-k (filter g (pfnk/input-schema-keys v))]
                    [parent-k k])
                  (for [k (keys g)]
                    [k ::done]))
