@@ -69,7 +69,7 @@
                            (if (= ::done k)
                              (>! result (select-keys @results (keys g)))
                              (let [f (g k)
-                                   r (<! (f (select-keys @results (keys (pfnk/input-schema f)))))]
+                                   r (<! (f (select-keys @results (pfnk/input-schema-keys f))))]
                                (swap! results assoc k r)
                                (doseq [c (child-map k)]
                                  (when (empty? (c (swap! remaining-parents
