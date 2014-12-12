@@ -2,13 +2,12 @@
   "Utility belt for Clojure in the wild"
   #+cljs
   (:require-macros
-   [plumbing.core :refer [for-map lazy-get]])
+   [plumbing.core :refer [for-map lazy-get pre-1_7]])
   (:require
    [schema.utils :as schema-utils]
    #+clj [schema.macros :as schema-macros]
    [plumbing.fnk.schema :as schema :include-macros true]
-   #+clj [plumbing.fnk.impl :as fnk-impl])
-  (:refer-clojure :exclude [update]))
+   #+clj [plumbing.fnk.impl :as fnk-impl]))
 
 #+clj (set! *warn-on-reflection* true)
 
@@ -38,15 +37,29 @@
             (reset! m-atom# (assoc! ~m-sym ~key-expr ~val-expr))))
         (persistent! @m-atom#))))
 
-(defn update
-  "Updates the value in map m at k with the function f.
+(defmacro pre-1_7
+  "Evaluate and yield nested forms only on pre 1.7 release of Clojure(Script)"
+  [& forms]
+  (when (pos? (compare [1 7] (mapv #+clj  *clojure-version*
+                                   #+cljs *clojurescript-version*
+                                   [:major :minor])))
+    (if (> (count forms) 1)
+      `(do ~@forms)
+      (first forms))))
 
-  Like update-in, but for updating a single top-level key.
-  Any additional args will be passed to f after the value."
-  ([m k f] (assoc m k (f (get m k))))
-  ([m k f x1] (assoc m k (f (get m k) x1)))
-  ([m k f x1 x2] (assoc m k (f (get m k) x1 x2)))
-  ([m k f x1 x2 & xs] (assoc m k (apply f (get m k) x1 x2 xs))))
+(pre-1_7
+  (defn update
+    "Updates the value in map m at k with the function f.
+
+    Like update-in, but for updating a single top-level key.
+    Any additional args will be passed to f after the value.
+
+    WARNING As of Clojure 1.7 this function exists in clojure.core and
+    will not be exported by this namespace."
+    ([m k f] (assoc m k (f (get m k))))
+    ([m k f x1] (assoc m k (f (get m k) x1)))
+    ([m k f x1 x2] (assoc m k (f (get m k) x1 x2)))
+    ([m k f x1 x2 & xs] (assoc m k (apply f (get m k) x1 x2 xs)))))
 
 (defn map-vals
   "Build map k -> (f v) for [k v] in map, preserving the initial type"
