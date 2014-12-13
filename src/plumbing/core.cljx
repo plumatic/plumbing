@@ -2,10 +2,11 @@
   "Utility belt for Clojure in the wild"
   #+cljs
   (:require-macros
-   [plumbing.core :refer [for-map lazy-get pre-1_7]])
+   [plumbing.core :refer [for-map lazy-get unless-update]]
+   [schema.macros :refer [if-cljs]])
   (:require
    [schema.utils :as schema-utils]
-   #+clj [schema.macros :as schema-macros]
+   #+clj [schema.macros :as schema-macros :refer [if-cljs]]
    [plumbing.fnk.schema :as schema :include-macros true]
    #+clj [plumbing.fnk.impl :as fnk-impl]))
 
@@ -37,17 +38,15 @@
             (reset! m-atom# (assoc! ~m-sym ~key-expr ~val-expr))))
         (persistent! @m-atom#))))
 
-(defmacro pre-1_7
-  "Evaluate and yield nested forms only on pre 1.7 release of Clojure(Script)"
-  [& forms]
-  (when (pos? (compare [1 7] (mapv #+clj  *clojure-version*
-                                   #+cljs *clojurescript-version*
-                                   [:major :minor])))
-    (if (> (count forms) 1)
-      `(do ~@forms)
-      (first forms))))
+(defmacro unless-update [body]
+  (let [->tuple `(fn [ver#] (mapv #(get ver# %) [:major :minor :incremental]))
+        prior?  `(fn [ref-tuple# ver#] (pos? (compare ref-tuple# (~->tuple ver#))))
+        -clj    `(~prior? [1 7 0]    *clojure-version*)
+        -cljs   `(~prior? [0 0 2411] *clojurescript-version*)]
+    `(if-cljs (if ~-cljs ~body)
+              (if ~-clj  ~body))))
 
-(pre-1_7
+(unless-update
   (defn update
     "Updates the value in map m at k with the function f.
 
