@@ -1,3 +1,6 @@
+## 0.3.6
+ * **BREAKING**: Define `update` only if `clojure.core/update` does not exist (ie. legacy clojure(script) versions)
+
 ## 0.3.5
  * Fix bug in `safe-get` in ClojureScript due to missing `:include-macros true` in plumbing.core
 
