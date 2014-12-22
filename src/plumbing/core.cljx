@@ -2,7 +2,7 @@
   "Utility belt for Clojure in the wild"
   #+cljs
   (:require-macros
-   [plumbing.core :refer [for-map lazy-get unless-update]]
+   [plumbing.core :refer [for-map lazy-get -unless-update]]
    [schema.macros :refer [if-cljs]])
   (:require
    [schema.utils :as schema-utils]
@@ -38,7 +38,10 @@
             (reset! m-atom# (assoc! ~m-sym ~key-expr ~val-expr))))
         (persistent! @m-atom#))))
 
-(defmacro unless-update [body]
+(defmacro -unless-update
+  "Execute and yield body only if Clojure(Script) version preceeds introduction
+  of 'update' into the respective core namespace."
+  [body]
   (let [->tuple `(fn [ver#] (mapv #(get ver# %) [:major :minor :incremental]))
         prior?  `(fn [ref-tuple# ver#] (pos? (compare ref-tuple# (~->tuple ver#))))
         -clj    `(~prior? [1 7 0]    *clojure-version*)
@@ -46,7 +49,7 @@
     `(if-cljs (if ~-cljs ~body)
               (if ~-clj  ~body))))
 
-(unless-update
+(-unless-update
   (defn update
     "Updates the value in map m at k with the function f.
 

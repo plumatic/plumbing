@@ -33,7 +33,7 @@
     (is (= (count m) 1000))
     (is (= (m 999) 499500))))
 
-(p/unless-update
+(p/-unless-update
  (deftest update-test
    (testing "0 extra args"
      (is (= {:a 5, :b 0}
