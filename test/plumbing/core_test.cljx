@@ -33,19 +33,20 @@
     (is (= (count m) 1000))
     (is (= (m 999) 499500))))
 
-(deftest update-test
-  (testing "0 extra args"
-    (is (= {:a 5, :b 0}
-           (p/update {:a 4, :b 0} :a inc)))
-    (is (= {:a 1}
-           (p/update {} :a (fnil inc 0)))))
-  (testing "1 extra arg"
-    (is (= {:a 42, :b 0}
-           (p/update {:a 6, :b 0} :a * 7)))
-    (is (= {:a #{42}}
-           (p/update {} :a (fnil conj #{}) 42))))
-  (testing "100 extra args"
-    (is (= {:a 4951} (apply p/update {:a 1} :a + (range 100))))))
+(p/-unless-update
+ (deftest update-test
+   (testing "0 extra args"
+     (is (= {:a 5, :b 0}
+            (p/update {:a 4, :b 0} :a inc)))
+     (is (= {:a 1}
+            (p/update {} :a (fnil inc 0)))))
+   (testing "1 extra arg"
+     (is (= {:a 42, :b 0}
+            (p/update {:a 6, :b 0} :a * 7)))
+     (is (= {:a #{42}}
+            (p/update {} :a (fnil conj #{}) 42))))
+   (testing "100 extra args"
+     (is (= {:a 4951} (apply p/update {:a 1} :a + (range 100)))))))
 
 (deftest map-vals-test
   (is (= (p/map-vals inc {:a 0 :b 0})
