@@ -41,7 +41,7 @@ While Clojure's built-in destructuring is generally great, it leaves some things
 
  * If we're only interested in top-level map inputs, we'd prefer to be able to say just `(fnk [a b c])` over `(fn [{:keys [a b c]}])` or `(fn [{a :a b :b c :c}])`. 
  * To require keys, I have to say (`fn [{:keys [a b c] :as m}] (assert (every? (partial contains? m) [:a :b :c]))) …)`.  This means I have to mention every argument twice.
- * Similarly, for default values, `(fn [{:keys [a] :or {a 2}])` requires repeating argument names.
+ * Similarly, for default values, `(fn [{:keys [a] :or {a 2}}])` requires repeating argument names.
  * For nested map bindings, I must either repeat myself or mix :keys with direct map destructuring: `(fnk [{{b :b} :a}])` or `(fnk [{{:keys [b]} :a}])`
  
  This, while one option for Graph would be to just add arglist metadata to Clojure's `fn`, we have instead explored alternative syntax possibilities.
