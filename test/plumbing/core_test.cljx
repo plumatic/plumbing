@@ -377,7 +377,7 @@
                                  [e] inp]
                           [a b c d e])))))
 
-(deftest letk-namespaced-test
+(deftest letk-qualified-key-test
   (let [m {:a/b 1 :c/d {:e/f 2 :a/b 2}}]
     (is (= 1 (p/letk [[a/b] m] b)))
     (is (= 2 (p/letk [[[:c/d e/f]] m] f)))
@@ -499,6 +499,11 @@
       (is (= ["1" "2"] (f {:a "1" :b {:c "2"}})))
       (is (thrown? Exception (f {:a "1" :b {:c 2}})))
       (is (thrown? Exception (f {:a "1" :b {:c "2" :d "3"}}))))))
+
+(deftest fnk-qualified-key-test
+  (is (= [1 2 3] ((p/fnk [a/b b/c c/d] [b c d]) {:a/b 1 :b/c 2 :c/d 3})))
+  (is (= 1 ((p/fnk [[:a/b b/c]] c) {:a/b {:b/c 1}})))
+  (is (= 1 ((p/fnk [{a/b 1}] b) {}))))
 
 (p/defnk keyfn-test-docstring "whoa" [dude {wheres :foo} :as my & car]
   [dude wheres my car])

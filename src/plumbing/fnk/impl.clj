@@ -37,6 +37,16 @@
   [k]
   (symbol (name k)))
 
+(defn qualified-k->sym
+  "Make a keyword into a symbol, preserving namespace"
+  [k]
+  (symbol (namespace k) (name k)))
+
+(defn unqualify
+  "Make a potentially qualified symbol into unqualified symbol"
+  [sym]
+  (symbol (name sym)))
+
 ;;; Parsing new fnk binding style
 
 (declare letk-input-schema-and-body-form)
@@ -76,7 +86,7 @@
   [env map-sym binding key-path body-form]
   (cond (symbol? binding)
         {:schema-entry [(keyword binding) (schema-macros/extract-schema-form binding)]
-         :body-form `(let [~(-> binding name symbol) (schema/safe-get ~map-sym ~(keyword binding) ~key-path)]
+         :body-form `(let [~(unqualify binding) (schema/safe-get ~map-sym ~(keyword binding) ~key-path)]
                        ~body-form)}
 
         (map? binding)
@@ -87,7 +97,7 @@
           (schema/assert-iae (= 1 (count schema-fixed-binding))
                              "optional binding has more than 1 entry: %s" schema-fixed-binding)
           {:schema-entry [`(s/optional-key ~bound-key) (schema-macros/extract-schema-form bound-sym)]
-           :body-form `(let [~(-> bound-sym name symbol) (get ~map-sym ~bound-key ~opt-val-expr)]
+           :body-form `(let [~(unqualify bound-sym) (get ~map-sym ~bound-key ~opt-val-expr)]
                          ~body-form)})
 
         (vector? binding)
@@ -202,13 +212,13 @@
   (cond (symbol? binding)
         (let [bind-sym (gensym (name binding))]
           [[(keyword binding) bind-sym]
-           `(let [~binding ~bind-sym] ~body-form)])
+           `(let [~(unqualify binding) ~bind-sym] ~body-form)])
 
         (map? binding)
         (let [[bs ov] (first (process-schematized-map env binding))
               bind-sym (gensym (name bs))]
           [[(keyword bs) bind-sym]
-           `(let [~bs (if (identical? +none+ ~bind-sym) ~ov ~bind-sym)]
+           `(let [~(unqualify bs) (if (identical? +none+ ~bind-sym) ~ov ~bind-sym)]
               ~body-form)])
 
         (vector? binding)
@@ -327,8 +337,8 @@
        (vary-meta (s/fn
                     ~fn-name
                     [m# :- ~external-input-schema]
-                    (plumbing.core/letk [~(into (mapv k->sym req-ks)
-                                                (mapv (fn [k] {(k->sym k) +none+}) opt-ks))
+                    (plumbing.core/letk [~(into (mapv qualified-k->sym req-ks)
+                                                (mapv (fn [k] {(qualified-k->sym k) +none+}) opt-ks))
                                          m#]
                       (pos-fn# ~@(mapv k->sym explicit-schema-keys))))
                   assoc ::positional-info [pos-fn# ~explicit-schema-keys]))))
