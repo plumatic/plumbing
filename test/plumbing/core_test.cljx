@@ -348,7 +348,9 @@
 
 (deftest letk-self-shadow-test
   (is (= 2 (let [a 1] (p/letk [[{a a}] {:a 2}] a))))
-  (is (= 1 (let [a 1] (p/letk [[{a a}] {}] a)))))
+  (is (= 1 (let [a 1] (p/letk [[{a a}] {}] a))))
+  (is (= 2 (let [a 1] (p/letk [[{b/a a}] {:b/a 2}] a))))
+  (is (= 1 (let [a 1] (p/letk [[{b/a a}] {}] a)))))
 
 (deftest letk-single-shadow-test
   (let [a 1 b 2 c 3 e 4 e 5]
@@ -361,7 +363,9 @@
 #+clj
 (deftest letk-no-multiple-binding-test
   (is (thrown? Exception (eval '(p/letk [[a a] {:a 1}] a))))
-  (is (= 1 (p/letk [[a] {:a 1} [a] {:a a}] a))))
+  (is (thrown? Exception (eval '(p/letk [[a/a b/a] {:a/a 1 :b/a 2}] a))))
+  (is (= 1 (p/letk [[a] {:a 1} [a] {:a a}] a)))
+  (is (= 1 (p/letk [[a/b] {:a/b 1} [a/b] {:a/b b}] b))))
 
 (deftest letk-multi-shadow-test
   (let [a 1 b 2 c 3 e 4 e 5
@@ -372,6 +376,13 @@
                                  [{d e}] inp
                                  [e] inp]
                           [a b c d e])))))
+
+(deftest letk-namespaced-test
+  (let [m {:a/b 1 :c/d {:e/f 2 :a/b 2}}]
+    (is (= 1 (p/letk [[a/b] m] b)))
+    (is (= 2 (p/letk [[[:c/d e/f]] m] f)))
+    (is (= 2 (p/letk [[a/b] m [[:c/d a/b]] m] b))))
+  (is (= 2 (p/letk [[a/b] {:a/b 1} [a/b] {:a/b 2}] b))))
 
 (deftest when-letk-test
   (is (= "123" (p/when-letk [[a b c] {:a 1 :b 2 :c 3}] (str a b c))))

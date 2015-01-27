@@ -76,7 +76,7 @@
   [env map-sym binding key-path body-form]
   (cond (symbol? binding)
         {:schema-entry [(keyword binding) (schema-macros/extract-schema-form binding)]
-         :body-form `(let [~binding (schema/safe-get ~map-sym ~(keyword binding) ~key-path)]
+         :body-form `(let [~(-> binding name symbol) (schema/safe-get ~map-sym ~(keyword binding) ~key-path)]
                        ~body-form)}
 
         (map? binding)
@@ -87,7 +87,7 @@
           (schema/assert-iae (= 1 (count schema-fixed-binding))
                              "optional binding has more than 1 entry: %s" schema-fixed-binding)
           {:schema-entry [`(s/optional-key ~bound-key) (schema-macros/extract-schema-form bound-sym)]
-           :body-form `(let [~bound-sym (get ~map-sym ~bound-key ~opt-val-expr)]
+           :body-form `(let [~(-> bound-sym name symbol) (get ~map-sym ~bound-key ~opt-val-expr)]
                          ~body-form)})
 
         (vector? binding)

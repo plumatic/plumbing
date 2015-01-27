@@ -1,3 +1,6 @@
+## 0.3.7
+ * Add support for destructuring namespaced keywords, i.e. `(= 1 (letk [[a/b] {:a/b 1}] b))`
+
 ## 0.3.6
  * **BREAKING**: Define `update` only if `clojure.core/update` does not exist (ie. legacy clojure(script) versions)
 

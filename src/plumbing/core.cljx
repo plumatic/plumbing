@@ -405,7 +405,11 @@
    (= [2 2] (let [a 1] (letk [[a {b a}] {:a 2}] [a b]))) but
    (= [2 1] (let [a 1] (letk [[{b a} a] {:a 2}] [a b])))
 
-   If present, :as and :& symbols are bound before other symbols within the binding."
+   If present, :as and :& symbols are bound before other symbols within the binding.
+
+   Namespaced keys are supported by specifying fully-qualified key in binding form. The bound
+   symbol uses the _name_ portion of the namespaced key, i.e,
+   (= 1 (letk [[a/b] {:a/b 1}] b))"
   [bindings & body]
   (schema/assert-iae (vector? bindings) "Letk binding must be a vector")
   (schema/assert-iae (even? (count bindings)) "Letk binding must have even number of elements")
