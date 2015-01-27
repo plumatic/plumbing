@@ -39,29 +39,29 @@
         (persistent! @m-atom#))))
 
 (defmacro -unless-update
-  "Execute and yield body only if Clojure(Script) version preceeds introduction
-  of 'update' into the respective core namespace."
+  "Execute and yield body only if Clojure version preceeds introduction
+  of 'update' into core namespace."
   [body]
-  (let [->tuple `(fn [ver#] (mapv #(get ver# %) [:major :minor :incremental]))
-        prior?  `(fn [ref-tuple# ver#] (pos? (compare ref-tuple# (~->tuple ver#))))
-        -clj    `(~prior? [1 7 0]    *clojure-version*)
-        -cljs   `(~prior? [0 0 2411] *clojurescript-version*)]
-    `(if-cljs (if ~-cljs ~body)
-              (if ~-clj  ~body))))
+  `(if-cljs ~body
+            (when (pos? (compare
+                         [1 7 0]
+                         (mapv #(get *clojure-version* %)
+                               [:major :minor :incremental])))
+              ~body)))
 
 (-unless-update
-  (defn update
-    "Updates the value in map m at k with the function f.
+ (defn update
+   "Updates the value in map m at k with the function f.
 
     Like update-in, but for updating a single top-level key.
     Any additional args will be passed to f after the value.
 
     WARNING As of Clojure 1.7 this function exists in clojure.core and
     will not be exported by this namespace."
-    ([m k f] (assoc m k (f (get m k))))
-    ([m k f x1] (assoc m k (f (get m k) x1)))
-    ([m k f x1 x2] (assoc m k (f (get m k) x1 x2)))
-    ([m k f x1 x2 & xs] (assoc m k (apply f (get m k) x1 x2 xs)))))
+   ([m k f] (assoc m k (f (get m k))))
+   ([m k f x1] (assoc m k (f (get m k) x1)))
+   ([m k f x1 x2] (assoc m k (f (get m k) x1 x2)))
+   ([m k f x1 x2 & xs] (assoc m k (apply f (get m k) x1 x2 xs)))))
 
 (defn map-vals
   "Build map k -> (f v) for [k v] in map, preserving the initial type"
