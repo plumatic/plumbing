@@ -239,12 +239,15 @@
    values according to f. If multiple elements of xs return the same
    value under f, the first is returned"
   [f xs]
-  #+clj  (let [s (java.util.HashSet.)]
-           (for [x xs
-                 :let [id (f x)]
-                 :when (not (.contains s id))]
-             (do (.add s id)
-                 x)))
+  #+clj ((fn self [^clojure.lang.ITransientSet s xs]
+           (lazy-seq
+            (when-let [[x & more] (seq xs)]
+              (let [id (f x)]
+                (if (.contains s id)
+                  (self s more)
+                  (cons x (self (conj! s id) more)))))))
+         (transient #{})
+         xs)
   #+cljs (let [s (atom #{})]
            (for [x xs
                  :let [id (f x)]
