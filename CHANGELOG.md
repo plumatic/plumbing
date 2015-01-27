@@ -1,5 +1,8 @@
 ## 0.3.7
- * Add support for destructuring namespaced keywords, i.e. `(= 1 (letk [[a/b] {:a/b 1}] b))`
+ * Add support for destructuring namespaced keywords, i.e.
+   `(= 1 (letk [[a/b] {:a/b 1}] b))` and `(= 1 ((fnk [a/b] b) {:a/b
+   1}))`
+ * Fix warnings about `*clojurescript-version*` when compiling ClojureScript
 
 ## 0.3.6
  * **BREAKING**: Define `update` only if `clojure.core/update` does not exist (ie. legacy clojure(script) versions)
