@@ -6,7 +6,7 @@
    [plumbing.fnk.pfnk :as pfnk]
    #+clj [plumbing.fnk.impl :as fnk-impl]
    #+clj [clojure.test :refer :all]
-   #+cljs [cemerick.cljs.test :refer-macros [is deftest testing use-fixtures]]))
+   #+cljs [cemerick.cljs.test :refer-macros [is are deftest testing use-fixtures]]))
 
 #+cljs
 (do
@@ -377,12 +377,13 @@
                                  [e] inp]
                           [a b c d e])))))
 
-(deftest letk-namespaced-test
+(deftest letk-qualified-key-test
   (let [m {:a/b 1 :c/d {:e/f 2 :a/b 2}}]
     (is (= 1 (p/letk [[a/b] m] b)))
     (is (= 2 (p/letk [[[:c/d e/f]] m] f)))
     (is (= 2 (p/letk [[a/b] m [[:c/d a/b]] m] b))))
-  (is (= 2 (p/letk [[a/b] {:a/b 1} [a/b] {:a/b 2}] b))))
+  (is (= 2 (p/letk [[a/b] {:a/b 1} [a/b] {:a/b 2}] b)))
+  (is (= 2 (p/letk [[[:a/b :as c]] {:a/b 2}] c))))
 
 (deftest when-letk-test
   (is (= "123" (p/when-letk [[a b c] {:a 1 :b 2 :c 3}] (str a b c))))
@@ -499,6 +500,27 @@
       (is (= ["1" "2"] (f {:a "1" :b {:c "2"}})))
       (is (thrown? Exception (f {:a "1" :b {:c 2}})))
       (is (thrown? Exception (f {:a "1" :b {:c "2" :d "3"}}))))))
+
+(deftest fnk-qualified-key-test
+  (is (= [1 2 3] ((p/fnk [a/b b/c c/d] [b c d]) {:a/b 1 :b/c 2 :c/d 3})))
+  (is (= 1 ((p/fnk [[:a/b b/c]] c) {:a/b {:b/c 1}})))
+  (is (= 1 ((p/fnk [{a/b 1}] b) {})))
+  (is (= 1 ((p/fnk [[:a/b :as c]] c) {:a/b 1})))
+  (testing "schemas"
+    (let [f (p/fnk [a/b :- s/Str [:b/c c/d :- s/Keyword]] [b d])]
+      (is (= ["hi" :bye] (f {:a/b "hi" :b/c {:c/d :bye}})))
+      (is (= {:a/b s/Str
+              :b/c {:c/d s/Keyword s/Keyword s/Any}
+              s/Keyword s/Any}
+             (pfnk/input-schema f)))
+      (are [invalid-input] (thrown? Exception (f invalid-input))
+           nil
+           {}
+           {:b "hi" :c {:d :bye}}
+           {:a/b nil :b/c nil}
+           {:a/b nil :b/c {:c/d :bye}}
+           {:a/b "hi" :b/c {:c/d "bye"}}
+           {:a/b "hi" :b/c :bye}))))
 
 (p/defnk keyfn-test-docstring "whoa" [dude {wheres :foo} :as my & car]
   [dude wheres my car])

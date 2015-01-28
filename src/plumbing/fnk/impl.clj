@@ -32,10 +32,16 @@
 
 ;;; Helpers
 
-(defn k->sym
-  "Make a keyword into a symbol"
-  [k]
-  (symbol (name k)))
+(defn name-sym
+  "Returns symbol of x's name.
+   Converts a keyword/string to symbol, or removes namespace (if any) of symbol"
+  [x]
+  (symbol (name x)))
+
+(defn qualified-sym
+  "Returns qualified symbol of x, an instance of Named"
+  [x]
+  (symbol (namespace x) (name x)))
 
 ;;; Parsing new fnk binding style
 
@@ -76,7 +82,7 @@
   [env map-sym binding key-path body-form]
   (cond (symbol? binding)
         {:schema-entry [(keyword binding) (schema-macros/extract-schema-form binding)]
-         :body-form `(let [~(-> binding name symbol) (schema/safe-get ~map-sym ~(keyword binding) ~key-path)]
+         :body-form `(let [~(name-sym binding) (schema/safe-get ~map-sym ~(keyword binding) ~key-path)]
                        ~body-form)}
 
         (map? binding)
@@ -87,7 +93,7 @@
           (schema/assert-iae (= 1 (count schema-fixed-binding))
                              "optional binding has more than 1 entry: %s" schema-fixed-binding)
           {:schema-entry [`(s/optional-key ~bound-key) (schema-macros/extract-schema-form bound-sym)]
-           :body-form `(let [~(-> bound-sym name symbol) (get ~map-sym ~bound-key ~opt-val-expr)]
+           :body-form `(let [~(name-sym bound-sym) (get ~map-sym ~bound-key ~opt-val-expr)]
                          ~body-form)})
 
         (vector? binding)
@@ -178,7 +184,7 @@
                                        more-schema))))))]
     (when as-sym (assert-unschematized as-sym))
     (schema/assert-iae (not (some #{'&} (map first input-schema-elts))) "Cannot bind to &")
-    (schema/assert-distinct (concat (map k->sym explicit-schema-keys)
+    (schema/assert-distinct (concat (map name-sym explicit-schema-keys)
                                     (remove nil? [more-sym as-sym])))
     {:input-schema (make-input-schema input-schema-elts)
      :external-input-schema (if-not (any-schema? binding-schema)
@@ -202,13 +208,13 @@
   (cond (symbol? binding)
         (let [bind-sym (gensym (name binding))]
           [[(keyword binding) bind-sym]
-           `(let [~binding ~bind-sym] ~body-form)])
+           `(let [~(name-sym binding) ~bind-sym] ~body-form)])
 
         (map? binding)
         (let [[bs ov] (first (process-schematized-map env binding))
               bind-sym (gensym (name bs))]
           [[(keyword bs) bind-sym]
-           `(let [~bs (if (identical? +none+ ~bind-sym) ~ov ~bind-sym)]
+           `(let [~(name-sym bs) (if (identical? +none+ ~bind-sym) ~ov ~bind-sym)]
               ~body-form)])
 
         (vector? binding)
@@ -290,7 +296,7 @@
                                    (apply dissoc (schema/explicit-schema-key-map input-schema)
                                           (set arg-ks)))
         extra-args (remove (partial schema/possibly-contains? input-schema) arg-ks)
-        arg-syms (mapv k->sym arg-ks)
+        arg-syms (mapv name-sym arg-ks)
         [pos-fn pos-args] (efficient-call-forms
                            fnk
                            (merge (zipmap arg-ks arg-syms)
@@ -327,10 +333,10 @@
        (vary-meta (s/fn
                     ~fn-name
                     [m# :- ~external-input-schema]
-                    (plumbing.core/letk [~(into (mapv k->sym req-ks)
-                                                (mapv (fn [k] {(k->sym k) +none+}) opt-ks))
+                    (plumbing.core/letk [~(into (mapv qualified-sym req-ks)
+                                                (mapv (fn [k] {(qualified-sym k) +none+}) opt-ks))
                                          m#]
-                      (pos-fn# ~@(mapv k->sym explicit-schema-keys))))
+                      (pos-fn# ~@(mapv name-sym explicit-schema-keys))))
                   assoc ::positional-info [pos-fn# ~explicit-schema-keys]))))
 
 ;;; Generating fnk bodies
