@@ -509,6 +509,10 @@
   (testing "schemas"
     (let [f (p/fnk [a/b :- s/Str [:b/c c/d :- s/Keyword]] [b d])]
       (is (= ["hi" :bye] (f {:a/b "hi" :b/c {:c/d :bye}})))
+      (is (= {:a/b s/Str
+              :b/c {:c/d s/Keyword s/Keyword s/Any}
+              s/Keyword s/Any}
+             (pfnk/input-schema f)))
       (are [invalid-input] (thrown? Exception (f invalid-input))
            nil
            {}
