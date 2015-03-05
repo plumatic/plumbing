@@ -36,7 +36,7 @@
   "Returns symbol of x's name.
    Converts a keyword/string to symbol, or removes namespace (if any) of symbol"
   [x]
-  (symbol (name x)))
+  (with-meta (symbol (name x)) (meta x)))
 
 (defn qualified-sym
   "Returns qualified symbol of x, an instance of Named"

@@ -1,3 +1,6 @@
+## 0.4.0
+ * **Breaking** Bump dependencies, potemkin no longer included transitively through schema.  
+
 ## 0.3.7
  * Add support for destructuring namespaced keywords, i.e.
    `(= 1 (letk [[a/b] {:a/b 1}] b))` and `(= 1 ((fnk [a/b] b) {:a/b 1}))`

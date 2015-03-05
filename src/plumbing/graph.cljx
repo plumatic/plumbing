@@ -24,16 +24,25 @@
   (:require
    #+clj [lazymap.core :as lazymap]
    [schema.core :as s]
+   #+clj [schema.macros :as schema-macros]
    [plumbing.fnk.schema :as schema :include-macros true]
    [plumbing.fnk.pfnk :as pfnk]
    #+clj [plumbing.fnk.impl :as fnk-impl]
    #+clj [plumbing.graph.positional :as graph-positional]
    [plumbing.core :as plumbing :include-macros true]
-   [plumbing.map :as map]))
+   [plumbing.map :as map])
+  #+cljs (:require-macros [schema.macros :as schema-macros]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constructing graphs
+
+(defn working-array-map
+  "array-map in cljs no longer preserves ordering, replicate the old functionality."
+  [& args]
+  (schema-macros/if-cljs
+   (.fromArray cljs.core/PersistentArrayMap (apply array args) true true)
+   (apply array-map args)))
 
 (defn ->graph
   "Convert a graph specification into a canonical well-formed 'graph', which
@@ -56,7 +65,7 @@
                             map/topological-sort
                             reverse))
                      (mapcat #(find canonical-nodes %))
-                     (apply array-map))]
+                     (apply working-array-map))]
       (assert (every? keyword? (keys graph)))
       (with-meta graph
         {::io-schemata (update-in (reduce schema/sequence-schemata
