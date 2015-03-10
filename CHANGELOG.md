@@ -1,3 +1,6 @@
+## 0.4.1 
+ * Fix concurrency issue recently introduced in distinct-by in Clojure (sequence had to be realized in creator thread due to transient restrictions)
+
 ## 0.4.0
  * **Breaking** Bump dependencies, potemkin no longer included transitively through schema.  
 
