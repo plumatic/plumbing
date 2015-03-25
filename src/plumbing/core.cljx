@@ -400,18 +400,22 @@
 
    Namespaced keys are supported by specifying fully-qualified key in binding form. The bound
    symbol uses the _name_ portion of the namespaced key, i.e,
-   (= 1 (letk [[a/b] {:a/b 1}] b))"
+   (= 1 (letk [[a/b] {:a/b 1}] b)).
+
+   Map destructuring bindings can be mixed with ordinary symbol bindings."
   [bindings & body]
   (schema/assert-iae (vector? bindings) "Letk binding must be a vector")
   (schema/assert-iae (even? (count bindings)) "Letk binding must have even number of elements")
   (reduce
    (fn [cur-body-form [bind-form value-form]]
-     (let [{:keys [map-sym body-form]} (fnk-impl/letk-input-schema-and-body-form
-                                        &env
-                                        (fnk-impl/ensure-schema-metadata &env bind-form)
-                                        []
-                                        cur-body-form)]
-       `(let [~map-sym ~value-form] ~body-form)))
+     (if (symbol? bind-form)
+       `(let [~bind-form ~value-form] ~cur-body-form)
+       (let [{:keys [map-sym body-form]} (fnk-impl/letk-input-schema-and-body-form
+                                          &env
+                                          (fnk-impl/ensure-schema-metadata &env bind-form)
+                                          []
+                                          cur-body-form)]
+         `(let [~map-sym ~value-form] ~body-form))))
    `(do ~@body)
    (reverse (partition 2 bindings))))
 
