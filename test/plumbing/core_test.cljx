@@ -343,6 +343,10 @@
     (p/letk [[a] {:a {:b 1}}
              [b] a]
       (is (= b 1)))
+    (p/letk [[a] {:a [{:c 3}]}
+             b (first a)
+             [c] b]
+      (is (= c 3)))
     (is (thrown? Throwable
                  (p/letk [[a] {:b 2}] a)))))
 

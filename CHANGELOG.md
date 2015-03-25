@@ -1,3 +1,6 @@
+## 0.4.2
+ * Letk now supports simple symbol bindings as well as map destructuring bindings.
+
 ## 0.4.1 
  * Fix concurrency issue recently introduced in distinct-by in Clojure (sequence had to be realized in creator thread due to transient restrictions)
 
