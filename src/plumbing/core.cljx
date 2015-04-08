@@ -3,10 +3,10 @@
   #+cljs
   (:require-macros
    [plumbing.core :refer [for-map lazy-get -unless-update]]
-   [schema.macros :refer [if-cljs]])
+   [schema.macros :as schema-macros])
   (:require
    [schema.utils :as schema-utils]
-   #+clj [schema.macros :as schema-macros :refer [if-cljs]]
+   #+clj [schema.macros :as schema-macros]
    [plumbing.fnk.schema :as schema :include-macros true]
    #+clj [plumbing.fnk.impl :as fnk-impl]))
 
@@ -42,12 +42,13 @@
   "Execute and yield body only if Clojure version preceeds introduction
   of 'update' into core namespace."
   [body]
-  `(if-cljs ~body
-            (when (pos? (compare
-                         [1 7 0]
-                         (mapv #(get *clojure-version* %)
-                               [:major :minor :incremental])))
-              ~body)))
+  `(schema-macros/if-cljs
+    ~body
+    ~(when (pos? (compare
+                  [1 7 0]
+                  (mapv #(get *clojure-version* %)
+                        [:major :minor :incremental])))
+       body)))
 
 (-unless-update
  (defn update
