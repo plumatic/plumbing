@@ -1,5 +1,6 @@
 (ns plumbing.core
   "Utility belt for Clojure in the wild"
+  (:refer-clojure :exclude [update])
   #+cljs
   (:require-macros
    [plumbing.core :refer [for-map lazy-get -unless-update]]
