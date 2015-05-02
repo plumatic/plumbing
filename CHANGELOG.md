@@ -1,3 +1,6 @@
+## 0.4.3
+ * Actually fix *update* warnings under Clojure 1.7 (commit missed the 0.4.2 release).
+
 ## 0.4.2
  * Letk now supports simple symbol bindings as well as map destructuring bindings.
  * Fix *update* warnings under Clojure 1.7.
