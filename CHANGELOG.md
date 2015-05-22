@@ -1,3 +1,6 @@
+## 0.4.4
+ * Bump to latest Schema version, which should fix AOT compilation when used with Clojure 1.7-RC1 and later. 
+
 ## 0.4.3
  * Actually fix *update* warnings under Clojure 1.7 (commit missed the 0.4.2 release).
 
