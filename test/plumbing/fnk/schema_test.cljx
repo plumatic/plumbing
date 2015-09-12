@@ -37,7 +37,7 @@
          (fnk-schema/union-input-schemata {:a s/Str} {(s/optional-key :a) s/Str})))
   (is (= {:a s/Str}
          (fnk-schema/union-input-schemata {(s/optional-key :a) s/Str} {:a s/Any})))
-  (is (= {:a (s/both s/Str s/Num)}
+  (is (= {:a s/Str} ;; punt, should be both Str and Num
          (fnk-schema/union-input-schemata {(s/optional-key :a) s/Str} {:a s/Num})))
   (is (= {:a {(s/optional-key :a1) s/Str
               :a2 s/Num

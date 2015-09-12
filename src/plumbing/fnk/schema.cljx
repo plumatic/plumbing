@@ -20,11 +20,11 @@
    [plumbing.fnk.schema :refer [assert-iae]]))
 
 (def Schema (s/protocol s/Schema))
-(def InputSchema {(s/either (s/eq s/Keyword) schema.core.OptionalKey s/Keyword) Schema})
+(def InputSchema {(s/cond-pre (s/eq s/Keyword) schema.core.OptionalKey s/Keyword) Schema})
 (def OutputSchema Schema)
 (def IOSchemata [(s/one InputSchema 'input) (s/one OutputSchema 'output)])
 
-(def GraphInputSchema {(s/either schema.core.OptionalKey s/Keyword) Schema})
+(def GraphInputSchema {(s/cond-pre schema.core.OptionalKey s/Keyword) Schema})
 (def MapOutputSchema {s/Keyword Schema})
 (def GraphIOSchemata [(s/one GraphInputSchema 'input) (s/one MapOutputSchema 'output)])
 
@@ -57,13 +57,11 @@
                                  :map   m})))
     v))
 
-;;; Punt on non-maps.
-
 (defn non-map-union [s1 s2]
   (cond (= s1 s2) s1
         (= s1 s/Any) s2
         (= s2 s/Any) s1
-        :else (s/both s1 s2)))
+        :else s1)) ;; Punt, just take the first
 
 (defn non-map-diff
   "Return a difference of schmas s1 and s2, where one is not a map.
