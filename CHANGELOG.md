@@ -1,3 +1,6 @@
+## 0.5.0
+ * **BREAKING**: Bump to Schema 1.0.1, breaking compatibility with pre-1.0.0 Schema.
+
 ## 0.4.4
  * Bump to latest Schema version, which should fix AOT compilation when used with Clojure 1.7-RC1 and later. 
 
