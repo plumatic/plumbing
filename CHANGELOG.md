@@ -1,3 +1,6 @@
+## 0.5.1
+ * (Experimental) include default values as metadata on fnk schemas.
+
 ## 0.5.0
  * **BREAKING**: Bump to Schema 1.0.1, breaking compatibility with pre-1.0.0 Schema.
 
