@@ -92,7 +92,7 @@
           (assert-unschematized binding)
           (schema/assert-iae (= 1 (count schema-fixed-binding))
                              "optional binding has more than 1 entry: %s" schema-fixed-binding)
-          {:schema-entry [`(s/optional-key ~bound-key) (schema-macros/extract-schema-form bound-sym)]
+          {:schema-entry [`(with-meta (s/optional-key ~bound-key) {:default ~opt-val-expr}) (schema-macros/extract-schema-form bound-sym)]
            :body-form `(let [~(name-sym bound-sym) (get ~map-sym ~bound-key ~opt-val-expr)]
                          ~body-form)})
 

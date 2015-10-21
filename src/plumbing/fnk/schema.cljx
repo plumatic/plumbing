@@ -86,7 +86,11 @@
         ;; Deal with `(s/optional-key k) form from impl
         (and (sequential? k) (not (vector? k)) (= (count k) 2)
              (= (first k) 'schema.core/optional-key))
-        [(second k) false]))
+        [(second k) false]
+
+        ;; Deal with `(with-meta ...) form from impl
+        (and (sequential? k) (not (vector? k)) (= (name (first k)) 'with-meta))
+        (unwrap-schema-form-key (second k))))
 
 (s/defn explicit-schema-key-map :- {s/Keyword s/Bool}
   "Given a possibly-unevaluated map schema, return a map from bare keyword to true
