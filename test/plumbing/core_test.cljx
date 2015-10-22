@@ -503,7 +503,16 @@
       (is (= {:a s/Str :b {:c s/Str} s/Keyword s/Any} (pfnk/input-schema f)))
       (is (= ["1" "2"] (f {:a "1" :b {:c "2"}})))
       (is (thrown? Exception (f {:a "1" :b {:c 2}})))
-      (is (thrown? Exception (f {:a "1" :b {:c "2" :d "3"}}))))))
+      (is (thrown? Exception (f {:a "1" :b {:c "2" :d "3"}})))))
+
+  (testing "default values"
+    (is (= {:default "foo"}
+           (-> (p/fnk [{a :- s/Str "foo"}])
+               pfnk/input-schema
+               (dissoc s/Keyword)
+               keys
+               first
+               meta)))))
 
 (deftest fnk-qualified-key-test
   (is (= [1 2 3] ((p/fnk [a/b b/c c/d] [b c d]) {:a/b 1 :b/c 2 :c/d 3})))
