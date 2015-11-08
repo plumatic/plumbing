@@ -204,48 +204,18 @@
 #+cljs
 (defn topological-sort
   [child-map & [include-leaves?]]
-  (let [child-map (if include-leaves?
-                    (reduce
-                     (fn [e k]
-                       (let [leaves (remove #(contains? e %)  (get e k))]
-                         (reduce (fn [e leaf] (assoc e leaf nil)) e leaves)))
-                     child-map
-                     (keys child-map))
-                    child-map)
-
-        dfs (fn [s g r pred]
-              (if (pred s)
-                (let [n          (peek s)
-                      neighbors  (vec (drop-while #(not (contains? g %)) (get g n)))]
-                  (if (seq neighbors)
-                    (recur (conj s (peek neighbors))
-                           (assoc g n (pop neighbors))
-                           r
-                           pred)
-                    (recur (pop s)
-                           (dissoc g n)
-                           (conj r n)
-                           pred)))
-                [s g r pred]))
-
-        first-duplicate (fn [coll]
-                          (loop [[f & r :as coll] coll
-                                 acc  #{}]
-                            (if (seq coll)
-                              (if (contains? acc f)
-                                [f] ;; We package the result to avoid confusion
-                                (recur r (conj acc f)))           ;; around nil
-                              nil)))
-
-        sorted (loop [[stack g r pred :as tuple] [[] child-map () seq]]
-                 (let [ks (keys g)]
-                   (if (seq ks)
-                     (recur (apply dfs (assoc tuple 0 [(first ks)])))
-                     r)))]
-
-    (if-let [cycle-start (first-duplicate sorted)]
-      (let [[cycle _ _ _] (dfs cycle-start child-map () #(and (seq %)
-                                                              (or (= (count %) 1)
-                                                                  (not= (first cycle-start) (peek %)))))]
-        (throw (ex-info (str "Graph contains a cycle.") {:cycle cycle})))
-      sorted)))
+  (let [normalize-g #(reduce (fn [m l] (if (get m l) m (assoc m l #{})))
+                             child-map
+                             (apply set/union (vals %)))
+        child-map (if include-leaves?
+                    (normalize-g child-map)
+                    child-map)]
+    (loop [sorted ()
+           child-map child-map]
+      (if (seq child-map)
+        (let [sources (apply set/difference
+                             (set (keys child-map))
+                             (map set (vals child-map)))]
+          (assert (seq sources) "Graph contains a cycle")
+          (recur (concat sorted sources) (apply dissoc child-map sources)))
+        sorted))))
