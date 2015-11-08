@@ -167,6 +167,14 @@
                                 :third [:fourth]
                                 :fourth [:fifth]
                                 :fifth []})))
+
+  (let [sorted (map/topological-sort {10 [1 0]
+                                      20 [2 0]
+                                      2 []
+                                      0 []})]
+    (is (= 0 (last sorted)))
+    (is (= #{2 10 20} (set (butlast sorted)))))
+
   (is (= (range 100)
          (map/topological-sort (into {99 []} (for [i (range 99)] [i [(inc i)]])))))
   (is (= (range 99)
