@@ -1,3 +1,6 @@
+## 0.5.2
+ * Fix broken cycle check in Clojurescript topological sort.
+
 ## 0.5.1
  * (Experimental) include default values as metadata on fnk schemas.
 
