@@ -28,10 +28,11 @@
                                     :output-path "target/generated/test/cljs"
                                     :rules :cljs}]}}
              :1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}
-             :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}}
+             :1.7 {:dependencies [[org.clojure/clojure "1.7.0"]]}
+             :1.8 {:dependencies [[org.clojure/clojure "1.8.0-RC1"]]}}
 
   :jar-exclusions [#"\.cljx"]
-  :aliases {"all" ["with-profile" "dev:dev,1.5:dev,1.7"]
+  :aliases {"all" ["with-profile" "dev:dev,1.5:dev,1.7;dev,1.8"]
             "deploy" ["do" "clean," "cljx" "once," "deploy" "clojars"]
             "test" ["do" "clean," "cljx" "once," "test," "with-profile" "dev" "cljsbuild" "test"]}
 
