@@ -78,7 +78,7 @@
 ;; similar issues but include dozens of components, polymorphism, and other
 ;; complicating requirements.
 
-;; [1] http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html
+;; [1] http://plumatic.github.io/prismatics-graph-at-strange-loop
 
 ;; The core issue is that while as programmers we can see the individual
 ;; components of 'stats' and their relationships, the rest of our code and

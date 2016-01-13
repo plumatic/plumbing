@@ -353,7 +353,7 @@
    the actual keyword fnk (which is just a thin wrapper around the
    positional version).  If '& or :as are used, no such positional
    function is generated."
-  [env name? bind body]
+  [env name? bind body form]
   (let [{:keys [map-sym body-form input-schema external-input-schema]}
         (letk-input-schema-and-body-form env bind [] `(do ~@body))
 
@@ -371,8 +371,9 @@
          (vec (schema/explicit-schema-key-map input-schema))
          bind-sym-map
          [bound-body]))
-      `(s/fn
-         ~fn-name
-         [~(schema-override map-sym external-input-schema)]
-         (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
-         ~body-form))))
+      (vary-meta `(s/fn
+                     ~fn-name
+                     [~(schema-override map-sym external-input-schema)]
+                     (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
+                     ~body-form)
+                  #(merge (meta form) %)))))

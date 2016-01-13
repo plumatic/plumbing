@@ -19,7 +19,7 @@ Our first release is plumbing.[Graph], a library for declaratively specifying th
  :v  (fnk [m m2] (- m2 (* m m)))}
 ```
 
-<img src="https://raw.github.com/wiki/prismatic/plumbing/images/graph_stats_graph.png" alt="A graphical depiction of this example graph" style="display:block; margin-left:auto; margin-right: auto; "align="center">
+<img src="https://raw.github.com/wiki/plumatic/plumbing/images/graph_stats_graph.png" alt="A graphical depiction of this example graph" style="display:block; margin-left:auto; margin-right: auto; "align="center">
      
 This example shows a simple Graph that expresses the computation of univariate statistics of a sequence of input numbers `xs` in four steps.  Dependencies between steps are expressed by argument and keyword names  (e.g., the variance `v` is computed from the mean `m` and mean-square `m2`).   The details of Graph are not vital for this discussion (see the [blog post](Graph) if you're interested), except for the following two high-level constraints on the implementation of `fnk`:
 
@@ -163,4 +163,4 @@ For example, `(satisfies-schema? {:x true :y false :z true} {:x 2 :z 1})`.
 Because Graph only depends on these protocol and schema definitions, you can use it without our `fnk` by definining schema metadata directly, or designing your own syntax.  Of course, we'd still like to get `fnk` right in our release, which is why we really need your input.  
  
 
-[Graph]: http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html
+[Graph]: http://plumatic.github.io/prismatics-graph-at-strange-loop

@@ -439,7 +439,11 @@
                  (hash-map :a 1 :b {:b1 2} :c 3))]]
       (is (= (pfnk/output-schema f) {:a s/Any :b {:b1 s/Any}})))
     (let [a :k]
-      (is (= (pfnk/output-schema (p/fnk [a] {a a})) s/Any)))))
+      (is (= (pfnk/output-schema (p/fnk [a] {a a})) s/Any))))
+
+  (testing "metadata via reader macro"
+    (let [fnk-with-meta ^{:has-meta true} (p/fnk [])]
+      (is (:has-meta (meta fnk-with-meta))))))
 
 (deftest fnk-input-schema-test
   (testing "simple fnk with one string key"

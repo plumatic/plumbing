@@ -465,7 +465,7 @@
                             (schema-macros/extract-arrow-schematized-element &env args)
                             [nil args])
         [bind body] (schema-macros/extract-arrow-schematized-element &env more-args)]
-    (fnk-impl/fnk-form &env name? bind body)))
+    (fnk-impl/fnk-form &env name? bind body &form)))
 
 (defmacro defnk
   "Analogy: fn:fnk :: defn::defnk"
@@ -476,7 +476,7 @@
         [attr-map? args] (take-if map? args)
         [bind body] (schema-macros/extract-arrow-schematized-element &env args)]
     (schema/assert-iae (symbol? name) "Name for defnk is not a symbol: %s" name)
-    (let [f (fnk-impl/fnk-form &env name bind body)]
+    (let [f (fnk-impl/fnk-form &env name bind body &form)]
       `(def ~(with-meta name (merge (meta name) (assoc-when (or attr-map? {}) :doc docstring?)))
          ~f))))
 

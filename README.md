@@ -1,8 +1,8 @@
 # Plumbing and Graph: the Clojure utility belt
 
-<img src="https://raw.github.com/wiki/prismatic/plumbing/images/prismatic-swiss-army-knife.png" alt="prismatic/plumbing logo" title="prismatic/plumbing logo" align="right" width="250" />
+<img src="https://raw.github.com/wiki/plumatic/plumbing/images/prismatic-swiss-army-knife.png" alt="prismatic/plumbing logo" title="prismatic/plumbing logo" align="right" width="250" />
 
-This first release includes our '[Graph](http://blog.getprismatic.com/prismatics-graph-at-strange-loop/)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
+This first release includes our '[Graph](http://plumatic.github.io/prismatics-graph-at-strange-loop/)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
 
 *New in 0.3.0: support for ClojureScript*
 
@@ -12,7 +12,7 @@ Leiningen dependency (Clojars):
 
 [![Clojars Project](http://clojars.org/prismatic/plumbing/latest-version.svg)](http://clojars.org/prismatic/plumbing) 
 
-[Latest API docs](http://prismatic.github.io/plumbing).
+[Latest API docs](http://plumatic.github.io/plumbing).
 
 **This is an alpha release.  We  are using it internally in production, but the API and organizational structure are subject to change.  Comments and suggestions are much appreciated.**
 
@@ -127,12 +127,12 @@ We can also have higher-order functions on Graphs to wrap the behavior on each s
    @(::profile-data (profiled-stats {:xs (range 10000)})))
 ```
 
-… and so on.  For more examples and details about Graph, check out the [graph examples test](https://github.com/Prismatic/plumbing/blob/master/test/plumbing/graph_examples_test.cljx).
+… and so on.  For more examples and details about Graph, check out the [graph examples test](https://github.com/plumatic/plumbing/blob/master/test/plumbing/graph_examples_test.cljx).
 
 <a name="fnk"/>
 ## Bring on (de)fnk
 
-Many of the functions we write (in Graph and elsewhere) take a single (nested) map argument with keyword keys and have expectations about which keys must be present and which are optional. We developed a new style of binding ([read more here](https://github.com/Prismatic/plumbing/tree/master/src/plumbing/fnk)) to make this a lot easier and to check that input data has the right 'shape'. We call these 'keyword functions' (defined by `defnk`) and here's what one looks like:
+Many of the functions we write (in Graph and elsewhere) take a single (nested) map argument with keyword keys and have expectations about which keys must be present and which are optional. We developed a new style of binding ([read more here](https://github.com/plumatic/plumbing/tree/master/src/plumbing/fnk)) to make this a lot easier and to check that input data has the right 'shape'. We call these 'keyword functions' (defined by `defnk`) and here's what one looks like:
 
 ```clojure
 (use 'plumbing.core)
@@ -225,7 +225,7 @@ Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
 	[1 3 5 7 9])
 ```
 
-Check out [`plumbing.core`](https://github.com/Prismatic/plumbing/blob/master/src/plumbing/core.cljx) for many other useful functions.
+Check out [`plumbing.core`](https://github.com/plumatic/plumbing/blob/master/src/plumbing/core.cljx) for many other useful functions.
 
 ## ClojureScript
 
@@ -259,12 +259,10 @@ Here's an example usage of `for-map`:
 
 Plumbing now has a [mailing list](https://groups.google.com/forum/#!forum/prismatic-plumbing).  Please feel free to join and ask questions or discuss how you're using Plumbing and Graph.
 
-For announcements of new releases, you can also follow on [@PrismaticEng](http://twitter.com/prismaticeng) on Twitter.
-
 ## Supported Clojure versions
 
 Plumbing is currently supported on Clojure 1.5.x and 1.6.x.
 
 ## License
 
-Copyright (C) 2013 Prismatic.  Distributed under the Eclipse Public License, the same as Clojure.
+Distributed under the Eclipse Public License, the same as Clojure.

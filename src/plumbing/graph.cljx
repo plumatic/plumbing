@@ -3,7 +3,7 @@
    easy to define, modify, execute, test, and monitor.
 
    This blog post provides a high-level overview of Graph and its benefits:
-   http://blog.getprismatic.com/blog/2012/10/1/prismatics-graph-at-strange-loop.html
+   http://plumatic.github.io/prismatics-graph-at-strange-loop
 
    Concretely, a Graph specification is just a Clojure (nested) map with keyword keys
    and keyword functions at the leaves.

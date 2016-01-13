@@ -7,7 +7,7 @@ cd `dirname $0`
 cd ..
 
 rm -rf doc && mkdir doc
-git clone git@github.com:prismatic/plumbing.git doc
+git clone git@github.com:plumatic/plumbing.git doc
 cd doc
 git symbolic-ref HEAD refs/heads/gh-pages
 rm .git/index
