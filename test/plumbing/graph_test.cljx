@@ -47,6 +47,20 @@
                           :baz {:foo (plumbing/fnk [x] x)})
                          :z (plumbing/fnk [a b]))))))
 
+  (testing "named fnks work as expected"
+    (let [f (plumbing/fnk foo [x {y 1}] (+ x y))
+          g (graph/graph
+             f
+             (plumbing/fnk bar [foo] (* foo 2)))]
+      (is (= [{:x s/Any (s/optional-key :y) s/Any s/Keyword s/Any}
+              {:foo s/Any :bar s/Any}]
+             (pfnk/io-schemata g)))
+      (is (= (set (keys g)) #{:foo :bar}))
+      (is (identical? f (:foo g)))
+      (is (= {:foo 3 :bar 6} (graph/run g {:x 2}))))
+    (testing "non-named fnks generate an error"
+      (is (thrown? Exception (graph/graph (plumbing/fnk []))))))
+
   (let [g {:foo (plumbing/fnk [x {y 1} {q 2}] {:foox x :fooy y})
            :bar {:a (plumbing/fnk [foo] (inc foo))
                  :baz {:foo (plumbing/fnk [x] x)}}}]

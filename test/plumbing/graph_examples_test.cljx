@@ -447,7 +447,7 @@
            pv# (~pred v#)
            end# (p/millis)]
        (is (identity pv#))
-       (is (< (Math/abs (- ~expected-ms (- end# start#))) 20))
+       (is (< (Math/abs (- ~expected-ms (- end# start#))) 30))
        v#))
 
   (deftest ^:slow timed-compilation-tests
