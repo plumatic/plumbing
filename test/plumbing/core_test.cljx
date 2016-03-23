@@ -446,7 +446,11 @@
 
   (testing "metadata via reader macro"
     (let [fnk-with-meta ^{:has-meta true} (p/fnk [])]
-      (is (:has-meta (meta fnk-with-meta))))))
+      (is (:has-meta (meta fnk-with-meta)))))
+
+  (testing "name if proivded"
+    (is (= 'bob (pfnk/fnk-name (p/fnk bob []))))
+    (is (nil? (pfnk/fnk-name (p/fnk []))))))
 
 (deftest fnk-input-schema-test
   (testing "simple fnk with one string key"

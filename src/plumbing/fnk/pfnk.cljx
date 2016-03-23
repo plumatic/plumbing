@@ -44,7 +44,13 @@
 
 (defn fn->fnk
   "Make a keyword function into a PFnk, by associating input and output schema metadata."
-  [f [input-schema output-schema :as io]]
-  (s/schematize-fn f (s/=> output-schema input-schema)))
+  ([f io] (fn->fnk f nil io))
+  ([f name [input-schema output-schema :as io]]
+     (vary-meta (s/schematize-fn f (s/=> output-schema input-schema)) assoc :name name)))
+
+(defn fnk-name
+  "Get the name of a fnk, if named"
+  [f]
+  (:name (meta f)))
 
 #+clj (set! *warn-on-reflection* false)
