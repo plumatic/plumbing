@@ -321,7 +321,7 @@
 
    (= [6 3] [(f {:x 1}) (f {:x 1 :y 2})])
    (= [6 3] [((i/positional-fn f [:x]) 1) ((i/positional-fn f [:y :x]) 2 1)])."
-  [fn-name external-input-schema ordered-ks->opt arg-sym-map body]
+  [fn-name external-input-schema ordered-ks->opt arg-sym-map body form]
   (let [[req-ks opt-ks] (schema/split-schema-keys (into {} ordered-ks->opt))
         explicit-schema-keys (mapv first ordered-ks->opt)
         pos-args (mapv #(do (schema-macros/assert! (contains? arg-sym-map %))
@@ -330,14 +330,16 @@
     `(let [pos-fn# (fn ~(symbol (str fn-name "-positional"))
                      ~pos-args
                      ~@body)]
-       (vary-meta (s/fn
-                    ~fn-name
-                    [m# :- ~external-input-schema]
-                    (plumbing.core/letk [~(into (mapv qualified-sym req-ks)
-                                                (mapv (fn [k] {(qualified-sym k) +none+}) opt-ks))
-                                         m#]
-                      (pos-fn# ~@(mapv name-sym explicit-schema-keys))))
-                  assoc ::positional-info [pos-fn# ~explicit-schema-keys]))))
+       (vary-meta
+        (s/fn
+          ~fn-name
+          [m# :- ~external-input-schema]
+          (plumbing.core/letk [~(into (mapv qualified-sym req-ks)
+                                      (mapv (fn [k] {(qualified-sym k) +none+}) opt-ks))
+                               m#]
+            (pos-fn# ~@(mapv name-sym explicit-schema-keys))))
+        merge
+        (assoc ~(meta form) ::positional-info [pos-fn# ~explicit-schema-keys])))))
 
 ;;; Generating fnk bodies
 
@@ -370,10 +372,10 @@
          external-input-schema
          (vec (schema/explicit-schema-key-map input-schema))
          bind-sym-map
-         [bound-body]))
-      (vary-meta `(s/fn
-                     ~fn-name
-                     [~(schema-override map-sym external-input-schema)]
-                     (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
-                     ~body-form)
-                  #(merge (meta form) %)))))
+         [bound-body]
+         form))
+      (with-meta `(s/fn ~fn-name
+                    [~(schema-override map-sym external-input-schema)]
+                    (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
+                    ~body-form)
+        (meta form)))))

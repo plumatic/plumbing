@@ -82,7 +82,8 @@
            input-schema-sym
            (vec (schema/explicit-schema-key-map input-schema))
            (into {} (for [k (keys (schema/explicit-schema-key-map input-schema))] [k (symbol (name k))]))
-           (list `(~pos-fn-sym ~@(mapv (comp symbol name) arg-ks)))))
+           (list `(~pos-fn-sym ~@(mapv (comp symbol name) arg-ks)))
+           nil))
       (into eval-bindings
             [[input-schema-sym input-schema]
              [output-schema-sym (pfnk/output-schema g)]]))
