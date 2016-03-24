@@ -1,5 +1,6 @@
 ## 0.5.3
  * Fix dependent optional bindings (e.g. (fnk [a {b a}])) broken in 0.5.1
+ * Fnks remember their name, and named fnks can be used without a key in `graph/graph` forms (with an implicit key generated from `(keyword (name f))`).
 
 ## 0.5.2
  * Fix broken cycle check in Clojurescript topological sort.
