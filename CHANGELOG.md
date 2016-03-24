@@ -1,3 +1,6 @@
+## 0.5.3
+ * Fix dependent optional bindings (e.g. (fnk [a {b a}])) broken in 0.5.1
+
 ## 0.5.2
  * Fix broken cycle check in Clojurescript topological sort.
 

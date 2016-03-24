@@ -420,6 +420,9 @@
        (assoc om :a 4 :h 77)))
     (testing "both fnks called"
       (is (= @call-count 2)))
+    (testing "dependent optional values"
+      (is (= [1 2 3]
+             ((p/fnk [a {b (* a 2)} {c (inc b)}] [a b c]) {:a 1}))))
 
     #+clj
     (testing "positional-fn"
@@ -510,13 +513,11 @@
       (is (thrown? Exception (f {:a "1" :b {:c "2" :d "3"}})))))
 
   (testing "default values"
-    (is (= {:default "foo"}
-           (-> (p/fnk [{a :- s/Str "foo"}])
-               pfnk/input-schema
-               (dissoc s/Keyword)
-               keys
-               first
-               meta)))))
+    (let [first-key-meta (p/fn-> pfnk/input-schema (dissoc s/Keyword) keys first meta)]
+      (is (= {:default "foo"}
+             (first-key-meta (p/fnk [{a :- s/Str "foo"}]))))
+      (is (= {:default 'apple}
+             (first-key-meta (p/fnk [apple {a :- s/Str apple}])))))))
 
 (deftest fnk-qualified-key-test
   (is (= [1 2 3] ((p/fnk [a/b b/c c/d] [b c d]) {:a/b 1 :b/c 2 :c/d 3})))
