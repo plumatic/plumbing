@@ -364,18 +364,20 @@
                         (schema/guess-expr-output-schema (last body))
                         explicit-output-schema)
         fn-name (vary-meta (or name? (gensym "fnk")) assoc :schema output-schema)]
-    (if (and (not (schema-macros/cljs-env? env))
-             (not-any? #{'& :as} bind)) ;; If we can make a positional fnk form, do it.
-      (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body env bind `(do ~@body))]
-        (positional-fnk-form
-         fn-name
-         external-input-schema
-         (vec (schema/explicit-schema-key-map input-schema))
-         bind-sym-map
-         [bound-body]
-         form))
-      (with-meta `(s/fn ~fn-name
-                    [~(schema-override map-sym external-input-schema)]
-                    (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
-                    ~body-form)
-        (meta form)))))
+    ((fn [fn-form]
+       `(vary-meta ~fn-form assoc :name '~name?))
+     (if (and (not (schema-macros/cljs-env? env))
+              (not-any? #{'& :as} bind)) ;; If we can make a positional fnk form, do it.
+       (let [[bind-sym-map bound-body] (positional-arg-bind-syms-and-body env bind `(do ~@body))]
+         (positional-fnk-form
+          fn-name
+          external-input-schema
+          (vec (schema/explicit-schema-key-map input-schema))
+          bind-sym-map
+          [bound-body]
+          form))
+       (with-meta `(s/fn ~fn-name
+                     [~(schema-override map-sym external-input-schema)]
+                     (schema/assert-iae (map? ~map-sym) "fnk called on non-map: %s" ~map-sym)
+                     ~body-form)
+         (meta form))))))

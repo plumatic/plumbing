@@ -90,9 +90,15 @@
 (defn- split-nodes [s]
   (loop [in s out []]
     (if-let [[f & r] (seq in)]
-      (if (keyword? f)
-        (recur (next r) (conj out [f (first r)]))
-        (recur r (into out f)))
+      (cond (keyword? f) ;; key then value
+            (recur (next r) (conj out [f (first r)]))
+
+            (fn? f)
+            (do (schema/assert-iae (pfnk/fnk-name f) "Inline fnks must have a name (to be used as a key)")
+                (recur r (conj out [(keyword (pfnk/fnk-name f)) f])))
+
+            :else ;; inline graph
+            (recur r (into out f)))
       out)))
 
 (defn graph
@@ -106,7 +112,10 @@
      :2-x-plus-2 (fnk [x-plus-1] (* 2 x-plus-1)))
 
    in addition, an 'inline' graph can be provided in place of a key-value
-   sequence, which will be merged into the graph at this position."
+   sequence, which will be merged into the graph at this position.
+
+   a named fnk can also be provided in place of a key-value pair,
+   where the fnk's name (as a keyword) is the implicit key."
   [& nodes]
   (let [partitioned (split-nodes nodes)]
     (schema/assert-distinct (map first partitioned))
