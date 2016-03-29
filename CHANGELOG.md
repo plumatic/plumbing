@@ -1,4 +1,5 @@
 ## 0.5.3
+ * **Deprecate** `keywordize-map` in favor of `clojure.walk/keywordize-keys`
  * Fix dependent optional bindings (e.g. (fnk [a {b a}])) broken in 0.5.1
  * Fnks remember their name, and named fnks can be used without a key in `graph/graph` forms (with an implicit key generated from `(keyword (name f))`).
 
