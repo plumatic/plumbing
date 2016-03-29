@@ -104,8 +104,10 @@
         (when-not (empty? res)
           res)))))
 
-(defn keywordize-map
-  "Recursively convert maps in m (including itself)
+(defn ^:deprecated keywordize-map
+  "DEPRECATED.  prefer clojure.walk/keywordize-keys.
+
+   Recursively convert maps in m (including itself)
    to have keyword keys instead of string"
   [x]
   (cond
