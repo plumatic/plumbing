@@ -14,7 +14,8 @@
   "Like select-keys, but asserts that all keys are present."
   [m ks]
   (doseq [k ks]
-    (assert (contains? m k)))
+    (or (contains? m k)
+        (schema/assert-iae false "Key %s not found in %s" k (mapv key m))))
   (select-keys m ks))
 
 (defn merge-disjoint
