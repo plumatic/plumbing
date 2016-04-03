@@ -13,9 +13,14 @@
 (defn safe-select-keys
   "Like select-keys, but asserts that all keys are present."
   [m ks]
-  (doseq [k ks]
-    (or (contains? m k)
-        (schema/assert-iae false "Key %s not found in %s" k (mapv key m))))
+  (let [missing (remove (partial contains? m) ks)]
+    (schema/assert-iae (empty? missing) "Keys %s not found in %s" (vec missing)
+                       (let [size (count m)]
+                         (if (> size 200)
+                           (print-str
+                            (conj (mapv key (take 200 m))
+                                  (format "... (%s more)" (- size 200))))
+                           (mapv key m)))))
   (select-keys m ks))
 
 (defn merge-disjoint
