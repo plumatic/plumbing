@@ -15,12 +15,8 @@
   [m ks]
   (let [missing (remove (partial contains? m) ks)]
     (schema/assert-iae (empty? missing) "Keys %s not found in %s" (vec missing)
-                       (let [size (count m)]
-                         (if (> size 200)
-                           (print-str
-                            (conj (mapv key (take 200 m))
-                                  (format "... (%s more)" (- size 200))))
-                           (mapv key m)))))
+                       (binding [*print-length* 200]
+                         (print-str (mapv key m)))))
   (select-keys m ks))
 
 (defn merge-disjoint
@@ -28,9 +24,10 @@
   ([] {})
   ([m] m)
   ([m1 m2]
-     (doseq [k (keys m1)]
-       (schema/assert-iae (not (contains? m2 k)) "Duplicate key %s" k))
-     (into (or m2 {}) m1))
+   (let [duplicates (filter (partial contains? m2) (keys m1))]
+     (schema/assert-iae (empty? duplicates) "Duplicate keys %s"
+                        (vec duplicates)))
+   (into (or m2 {}) m1))
   ([m1 m2 & maps]
      (reduce merge-disjoint m1 (cons m2 maps))))
 
