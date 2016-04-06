@@ -133,7 +133,9 @@
   [m k]
   (lazy-get
    m k
-   (schema/assert-iae false "Key %s not found in %s" k (mapv key m))))
+   (schema/assert-iae false "Key %s not found in %s" k
+                      (binding [*print-length* 200]
+                        (print-str (mapv key m))))))
 
 (defn safe-get-in
   "Like get-in but throws exception if not found"
