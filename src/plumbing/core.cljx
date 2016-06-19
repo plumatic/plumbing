@@ -34,8 +34,8 @@
      `(for-map ~(gensym "m") ~seq-exprs ~key-expr ~val-expr))
   ([m-sym seq-exprs key-expr val-expr]
      `(let [m-atom# (atom (transient {}))]
-        (doseq ~seq-exprs
-          (let [~m-sym @m-atom#]
+        (let [~m-sym @m-atom#]
+          (doseq ~seq-exprs
             (reset! m-atom# (assoc! ~m-sym ~key-expr ~val-expr))))
         (persistent! @m-atom#))))
 
