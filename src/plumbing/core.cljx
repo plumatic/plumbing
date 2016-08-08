@@ -309,7 +309,9 @@
   "Conditional single-arrow operation (-> m (?> add-kv? (assoc :k :v)))"
   [arg do-it? & rest]
   `(if ~do-it?
-     (-> ~arg ~@rest)
+     (if ~rest
+       (-> ~arg ~@rest)
+       (-> ~arg ~do-it?))
      ~arg))
 
 (defmacro fn->
