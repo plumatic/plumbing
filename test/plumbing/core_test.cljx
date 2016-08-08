@@ -613,4 +613,20 @@
     (is (> threshold
            (- (p/millis) now)))))
 
+(deftest partialk-test
+  (let [f (p/fnk [a b] #{a b})
+        part-inline (p/partialk f :a "foo")
+        part-map (p/partialk f {:a "foo"})
+        expected #{"foo" "bar"}]
+    (is (= expected (part-inline {:b "bar"})))
+    (is (= expected (part-map {:b "bar"})))))
+
+(deftest partialk-select-test
+  (let [f (p/fnk [a b] #{a b})
+        part-inline (p/partialk-select [:b] f :a "foo")
+        part-map (p/partialk-select [:b] f {:a "foo"})
+        expected #{"foo" "bar"}]
+    (is (= expected (part-inline {:b "bar" :c "baz"})))
+    (is (= expected (part-map {:b "bar" :c "baz"})))))
+
 (use-fixtures :once schema-test/validate-schemas)
