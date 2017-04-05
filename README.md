@@ -130,6 +130,7 @@ We can also have higher-order functions on Graphs to wrap the behavior on each s
 … and so on.  For more examples and details about Graph, check out the [graph examples test](https://github.com/plumatic/plumbing/blob/master/test/plumbing/graph_examples_test.cljx).
 
 <a name="fnk"/>
+
 ## Bring on (de)fnk
 
 Many of the functions we write (in Graph and elsewhere) take a single (nested) map argument with keyword keys and have expectations about which keys must be present and which are optional. We developed a new style of binding ([read more here](https://github.com/plumatic/plumbing/tree/master/src/plumbing/fnk)) to make this a lot easier and to check that input data has the right 'shape'. We call these 'keyword functions' (defined by `defnk`) and here's what one looks like:
