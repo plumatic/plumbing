@@ -2,7 +2,7 @@
 
 <img src="https://raw.github.com/wiki/plumatic/plumbing/images/prismatic-swiss-army-knife.png" alt="prismatic/plumbing logo" title="prismatic/plumbing logo" align="right" width="250" />
 
-This first release includes our '[Graph](http://plumatic.github.io/prismatics-graph-at-strange-loop/)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
+This first release includes our '[Graph](http://plumatic.github.io/prismatics-graph-at-strange-loop)' library, our `plumbing.core` library of very commonly used functions (the only namespace we `:use` across our codebase), and a few other supporting namespaces.
 
 *New in 0.3.0: support for ClojureScript*
 
