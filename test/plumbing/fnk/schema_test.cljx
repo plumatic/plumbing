@@ -96,10 +96,11 @@
          (fnk-schema/sequence-schemata
           [{:a s/Any} {:c s/Any}]
           [:o2 [{(s/optional-key :b) s/Any :c s/Any} {:o21 s/Any}]])))
-  (is (thrown? RuntimeException
-               (fnk-schema/sequence-schemata
-                [{:a s/Any} {:c s/Any}]
-                [:o2 [{(s/optional-key :b) s/Any :c s/Any :o2 s/Any} {:o21 s/Any}]])))
+  (is (= [{:a s/Any, :o2 s/Any, (s/optional-key :b) s/Any}
+          {:o2 {:o21 s/Any}, :c s/Any}]
+         (fnk-schema/sequence-schemata
+          [{:a s/Any} {:c s/Any}]
+          [:o2 [{(s/optional-key :b) s/Any :c s/Any :o2 s/Any} {:o21 s/Any}]])))
   (is (thrown? RuntimeException
                (fnk-schema/sequence-schemata
                 [{:a s/Any} {:c s/Any :o2 s/Any}]
