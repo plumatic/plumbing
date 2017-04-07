@@ -314,13 +314,33 @@
   (is (= [:x :y]
          (keys (graph/->graph
                 {:y (p/fnk [x] (* 2 x))
-                 :x (p/fnk [a] (inc a))}))))
+                 :x (p/fnk [a] (inc a))})))))
 
-  ;; ->graph throws if no valid topological order exists
-  (is (thrown? Exception
-               (graph/->graph
-                {:y (p/fnk [x] (* 2 x))
-                 :x (p/fnk [a x] (inc (+ a x)))}))))
+;; Subgraphs can have nodes which shadow nodes in parent graphs.
+;; The value computed in the most local graph (e.g. the same graph)
+;; should shadow the values of the one from the parent graph, but they
+;; can take the value from the parent as input.
+;; when using a positional graph, you need to order your nodes such that
+;; the local version is created before it is used.
+(deftest local-scoping-rules-test
+  (let [x (p/fnk [a x] (inc (+ a x)))
+        y (p/fnk [x] (* 2 x))
+        z (graph/->graph
+           {:x (p/fnk [x] (+ x 13))
+            :x2 (p/fnk [x] (inc x))})
+        normalize-output (p/fn->> (into {})
+                                  (p/<- (update-in [:z] #(into {} %))))
+        expected-result {:x 27 :y 54  :z {:x 40 :x2 41}}
+        graph-result (->> {:a 5 :x 21}
+                          ((graph/compile (graph/->graph {:y y :x x :z z})))
+                          normalize-output)
+        positional-graph-result (->> ((graph/positional-eager-compile
+                                       (graph/graph :x x :y y :z z)
+                                       [:a :x])
+                                      5 21)
+                                     normalize-output)]
+    (is (= expected-result graph-result positional-graph-result))
+    (is (thrown? RuntimeException (graph/graph :y y :x x :z z)))))
 
 ;; If you're defining a graph explicitly in code, it's rather bad form
 ;; to put the nodes out of topological order (like the first example

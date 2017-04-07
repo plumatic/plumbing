@@ -235,7 +235,6 @@
   [[i1 o1] :- GraphIOSchemata
    [k [i2 o2]] :- [(s/one s/Keyword "key") (s/one IOSchemata "inner-schemas")]]
   (assert-iae (not (possibly-contains? i1 k)) "Duplicate key output (possibly due to a misordered graph) %s for input %s from input %s" k (s/explain i2) (s/explain i1))
-  (assert-iae (not (possibly-contains? i2 k)) "Node outputs a key %s in its inputs %s" k (s/explain i2))
   (assert-iae (not (possibly-contains? o1 k)) "Node outputs a duplicate key %s given inputs %s" k (s/explain i1))
   (let [[used unused] (split-schema i2 (keys o1))]
     (assert-satisfies-schema used o1)
