@@ -1,3 +1,7 @@
+## 0.5.4
+ * Allow redefining keys in an inner scope, and clarify the semantics.
+ * Nicer error messages for `safe-get`, `safe-select-keys`, `merge-disjoint`.
+
 ## 0.5.3
  * **Deprecate** `keywordize-map` in favor of `clojure.walk/keywordize-keys`
  * Fix dependent optional bindings (e.g. (fnk [a {b a}])) broken in 0.5.1

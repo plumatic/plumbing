@@ -322,6 +322,7 @@
 ;; can take the value from the parent as input.
 ;; when using a positional graph, you need to order your nodes such that
 ;; the local version is created before it is used.
+#+clj
 (deftest local-scoping-rules-test
   (let [x (p/fnk [a x] (inc (+ a x)))
         y (p/fnk [x] (* 2 x))
