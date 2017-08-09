@@ -91,7 +91,7 @@ A Graph encodes the structure of a computation, but not how it happens, allowing
 (def output (lazy-stats {:xs [1 2 3 6]}))
 ;; Nothing has actually been computed yet
 (= (/ 25 2) (:m2 output))
-;; Now :n, :m, and :m2 have been computed, but :v is still behind a delay
+;; Now :n and :m2 have been computed, but :v and :m are still behind a delay
 
 
 (def par-stats (graph/par-compile stats-graph))
