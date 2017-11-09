@@ -1,3 +1,6 @@
+## 0.5.5 
+ * Bump schema dependency to avoid issues with Clojure 1.9 out of the box.
+
 ## 0.5.4
  * Allow redefining keys in an inner scope, and clarify the semantics.
  * Nicer error messages for `safe-get`, `safe-select-keys`, `merge-disjoint`.
