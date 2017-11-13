@@ -484,4 +484,10 @@
       `(def ~(with-meta name (merge (meta name) (assoc-when (or attr-map? {}) :doc docstring?)))
          ~f))))
 
+(defmacro defmethodk
+  "Creates and installs a new method of multimethod associated with dispatch-value.
+   Copied from clojure.core, but uses fnk instead of fn"
+  [multifn dispatch-val & fn-tail]
+  `(. ~(with-meta multifn {:tag 'clojure.lang.MultiFn}) addMethod ~dispatch-val (fnk ~@fn-tail)))
+
 #+clj (set! *warn-on-reflection* false)
