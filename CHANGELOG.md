@@ -1,4 +1,7 @@
-## 0.5.5 
+## 0.5.6
+ * Adds support for `map-from-coll` that converts a collection to a map.
+
+## 0.5.5
  * Bump schema dependency to avoid issues with Clojure 1.9 out of the box.
 
 ## 0.5.4

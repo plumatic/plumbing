@@ -93,6 +93,11 @@
   [f vs]
   (for-map [v vs] (f v) v))
 
+(defn map-from-coll
+  "Build map (f e) -> (g e) for elements in es"
+  [f g es]
+  (for-map [e es] (f e) (g e)))
+
 (defn dissoc-in
   "Dissociate this keyseq from m, removing any empty maps created as a result
    (including at the top-level)."

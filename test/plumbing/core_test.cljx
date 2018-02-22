@@ -71,6 +71,14 @@
   (is (= (p/map-from-vals inc [0 1 2])
          {1 0, 2 1, 3 2})))
 
+(deftest map-from-coll-test
+  (is (= (p/map-from-coll inc identity [0 1 2])
+         {1 0, 2 1, 3 2}))
+  (is (= (p/map-from-coll identity inc [0 1 2])
+         {0 1, 1 2, 2 3}))
+  (is (= (-> (p/map-from-coll #(mod % 3) inc [0 1 2 3 4]) keys set)
+         #{0 1 2})))
+
 (deftest dissoc-in-test
   (is (= {:a 1} (p/dissoc-in {:a 1 :b 2} [:b])))
   (is (= {:a 1 :b {:d 3}} (p/dissoc-in {:a 1 :b {:c 2 :d 3}} [:b :c])))
