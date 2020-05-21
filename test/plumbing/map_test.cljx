@@ -52,10 +52,10 @@
   (is (empty? (map/flatten {})))
   (is (= [[[] :foo]] (map/flatten :foo)))
   (is (= {[:a] 1
-          [:b :c] 2
-          [:b :d :e] 3
+          [:b :c] false
+          [:b :d :e] nil
           [:b :d :f] 4}
-         (into {} (map/flatten {:a 1 :b {:c 2 :d {:e 3 :f 4}}})))))
+         (into {} (map/flatten {:a 1 :b {:c false :d {:e nil :f 4}}})))))
 
 (deftest unflatten-test
   (is (= {} (map/unflatten nil)))
