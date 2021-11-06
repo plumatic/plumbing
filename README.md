@@ -262,7 +262,7 @@ Plumbing now has a [mailing list](https://groups.google.com/forum/#!forum/prisma
 
 ## Supported Clojure versions
 
-Plumbing is currently supported on Clojure 1.5.x and 1.6.x.
+Plumbing is currently supported on Clojure 1.8 or later, and the latest ClojureScript version.
 
 ## License
 

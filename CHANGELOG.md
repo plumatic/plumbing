@@ -1,3 +1,6 @@
+## NEXT
+ * **BREAKING** Minimum supported Clojure version is now 1.8
+
 ## 0.5.5 
  * Bump schema dependency to avoid issues with Clojure 1.9 out of the box.
 

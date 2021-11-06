@@ -8,7 +8,7 @@
    #+clj [clojure.core.async :as async :refer [go <!]]
    #+cljs [cljs.core.async :as async :refer [<!]]
    #+clj [clojure.test :refer :all]
-   #+cljs [cemerick.cljs.test :refer-macros [is deftest testing done]]))
+   #+cljs [cljs.test :refer-macros [is deftest testing]]))
 
 (deftest async-compile-test
   (let [c ((graph-async/async-compile
@@ -24,4 +24,5 @@
                  (async/<!! c)))
     #+cljs (go
             (is (= expected-result (<! c)))
-            (done))))
+            ;;FIXME what's the equivalent to `cemerick.cljs.test/done`?
+            #_(done))))

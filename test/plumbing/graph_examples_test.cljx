@@ -6,7 +6,7 @@
    [plumbing.graph :as graph :include-macros true]
    [plumbing.map :as map]
    #+clj [clojure.test :refer :all]
-   #+cljs [cemerick.cljs.test :refer-macros [is deftest testing]]))
+   #+cljs [cljs.test :refer-macros [is deftest testing]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Helpers

@@ -6,7 +6,7 @@
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.schema :as fnk-schema]
    #+clj [clojure.test :refer :all]
-   #+cljs [cemerick.cljs.test :refer-macros [is are deftest testing use-fixtures]]))
+   #+cljs [cljs.test :refer-macros [is are deftest testing use-fixtures]]))
 
 #+cljs
 (do
@@ -27,8 +27,8 @@
 
 (deftest merge-on-with-test
   (is (= {0 5 4 9 9 12}
-         (#+clj #'fnk-schema/merge-on-with #+cljs fnk-schema/merge-on-with
-                #(quot % 2) min + {1 2 4 9 9 4} {9 8 0 3}))))
+         (#'fnk-schema/merge-on-with
+           #(quot % 2) min + {1 2 4 9 9 4} {9 8 0 3}))))
 
 (deftest union-input-schemata-test
   (is (= {:a s/Any}

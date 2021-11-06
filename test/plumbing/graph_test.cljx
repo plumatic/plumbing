@@ -8,7 +8,7 @@
    [plumbing.fnk.pfnk :as pfnk]
    #+clj [plumbing.fnk.impl :as fnk-impl]
    #+clj [clojure.test :refer :all]
-   #+cljs [cemerick.cljs.test :refer-macros [is deftest testing use-fixtures]]))
+   #+cljs [cljs.test :refer-macros [is deftest testing use-fixtures]]))
 
 #+cljs
 (do

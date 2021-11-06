@@ -3,14 +3,14 @@
    by example."
   #+cljs
   (:require-macros
-   [cemerick.cljs.test :refer [is deftest testing]])
+   [cljs.test :refer [is deftest testing]])
   (:require
    [schema.core :as s]
    [plumbing.core :as p :include-macros true]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
    #+clj [clojure.test :refer :all]
-   #+cljs cemerick.cljs.test))
+   #+cljs cljs.test))
 
 #+cljs
 (do
