@@ -5,10 +5,10 @@
    using fn->fnk, or using custom binding syntax (of which 'fnk' et al
    are one possible example)."
   (:require
-   [schema.core :as s :include-macros true]
-   [plumbing.fnk.schema :as schema :include-macros true]))
+   [schema.core :as s #?@(:cljs [:include-macros true])]
+   [plumbing.fnk.schema :as schema #?@(:cljs [:include-macros true])]))
 
-#+clj (set! *warn-on-reflection* true)
+#?(:clj (set! *warn-on-reflection* true))
 
 (defprotocol PFnk
   "Protocol for keyword functions and their specifications, e.g., fnks and graphs."
@@ -27,7 +27,8 @@
 (defn output [^schema.core.FnSchema s]
   (.-output-schema s))
 
-(extend-type #+clj clojure.lang.Fn #+cljs object
+(extend-type #?(:clj clojure.lang.Fn
+                 :cljs object)
              PFnk
              (io-schemata [this]
                (assert (fn? this))
@@ -53,4 +54,4 @@
   [f]
   (:name (meta f)))
 
-#+clj (set! *warn-on-reflection* false)
+#?(:clj (set! *warn-on-reflection* false))
