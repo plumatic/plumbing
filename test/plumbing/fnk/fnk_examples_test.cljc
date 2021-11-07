@@ -1,22 +1,22 @@
 (ns plumbing.fnk.fnk-examples-test
   "Explaining input and output schemata, fnk syntax, and their relationships
    by example."
-  #+cljs
+  #?(:cljs
   (:require-macros
-   [cljs.test :refer [is deftest testing]])
+   [cljs.test :refer [is deftest testing]]))
   (:require
    [schema.core :as s]
-   [plumbing.core :as p :include-macros true]
+   [plumbing.core :as p #?@(:cljs [:include-macros true])]
    [plumbing.fnk.schema :as schema]
    [plumbing.fnk.pfnk :as pfnk]
-   #+clj [clojure.test :refer :all]
-   #+cljs cljs.test))
+   #?(:clj [clojure.test :refer :all]
+      :cljs cljs.test)))
 
-#+cljs
+#?(:cljs
 (do
   (def Exception js/Error)
   (def AssertionError js/Error)
-  (def Throwable js/Error))
+  (def Throwable js/Error)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Input and output schemata
@@ -153,12 +153,12 @@
 ;; You can also provide schema information on the inputs, with
 ;; validation like schema.core/defn.  See (doc fnk) for details.
 
-#+clj ;; This example uses clj-only annotations, but should otherwise work in cljs
+#?(:clj ;; This example uses clj-only annotations, but should otherwise work in cljs
 (p/defnk a-schematized-fnk :- (s/pred odd?)
   [a :- long b :- int]
-  (+ a b))
+  (+ a b)))
 
-#+clj
+#?(:clj
 (deftest a-schematized-fnk-test
   (is (= [{:a long :b int s/Keyword s/Any} (s/pred odd?)]
          (pfnk/io-schemata a-schematized-fnk)))
@@ -167,7 +167,7 @@
   (s/with-fn-validation
     (is (= 3 (a-schematized-fnk {:a 1 :b (int 2)})))
     (is (thrown? Exception (a-schematized-fnk {:a 1 :b 2})))
-    (is (thrown? Exception (a-schematized-fnk {:a 1 :b (int 1)})))))
+    (is (thrown? Exception (a-schematized-fnk {:a 1 :b (int 1)}))))))
 
 
 ;; fnks also have support for nested bindings, and nested maps
