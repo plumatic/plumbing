@@ -1,17 +1,17 @@
 (ns plumbing.core
   "Utility belt for Clojure in the wild"
   (:refer-clojure :exclude [update])
-  #+cljs
+  #?(:cljs
   (:require-macros
-   [plumbing.core :refer [for-map lazy-get -unless-update]]
-   [schema.macros :as schema-macros])
+   [plumbing.core :refer [for-map lazy-get]]
+   [schema.macros :as schema-macros]))
   (:require
    [schema.utils :as schema-utils]
-   #+clj [schema.macros :as schema-macros]
-   [plumbing.fnk.schema :as schema :include-macros true]
-   #+clj [plumbing.fnk.impl :as fnk-impl]))
+   #?(:clj [schema.macros :as schema-macros])
+   [plumbing.fnk.schema :as schema #?@(:cljs [:include-macros true])]
+   #?(:clj [plumbing.fnk.impl :as fnk-impl])))
 
-#+clj (set! *warn-on-reflection* true)
+#?(:clj (set! *warn-on-reflection* true))
 
 (def ^:private +none+
   "A sentinel value representing missing portions of the input data."
@@ -20,6 +20,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Maps
 
+#?(:clj
 (defmacro for-map
   "Like 'for' for building maps. Same bindings except the body should have a
   key-expression and value-expression. If a key is repeated, the last
@@ -37,33 +38,7 @@
         (doseq ~seq-exprs
           (let [~m-sym @m-atom#]
             (reset! m-atom# (assoc! ~m-sym ~key-expr ~val-expr))))
-        (persistent! @m-atom#))))
-
-(defmacro -unless-update
-  "Execute and yield body only if Clojure version preceeds introduction
-  of 'update' into core namespace."
-  [body]
-  `(schema-macros/if-cljs
-    ~body
-    ~(when (pos? (compare
-                  [1 7 0]
-                  (mapv #(get *clojure-version* %)
-                        [:major :minor :incremental])))
-       body)))
-
-(-unless-update
- (defn update
-   "Updates the value in map m at k with the function f.
-
-    Like update-in, but for updating a single top-level key.
-    Any additional args will be passed to f after the value.
-
-    WARNING As of Clojure 1.7 this function exists in clojure.core and
-    will not be exported by this namespace."
-   ([m k f] (assoc m k (f (get m k))))
-   ([m k f x1] (assoc m k (f (get m k) x1)))
-   ([m k f x1 x2] (assoc m k (f (get m k) x1 x2)))
-   ([m k f x1 x2 & xs] (assoc m k (apply f (get m k) x1 x2 xs)))))
+        (persistent! @m-atom#)))))
 
 (defn map-vals
   "Build map k -> (f v) for [k v] in map, preserving the initial type"
@@ -121,12 +96,13 @@
    :else
    x))
 
+#?(:clj
 (defmacro lazy-get
   "Like get but lazy about default"
   [m k d]
   `(if-let [pair# (find ~m ~k)]
      (val pair#)
-     ~d))
+     ~d)))
 
 (defn safe-get
   "Like get but throw an exception if not found"
@@ -220,7 +196,7 @@
   [f s]
   (keep-indexed (fn [i x] (when (f x) i)) s))
 
-#+clj
+#?(:clj
 (defn frequencies-fast
   "Like clojure.core/frequencies, but faster.
    Uses Java's equal/hash, so may produce incorrect results if
@@ -229,16 +205,16 @@
   (let [res (java.util.HashMap.)]
     (doseq [x xs]
       (.put res x (unchecked-inc (int (or (.get res x) 0)))))
-    (into {} res)))
+    (into {} res))))
 
-#+clj
+#?(:clj
 (defn distinct-fast
   "Like clojure.core/distinct, but faster.
    Uses Java's equal/hash, so may produce incorrect results if
    given values that are = but not .equal"
   [xs]
   (let [s (java.util.HashSet.)]
-    (filter #(when-not (.contains s %) (.add s %) true) xs)))
+    (filter #(when-not (.contains s %) (.add s %) true) xs))))
 
 (defn distinct-by
   "Returns elements of xs which return unique
@@ -252,14 +228,14 @@
       (do (swap! s conj id)
           x))))
 
-#+clj
+#?(:clj
 (defn distinct-id
   "Like distinct but uses reference rather than value identity, very clojurey"
   [xs]
   (let [s (java.util.IdentityHashMap.)]
     (doseq [x xs]
       (.put s x true))
-    (iterator-seq (.iterator (.keySet s)))))
+    (iterator-seq (.iterator (.keySet s))))))
 
 (defn interleave-all
   "Analogy: partition:partition-all :: interleave:interleave-all"
@@ -298,30 +274,35 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Control flow
 
+#?(:clj
 (defmacro ?>>
   "Conditional double-arrow operation (->> nums (?>> inc-all? (map inc)))"
   [do-it? & args]
   `(if ~do-it?
      (->> ~(last args) ~@(butlast args))
-     ~(last args)))
+     ~(last args))))
 
+#?(:clj
 (defmacro ?>
   "Conditional single-arrow operation (-> m (?> add-kv? (assoc :k :v)))"
   [arg do-it? & rest]
   `(if ~do-it?
      (-> ~arg ~@rest)
-     ~arg))
+     ~arg)))
 
+#?(:clj
 (defmacro fn->
   "Equivalent to `(fn [x] (-> x ~@body))"
   [& body]
-  `(fn [x#] (-> x# ~@body)))
+  `(fn [x#] (-> x# ~@body))))
 
+#?(:clj
 (defmacro fn->>
   "Equivalent to `(fn [x] (->> x ~@body))"
   [& body]
-  `(fn [x#] (->> x# ~@body)))
+  `(fn [x#] (->> x# ~@body))))
 
+#?(:clj
 (defmacro <-
   "Converts a ->> to a ->
 
@@ -330,13 +311,15 @@
    Jason W01fe is happy to give a talk anywhere any time on
    the calculus of arrow macros"
   [& body]
-  `(-> ~(last body) ~@(butlast body)))
+  `(-> ~(last body) ~@(butlast body))))
 
+#?(:clj
 (defmacro as->>
   "Like as->, but can be used in double arrow."
   [name & forms-and-expr]
-  `(as-> ~(last forms-and-expr) ~name ~@(butlast forms-and-expr)))
+  `(as-> ~(last forms-and-expr) ~name ~@(butlast forms-and-expr))))
 
+#?(:clj
 (defmacro memoized-fn
   "Like fn, but memoized (including recursive calls).
 
@@ -352,7 +335,7 @@
            v#
            (let [v# (do ~@body)]
              (swap! a# assoc args# v#)
-             v#))))))
+             v#)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Miscellaneous
@@ -375,8 +358,8 @@
   (first (swap-pair! a (constantly new-val))))
 
 (defn millis ^long []
-  #+clj  (System/currentTimeMillis)
-  #+cljs (.getTime (js/Date.)))
+  #?(:clj  (System/currentTimeMillis)
+     :cljs (.getTime (js/Date.))))
 
 (defn mapply
   "Like apply, but applies a map to a function with positional map
@@ -387,6 +370,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; fnk
 
+#?(:clj
 (defmacro letk
   "Keyword let.  Accepts an interleaved sequence of binding forms and map forms like:
    (letk [[a {b 2} [:f g h] c d {e 4} :as m & more] a-map ...] & body)
@@ -423,8 +407,9 @@
                                           cur-body-form)]
          `(let [~map-sym ~value-form] ~body-form))))
    `(do ~@body)
-   (reverse (partition 2 bindings))))
+   (reverse (partition 2 bindings)))))
 
+#?(:clj
 (defmacro if-letk
   "bindings => binding-form test
 
@@ -440,15 +425,17 @@
           (if temp#
             (letk [~form temp#]
               ~then)
-            ~else)))))
+            ~else))))))
 
+#?(:clj
 (defmacro when-letk
   "bindings => binding-form test
 
   When test is true, evaluates body with binding-form bound to the value of test"
   [bindings & body]
-  `(if-letk ~bindings (do ~@body)))
+  `(if-letk ~bindings (do ~@body))))
 
+#?(:clj
 (defmacro fnk
   "Keyword fn, using letk.  Generates a prismatic/schema schematized fn that
    accepts a single explicit map i.e., (f {:foo :bar}).
@@ -469,8 +456,9 @@
                             (schema-macros/extract-arrow-schematized-element &env args)
                             [nil args])
         [bind body] (schema-macros/extract-arrow-schematized-element &env more-args)]
-    (fnk-impl/fnk-form &env name? bind body &form)))
+    (fnk-impl/fnk-form &env name? bind body &form))))
 
+#?(:clj
 (defmacro defnk
   "Analogy: fn:fnk :: defn::defnk"
   [& defnk-args]
@@ -482,6 +470,6 @@
     (schema/assert-iae (symbol? name) "Name for defnk is not a symbol: %s" name)
     (let [f (fnk-impl/fnk-form &env name bind body &form)]
       `(def ~(with-meta name (merge (meta name) (assoc-when (or attr-map? {}) :doc docstring?)))
-         ~f))))
+         ~f)))))
 
-#+clj (set! *warn-on-reflection* false)
+#?(:clj (set! *warn-on-reflection* false))
