@@ -11,13 +11,13 @@
    required, or provided via `instance`, and will thus deliberately drop extra key
    schemas on inputs as appropriate.  Output schemas may not have optional keys."
   (:require
-   [schema.core :as s :include-macros true]
+   [schema.core :as s #?@(:cljs [:include-macros true])]
    [schema.utils :as schema-utils]
-   #+clj [schema.macros :as schema-macros])
-  #+cljs
+   #?(:clj [schema.macros :as schema-macros]))
+  #?(:cljs
   (:require-macros
-   #+cljs [schema.macros :as schema-macros]
-   [plumbing.fnk.schema :refer [assert-iae]]))
+   [schema.macros :as schema-macros]
+   [plumbing.fnk.schema :refer [assert-iae]])))
 
 (def Schema (s/protocol s/Schema))
 (def InputSchema {(s/cond-pre (s/eq s/Keyword) schema.core.OptionalKey s/Keyword) Schema})
@@ -30,11 +30,12 @@
 
 ;;; Helpers
 
+#?(:clj
 (defmacro assert-iae
   "Like assert, but throws a RuntimeException in Clojure (not an AssertionError),
    and also takes args to format."
   [form & format-args]
-  `(schema-macros/assert! ~form ~@format-args))
+  `(schema-macros/assert! ~form ~@format-args)))
 
 (defn assert-distinct
   "Like (assert (distinct? things)) but with a more helpful error message."
@@ -70,9 +71,9 @@
   nil)
 
 (defn map-schema? [m]
-  #+clj  (instance? clojure.lang.APersistentMap m)
-  #+cljs (or (instance? cljs.core.PersistentArrayMap m)
-             (instance? cljs.core.PersistentHashMap m)))
+  #?(:clj  (instance? clojure.lang.APersistentMap m)
+     :cljs (or (instance? cljs.core.PersistentArrayMap m)
+               (instance? cljs.core.PersistentHashMap m))))
 
 ;;; Input schemata
 
