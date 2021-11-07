@@ -1,13 +1,13 @@
 (ns plumbing.fnk.pfnk-test
-  #+cljs
+  #?(:cljs
   (:require-macros
-   [cljs.test :refer [is deftest testing]])
+   [cljs.test :refer [is deftest testing]]))
   (:require
    [schema.core :as s]
-   [plumbing.core :as p :include-macros true]
+   [plumbing.core :as p #?@(:cljs [:include-macros true])]
    [plumbing.fnk.pfnk :as pfnk]
-   #+clj [clojure.test :refer :all]
-   #+cljs cljs.test))
+   #?(:clj [clojure.test :refer :all]
+      :cljs cljs.test)))
 
 (deftest meta-round-trip-test
   (let [i-schema {:x s/Any}
