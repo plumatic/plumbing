@@ -4,15 +4,15 @@
    [schema.test :as schema-test]
    [plumbing.core :as p :include-macros true]
    [plumbing.fnk.pfnk :as pfnk]
-   #+clj [plumbing.fnk.impl :as fnk-impl]
-   #+clj [clojure.test :refer :all]
-   #+cljs [cljs.test :refer-macros [is are deftest testing use-fixtures]]))
+   #?(:clj [plumbing.fnk.impl :as fnk-impl])
+   #?(:clj [clojure.test :refer :all]
+      :cljs [cljs.test :refer-macros [is are deftest testing use-fixtures]])))
 
-#+cljs
+#?(:cljs
 (do
   (def Exception js/Error)
   (def AssertionError js/Error)
-  (def Throwable js/Error))
+  (def Throwable js/Error)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Maps
@@ -149,7 +149,7 @@
   (is (= [0 1 2] (p/positions odd? [1 3 5 2 4 6])))
   (is (= [1 3 5] (take 3 (p/positions odd? (range))))))
 
-#+clj
+#?(:clj
 (deftest frequencies-fast-test
   (is (= {\p 2, \s 4, \i 4, \m 1}
          (p/frequencies-fast "mississippi")))
@@ -158,23 +158,23 @@
   ;; We don't return the right thing on = but not .equals things,
   ;; because of the difference between Java Maps and Clojure maps.
   (is (= {1 1}
-         (p/frequencies-fast [1 (BigInteger. "1")]))))
-#+clj
+         (p/frequencies-fast [1 (BigInteger. "1")])))))
+#?(:clj
 (deftest distinct-fast-test
   (is (= [1 2 3]
          (p/distinct-fast [1 2 3])))
   (is (= [1 2 3]
          (p/distinct-fast [1 2 3 2 1 2 3 2 2])))
   (is (= []
-         (p/distinct-fast []))))
+         (p/distinct-fast [])))))
 
-#+clj
+#?(:clj
 (defn are-fast-things-faster []
   (let [s (apply concat (repeat 100 (range 10000)))]
     (doseq [f [frequencies p/frequencies-fast distinct p/distinct-fast]]
       (println f)
       (dotimes [_ 5]
-        (time (doall (f s)))))))
+        (time (doall (f s))))))))
 
 (deftest distinct-by-test
   (is (= [{:id 1 :data "a"}]
@@ -195,13 +195,13 @@
                 [1 3]
                 [3 1]])))))
 
-#+clj
+#?(:clj
 (deftest distinct-id-test
   (let [x (p/distinct-id [:a :b :c :a :b (Long. 1) (Long. 1)])]
     (is (= 5 (count x)))
     (is (= #{:a :b :c 1} (set x)))
     (is (= #{:a :b :c 1} (set x)))
-    (is (empty? (p/distinct-id nil)))))
+    (is (empty? (p/distinct-id nil))))))
 
 (deftest interleave-all-test
   (is (= [:a 0 :b 1 :c :d] (p/interleave-all [:a :b :c :d] [0 1]))))
@@ -349,12 +349,12 @@
 (deftest letk-dont-require-map-for-nested-only-as
   (is (= 1 (p/letk [[[:a :as a]] {:a 1}] a))))
 
-#+clj
+#?(:clj
 (deftest letk-no-multiple-binding-test
   (is (thrown? Exception (eval '(p/letk [[a a] {:a 1}] a))))
   (is (thrown? Exception (eval '(p/letk [[a/a b/a] {:a/a 1 :b/a 2}] a))))
   (is (= 1 (p/letk [[a] {:a 1} [a] {:a a}] a)))
-  (is (= 1 (p/letk [[a/b] {:a/b 1} [a/b] {:a/b b}] b))))
+  (is (= 1 (p/letk [[a/b] {:a/b 1} [a/b] {:a/b b}] b)))))
 
 (deftest letk-multi-shadow-test
   (let [a 1 b 2 c 3 e 4 e 5
@@ -409,7 +409,7 @@
       (is (= [1 2 3]
              ((p/fnk [a {b (* a 2)} {c (inc b)}] [a b c]) {:a 1}))))
 
-    #+clj
+    #?(:clj
     (testing "positional-fn"
       (let [f (p/fnk [a {b 2} [:c :as c0] [:d d1 {d2 2} [:d3 :as d30] [:d4 d41 :as d4]]]
                 (is (= [a b c0 d1 d2 d30 d41 d4]
@@ -419,7 +419,7 @@
         ((fnk-impl/positional-fn f [:d :a :c])
          {:d1 4 :d3 17 :d4 {:d41 18 :d42 :foo}} 4 3)
         (is (= @call-count 4))
-        (is (thrown? Throwable ((p/fnk [a] a) {:b 3}))))))
+        (is (thrown? Throwable ((p/fnk [a] a) {:b 3})))))))
 
   (testing "fnk output-schema"
     (doseq [f [(p/fnk [] {:a 1 :b {:b1 2}})
@@ -544,11 +544,11 @@
   (is (thrown? Throwable (keyfn-test-docstring :wheres :mycar))))
 
 ;; Test that type hints are properly propagated for fnk and defnk.
-#+clj
+#?(:clj
 (p/defnk ^Byte a-typehinted-defnk [^Long l]
-  (.byteValue l))
+  (.byteValue l)))
 
-#+clj
+#?(:clj
 (deftest type-hints-test
   (is (= Byte (:tag (meta #'a-typehinted-defnk))))
   (doseq [f [a-typehinted-defnk
@@ -556,9 +556,9 @@
              (p/fnk [{^Long l 1}] (.byteValue l))
              (p/fnk [^Long l & m] (.byteValue l))]]
     (is (= (Byte. (byte 1)) (f {:l (Long. 1)})))
-    (is (thrown? Exception (f {:l (Integer. 1)})))))
+    (is (thrown? Exception (f {:l (Integer. 1)}))))))
 
-#+clj
+#?(:clj
 (deftest ^:slow repeated-bindings-test
   (is (thrown? Exception (eval '(p/fnk [x [:x y]] (+ x y)))))
   (is (thrown? Exception (eval '(p/fnk [{x {:y 1}} [:x y]] (+ x y)))))
@@ -567,7 +567,7 @@
   (is (thrown? Exception (eval '(p/fnk [{x {:y 1}} x] (+ x y)))))
   (is (thrown? Exception (eval '(p/fnk [x [:x y] :as m] (+ x y)))))
   (is (thrown? Exception (eval '(p/fnk [{x {:y 1}} [:x y] :as m] (+ x y)))))
-  (is (thrown? Exception (eval '(p/fnk [{x {:y 1}} x :as m] (+ x y))))))
+  (is (thrown? Exception (eval '(p/fnk [{x {:y 1}} x :as m] (+ x y)))))))
 
 (deftest optional-self-shadow-test
   (is (= 1 (let [b 1] ((p/fnk [{a b}] a) {}))))
@@ -593,7 +593,8 @@
     (is (= 3 ((p/fnk [[:m x]] (+ x (:x m))) {:m {:x 2}})))))
 
 (deftest miliis-test
-  (let [now #+clj (System/currentTimeMillis) #+cljs (.getTime (js/Date.))
+  (let [now #?(:clj (System/currentTimeMillis)
+               :cljs (.getTime (js/Date.)))
         threshold 5]
     (is (> threshold
            (- (p/millis) now)))))
