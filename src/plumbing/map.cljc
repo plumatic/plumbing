@@ -2,9 +2,8 @@
   "Common operations on maps (both Clojure immutable and mutable Java stuff)"
   (:refer-clojure :exclude [flatten])
   (:require
-   [plumbing.core :as plumbing :include-macros true]
-   [plumbing.fnk.schema :as schema :include-macros true]
-   #+cljs [clojure.set :as set]))
+   [plumbing.core :as plumbing #?@(:cljs [:include-macros true])]
+   [plumbing.fnk.schema :as schema #?@(:cljs [:include-macros true])]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -117,7 +116,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Java mutable Maps
 
-#+clj
+#?(:clj
 (do
   (defn update-key!
     "Transform value in java.util.Map m under key k with fn f."
@@ -169,12 +168,12 @@
     (let [m (java.util.HashMap.)]
       (doseq [[ks v] nested-counts]
         (inc-key-in! m ks v))
-      m)))
+      m))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ops on graphs represented as maps.
 
-#+clj
+#?(:clj
 (defn topological-sort
   "Take an adjacency list representation of a graph (a map from node names to
    sequences of child node names), and return a topological ordering of the node
@@ -202,9 +201,9 @@
               r (.remove re c)]
         (when (.containsKey re r)
           (throw (IllegalArgumentException. (format "Graph contains a cycle containing %s and %s" c r)))))
-      candidate)))
+      candidate))))
 
-#+cljs
+#?(:cljs
 (defn topological-sort
   [child-map & [include-leaves?]]
   (let [e (atom child-map)
@@ -228,4 +227,4 @@
               r rs]
         (when (find @re r)
           (throw (ex-info (str "Graph contains a cycle containing " c " and " r) {:nodes [c r]}))))
-      candidate)))
+      candidate))))
