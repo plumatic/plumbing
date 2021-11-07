@@ -155,9 +155,9 @@
   (deftest deep-collate-test
     (is (= {:a {:b 3.0 :c -1.0} :b 4.0}
            (clojureize (map/deep-collate [[[:a :b] 1.0] [[:a :c] -1.0] [[:a :b] 2.0] [[:b] 4.0]])))))))
-                                                                                                      
-                                                                                                      
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;                       
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ops on graphs represented as maps.
 
 (deftest topological-sort-test
