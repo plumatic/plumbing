@@ -1,16 +1,16 @@
 (ns plumbing.graph-async
-  #+cljs
+  #?(:cljs
   (:require-macros
-   [cljs.core.async.macros :refer [go]])
+   [cljs.core.async.macros :refer [go]]))
   (:require
-   #+clj [clojure.core.async :as async :refer [go <! >!]]
-   #+cljs [cljs.core.async :as async :refer [<! >!]]
-   #+clj [clojure.core.async.impl.protocols :as async-protocols]
-   #+cljs [cljs.core.async.impl.protocols :as async-protocols]
+   #?(:clj [clojure.core.async :as async :refer [go <! >!]]
+      :cljs [cljs.core.async :as async :refer [<! >!]])
+   #?(:clj [clojure.core.async.impl.protocols :as async-protocols]
+      :cljs [cljs.core.async.impl.protocols :as async-protocols])
    [plumbing.fnk.pfnk :as pfnk]
-   [plumbing.fnk.schema :as schema :include-macros true]
-   [plumbing.core :as plumbing :include-macros true]
-   [plumbing.graph :as graph :include-macros true]))
+   [plumbing.fnk.schema :as schema #?@(:cljs [:include-macros true])]
+   [plumbing.core :as plumbing #?@(:cljs [:include-macros true])]
+   [plumbing.graph :as graph #?@(:cljs [:include-macros true])]))
 
 (defn asyncify
   "Take a fnk f and return an async version by wrapping non-channel
@@ -73,7 +73,7 @@
                                (swap! results assoc k r)
                                (doseq [c (child-map k)]
                                  (when (empty? (c (swap! remaining-parents
-                                                         update-in [c]
+                                                         update c
                                                          disj k)))
                                    (run-node c)))))))]
            (doseq [k (keys g)]
