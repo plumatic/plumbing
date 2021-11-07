@@ -1,14 +1,14 @@
 (ns plumbing.graph-async-test
-  #+cljs
+  #?(:cljs
   (:require-macros
-   [cljs.core.async.macros :refer [go]])
+   [cljs.core.async.macros :refer [go]]))
   (:require
-   [plumbing.core :as plumbing :include-macros true]
+   [plumbing.core :as plumbing #?@(:cljs [:include-macros true])]
    [plumbing.graph-async :as graph-async]
-   #+clj [clojure.core.async :as async :refer [go <!]]
-   #+cljs [cljs.core.async :as async :refer [<!]]
-   #+clj [clojure.test :refer :all]
-   #+cljs [cljs.test :refer-macros [is deftest testing]]))
+   #?(:clj [clojure.core.async :as async :refer [go <!]]
+      :cljs [cljs.core.async :as async :refer [<!]])
+   #?(:clj [clojure.test :refer :all]
+      :cljs [cljs.test :refer-macros [is deftest testing]])))
 
 (deftest async-compile-test
   (let [c ((graph-async/async-compile
@@ -20,9 +20,9 @@
              :e (plumbing/fnk [{d 9}] (+ d 90))})
            {:x 1 :y 7})
         expected-result {:a {:a1 2 :a2 -9} :b 4 :c -18 :d 49 :e 139}]
-    #+clj (is (= expected-result
-                 (async/<!! c)))
-    #+cljs (go
-            (is (= expected-result (<! c)))
-            ;;FIXME what's the equivalent to `cemerick.cljs.test/done`?
-            #_(done))))
+    #?(:clj (is (= expected-result
+                   (async/<!! c)))
+       :cljs (go
+               (is (= expected-result (<! c)))
+               ;;FIXME what's the equivalent to `cemerick.cljs.test/done`?
+               #_(done)))))
