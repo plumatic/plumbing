@@ -6,15 +6,15 @@
    [schema.core :as s]
    [schema.test :as schema-test]
    [plumbing.fnk.pfnk :as pfnk]
-   #+clj [plumbing.fnk.impl :as fnk-impl]
-   #+clj [clojure.test :refer :all]
-   #+cljs [cljs.test :refer-macros [is deftest testing use-fixtures]]))
+   #?(:clj [plumbing.fnk.impl :as fnk-impl])
+   #?(:clj [clojure.test :refer :all]
+      :cljs [cljs.test :refer-macros [is deftest testing use-fixtures]])))
 
-#+cljs
+#?(:cljs
 (do
   (def Exception js/Error)
   (def AssertionError js/Error)
-  (def Throwable js/Error))
+  (def Throwable js/Error)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -171,7 +171,7 @@
 (deftest interpreted-eager-compile-test
   (test-eager-compile graph/interpreted-eager-compile identity))
 
-#+clj
+#?(:clj
 (deftest eager-compile-test
   ;; eager-compile outputs records rather than ordinary maps as outputs.
   (test-eager-compile graph/eager-compile (partial walk/prewalk #(if (map? %) (into {} %) %)))
@@ -180,9 +180,9 @@
     (is (= [2] (vals o)))
     (is (= 2 (o :x) (get o :x) (:x o)))
     (is (= {:x 2} (into {} o)))
-    (is (not= {:x 2} o))))
+    (is (not= {:x 2} o)))))
 
-#+clj
+#?(:clj
 (do ;; test defschema with eager-compile -- there were some issues previously
   (ns test (:require [schema.core :as s]))
   (s/defschema Foo {s/Keyword s/Num})
@@ -194,9 +194,9 @@
       (is (= [{:bar test/Foo s/Keyword s/Any}
               {:foo s/Any}]
              (pfnk/io-schemata f)
-             (pfnk/io-schemata g))))))
+             (pfnk/io-schemata g)))))))
 
-#+clj
+#?(:clj
 (deftest positional-eager-compile-test
   (let [f (graph/positional-eager-compile
            (graph/graph
@@ -206,9 +206,9 @@
     (is (= 19 (:x (f 5 3))))
     (is (= 11 (:x (f fnk-impl/+none+ 3))))
     (is (thrown? Exception (f 1)))
-    (is (thrown? Exception (f 3 fnk-impl/+none+)))))
+    (is (thrown? Exception (f 3 fnk-impl/+none+))))))
 
-#+clj
+#?(:clj
 (deftest lazy-compile-test
   (let [a (atom [])
         g (graph/graph
@@ -231,7 +231,7 @@
                                 :x (plumbing/fnk [a])
                                 :y (plumbing/fnk [b] (inc b))
                                 :z (plumbing/fnk [y] (inc y))))
-                              {:b 3})))))
+                              {:b 3}))))))
 
 (deftest bind-non-map-with-as-test
   (is (= (:y (graph/run (graph/graph :x (plumbing/fnk [] {:a "1"})
@@ -239,17 +239,17 @@
                         {}))
          "1")))
 
-#+clj
+#?(:clj
 (defn chain-graph [n]
   (plumbing/for-map [i (range n)]
     (keyword (str "x" (inc i)))
     (let [p (keyword (str "x" i))]
-      (pfnk/fn->fnk (fn [m] (inc (p m))) [{p s/Any} s/Any]))))
+      (pfnk/fn->fnk (fn [m] (inc (p m))) [{p s/Any} s/Any])))))
 
-#+clj
+#?(:clj
 (deftest chain-graph-test
   (is (= 100 (:x100 ((graph/eager-compile (chain-graph 100)) {:x0 0}))))
-  (is (= 100 (:x100 ((graph/lazy-compile (chain-graph 100)) {:x0 0})))))
+  (is (= 100 (:x100 ((graph/lazy-compile (chain-graph 100)) {:x0 0}))))))
 
 
 (deftest comp-partial-fn-test
@@ -315,7 +315,7 @@
         (is (= {:x 16 :y 26} (select-keys (graph/run inst-o {:z 3}) [:x :y])))))
     (is (thrown? Exception (graph/instance raw-g [z] {:a z})))))
 
-#+clj
+#?(:clj
 (deftest ^:slow profiled-test
   (let [approx-= (fn [x y] (< (Math/abs (- x y)) 10))
         times {:a 100 :b 200 :c 400}
@@ -328,9 +328,9 @@
     (is (= (select-keys execed [:a :b :c])
            {:a 11 :b -10 :c -110}))
     (doseq [[k t] times]
-      (is (approx-= t (get @(:profile-stats execed) k))))))
+      (is (approx-= t (get @(:profile-stats execed) k)))))))
 
-#+cljs
+#?(:cljs
 (deftest profiled-test
   (let [stats-graph {:n  (plumbing/fnk [xs]   (count xs))
                      :m  (plumbing/fnk [xs n] (/ (plumbing/sum identity xs) n))
@@ -341,9 +341,9 @@
         profile-stats @(::profile-stats output)]
     (is (map? profile-stats))
     (is (= #{:n :m :m2 :v}
-           (set (keys profile-stats))))))
+           (set (keys profile-stats)))))))
 
-#+clj
+#?(:clj
 (defn time-graphs "How slow are big chain graphs?" []
   (let [n 1000
         g (chain-graph n)
@@ -354,6 +354,6 @@
              :lazy   (time (graph/lazy-compile g))}]
       (println k)
       (dotimes [_ 5]
-        (println (time (plumbing/sum tk (repeatedly 10 #(f {:x0 1})))))))))
+        (println (time (plumbing/sum tk (repeatedly 10 #(f {:x0 1}))))))))))
 
 (use-fixtures :once schema-test/validate-schemas)
