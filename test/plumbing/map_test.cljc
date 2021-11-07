@@ -4,16 +4,16 @@
    [plumbing.core :as plumbing]
    [plumbing.map :as map]
    [clojure.string :as str]
-   #+clj [clojure.test :refer :all]
-   #+cljs [cljs.test :refer-macros [is deftest testing use-fixtures]])
-  #+cljs
-  (:require-macros [plumbing.map :as map]))
+   #?(:clj [clojure.test :refer :all]
+      :cljs [cljs.test :refer-macros [is deftest testing use-fixtures]]))
+  #?(:cljs
+     (:require-macros [plumbing.map :as map])))
 
-#+cljs
+#?(:cljs
 (do
   (def Exception js/Error)
   (def AssertionError js/Error)
-  (def Throwable js/Error))
+  (def Throwable js/Error)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Clojure immutable maps
@@ -106,7 +106,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Java mutable Maps
 
-#+clj
+#?(:clj
 (do
   (deftest update-key!-test
     (let [m (java.util.HashMap. {:a 1 :b 2})]
@@ -154,10 +154,10 @@
 
   (deftest deep-collate-test
     (is (= {:a {:b 3.0 :c -1.0} :b 4.0}
-           (clojureize (map/deep-collate [[[:a :b] 1.0] [[:a :c] -1.0] [[:a :b] 2.0] [[:b] 4.0]]))))))
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+           (clojureize (map/deep-collate [[[:a :b] 1.0] [[:a :c] -1.0] [[:a :b] 2.0] [[:b] 4.0]])))))))
+                                                                                                      
+                                                                                                      
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;                       
 ;;; Ops on graphs represented as maps.
 
 (deftest topological-sort-test
