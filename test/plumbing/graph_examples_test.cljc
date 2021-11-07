@@ -1,29 +1,29 @@
 (ns plumbing.graph-examples-test
   (:require
    [schema.core :as s]
-   [plumbing.core :as p :include-macros true]
-   [plumbing.fnk.pfnk :as pfnk :include-macros true]
-   [plumbing.graph :as graph :include-macros true]
+   [plumbing.core :as p #?@(:cljs [:include-macros true])]
+   [plumbing.fnk.pfnk :as pfnk #?@(:cljs [:include-macros true])]
+   [plumbing.graph :as graph #?@(:cljs [:include-macros true])]
    [plumbing.map :as map]
-   #+clj [clojure.test :refer :all]
-   #+cljs [cljs.test :refer-macros [is deftest testing]]))
+   #?(:clj [clojure.test :refer :all]
+      :cljs [cljs.test :refer-macros [is deftest testing]])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Helpers
 
-#+cljs
+#?(:cljs
 (do
   (def Exception js/Error)
   (def AssertionError js/Error)
-  (def Throwable js/Error))
+  (def Throwable js/Error)))
 
 (defn hash-or-array-map?
   "Returns true if x is a PersistentHashMap or PersistentArrayMap, otherwise false"
   [x]
-  #+clj  (or (instance? clojure.lang.PersistentHashMap x)
-             (instance? clojure.lang.PersistentArrayMap x))
-  #+cljs (or (instance? cljs.core.PersistentHashMap x)
-             (instance? cljs.core.PersistentArrayMap x)))
+  #?(:clj (or (instance? clojure.lang.PersistentHashMap x)
+              (instance? clojure.lang.PersistentArrayMap x))
+     :cljs (or (instance? cljs.core.PersistentHashMap x)
+               (instance? cljs.core.PersistentArrayMap x))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Motivation
@@ -137,16 +137,16 @@
 ;;     or parallel-compile it so functions that don't depend on one-another
 ;;     are done in separate threads.
 
-#+clj
-(def lazy-stats (graph/lazy-compile stats-graph))
+#?(:clj
+(def lazy-stats (graph/lazy-compile stats-graph)))
 
-#+clj
+#?(:clj
 (deftest lazy-stats-test
   (let [output (lazy-stats {:xs [1 2 3 6]})]
     ;; Nothing has actually been computed yet
     (is (= (/ 25 2) (:m2 output)))
     ;; Now :n, :m, and :m2 have been computed, but :v is still behind a delay
-    ))
+    )))
 
 ;; In cases where only some results from a set of related calculations are
 ;; needed, this lazy compilation can be very convenient and powerful.
@@ -155,14 +155,14 @@
 ;; problem, and lets the compiler do the work of figuring out what can be
 ;; done in parallel.
 
-#+clj
-(def par-stats (graph/par-compile stats-graph))
+#?(:clj
+(def par-stats (graph/par-compile stats-graph)))
 
-#+clj
+#?(:clj
 (deftest par-stats-test
   (let [output (par-stats {:xs [1 2 3 6]})]
     ;; Nodes are being computed in futures, with :m and :m2 going in parallel
-    (is (= (/ 7 2) (:v output)))))
+    (is (= (/ 7 2) (:v output))))))
 
 ;; There are also some compilation modes for performance tuning. If you're
 ;; interested in the details, see below under "Compiling Graphs".
@@ -322,7 +322,7 @@
 ;; can take the value from the parent as input.
 ;; when using a positional graph, you need to order your nodes such that
 ;; the local version is created before it is used.
-#+clj
+#?(:clj
 (deftest local-scoping-rules-test
   (let [x (p/fnk [a x] (inc (+ a x)))
         y (p/fnk [x] (* 2 x))
@@ -341,7 +341,7 @@
                                       5 21)
                                      normalize-output)]
     (is (= expected-result graph-result positional-graph-result))
-    (is (thrown? RuntimeException (graph/graph :y y :x x :z z)))))
+    (is (thrown? RuntimeException (graph/graph :y y :x x :z z))))))
 
 ;; If you're defining a graph explicitly in code, it's rather bad form
 ;; to put the nodes out of topological order (like the first example
@@ -447,7 +447,7 @@
 ;; For example, here's a graph with the same shape as 'stats' but
 ;; where the nodes are slow to compute:
 
-#+clj
+#?(:clj
 (do
   (def slow-graph
     (graph/graph
@@ -490,7 +490,7 @@
       ;; lazy computes stuff as needed
       (let [par (graph/par-compile slow-graph)
             par-out (timed-is 0 keys (par in))]
-        (timed-is 450 true? (= out (into {} par-out))))))) ;; :b1 and :b2 are done in parallel
+        (timed-is 450 true? (= out (into {} par-out)))))))) ;; :b1 and :b2 are done in parallel
 
 ;; There are also some compilation modes for performance tuning. If you're
 ;; going to call your graph in an inner loop, where creating and destructuring
@@ -505,14 +505,14 @@
    :b2 (p/fnk [a] (- a 3))
    :c (p/fnk [b1 b2] (+ b1 b2))))
 
-#+clj
+#?(:clj
 (deftest positional-graph-test
   (let [out {:a 4 :b1 8 :b2 1 :c 9}
         positional-fast (graph/positional-eager-compile fast-graph [:x])
         output (positional-fast 3)]
     (testing "output is a record, not a map"
       (is (not (hash-or-array-map? output))))
-    (is (= out (into {} output)))))
+    (is (= out (into {} output))))))
 
 ;; You won't get all the speedup if you have fnks that expect graph parameters,
 ;; though, such as
@@ -523,7 +523,7 @@
 ;; It's also worth noting that eager-compile does many of the same
 ;; optimizations on the inside, so it also returns a record, not a map.
 
-#+clj
+#?(:clj
 (deftest eager-graph-test
   (let [out {:a 4 :b1 8 :b2 1 :c 9}
         eager-fast (graph/eager-compile fast-graph)
@@ -531,7 +531,7 @@
     ;; The output is a record, not a map.
     (testing "output is a record, not a map"
       (is (not (hash-or-array-map? output))))
-    (is (= out (into {} output)))))
+    (is (= out (into {} output))))))
 
 ;; On the other hand, if you're worried about the computational expense of
 ;; compiling, you can reduce it from a few tens of milliseconds (usually not a
@@ -612,7 +612,7 @@
 ;; Under this simple scheme, we can define functions to start up and
 ;; shutdown a service in just 20 lines of code.
 
-#+clj
+#?(:clj
 (do
   (defn resource-transform [g]
     (assoc (map/map-leaves
@@ -702,7 +702,7 @@
       (shutdown-service svc-map)))
 
   (deftest ^:slow pointless-service-test
-    (test-pointless-service pointless-service {:max-age 1})))
+    (test-pointless-service pointless-service {:max-age 1}))))
 
 ;; To make this sort of composition useful on a large scale, we also
 ;; need a way to provide contextual arguments to subgraphs,
