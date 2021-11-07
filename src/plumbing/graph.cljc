@@ -22,16 +22,16 @@
    For more details and examples of Graphs, see test/plumbing/graph_examples_test.cljx."
   (:refer-clojure :exclude [compile])
   (:require
-   #+clj [lazymap.core :as lazymap]
+   #?(:clj [lazymap.core :as lazymap])
    [schema.core :as s]
-   #+clj [schema.macros :as schema-macros]
-   [plumbing.fnk.schema :as schema :include-macros true]
+   #?(:clj [schema.macros :as schema-macros])
+   [plumbing.fnk.schema :as schema #?@(:cljs [:include-macros true])]
    [plumbing.fnk.pfnk :as pfnk]
-   #+clj [plumbing.fnk.impl :as fnk-impl]
-   #+clj [plumbing.graph.positional :as graph-positional]
-   [plumbing.core :as plumbing :include-macros true]
+   #?(:clj [plumbing.fnk.impl :as fnk-impl])
+   #?(:clj [plumbing.graph.positional :as graph-positional])
+   [plumbing.core :as plumbing #?@(:cljs [:include-macros true])]
    [plumbing.map :as map])
-  #+cljs (:require-macros [schema.macros :as schema-macros]))
+  #?(:cljs (:require-macros [schema.macros :as schema-macros])))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -68,11 +68,11 @@
                      (apply working-array-map))]
       (assert (every? keyword? (keys graph)))
       (with-meta graph
-        {::io-schemata (update-in (reduce schema/sequence-schemata
-                                          [{} {}]
-                                          (for [[k node] graph]
-                                            [k (pfnk/io-schemata node)]))
-                                  [0] assoc s/Keyword s/Any)
+        {::io-schemata (update (reduce schema/sequence-schemata
+                                       [{} {}]
+                                       (for [[k node] graph]
+                                         [k (pfnk/io-schemata node)]))
+                               0 assoc s/Keyword s/Any)
          ::self graph}))))
 
 ;; Any Clojure map can be treated as a graph directly, without calling ->graph
@@ -81,10 +81,10 @@
   (plumbing/safe-get (meta (->graph g)) ::io-schemata))
 
 (extend-protocol pfnk/PFnk
-  #+clj clojure.lang.IPersistentMap
-  #+cljs cljs.core.PersistentArrayMap
+  #?(:clj clojure.lang.IPersistentMap
+     :cljs cljs.core.PersistentArrayMap)
   (io-schemata [g] (io-schemata* g))
-  #+cljs cljs.core.PersistentHashMap
+  #?(:cljs cljs.core.PersistentHashMap)
   (io-schemata [g] (io-schemata* g)))
 
 (defn- split-nodes [s]
@@ -125,7 +125,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compiling and running graphs
 
-#+clj
+#?(:clj
 (defn eager-compile
   "Compile graph specification g to a corresponding fnk that is optimized for
    speed. Wherever possible, fnks are called positionally, to reduce the
@@ -137,16 +137,16 @@
     g
     (let [g (for [[k sub-g] (->graph g)]
               [k (eager-compile sub-g)])]
-      (graph-positional/positional-flat-compile (->graph g)))))
+      (graph-positional/positional-flat-compile (->graph g))))))
 
-#+clj
+#?(:clj
 (defn positional-eager-compile
   "Like eager-compile, but produce a non-keyword function that can be called
    with args in the order provided by arg-ks, avoiding the overhead of creating
    and destructuring a top-level map.  This can yield a substantially faster
    fn for Graphs with very computationally inexpensive node fnks."
   [g arg-ks]
-  (fnk-impl/positional-fn (eager-compile g) arg-ks))
+  (fnk-impl/positional-fn (eager-compile g) arg-ks)))
 
 (defn simple-flat-compile
   "Helper method for simple (non-nested) graph compilations that convert a graph
@@ -202,7 +202,7 @@
    (fn [m] m)
    (fn [m k f] (assoc m k (restricted-call f m)))))
 
-#+clj
+#?(:clj
 (defn lazy-compile
   "Compile graph specification g to a corresponding fnk that returns a
    lazymap of the node result fns on a given input.  This fnk returns
@@ -216,9 +216,9 @@
    g
    false
    (fn [m] (reduce-kv assoc (lazymap/lazy-hash-map) m)) ;; into is extremely slow on lazymaps.
-   (fn [m k f] (lazymap/delay-assoc m k (delay (restricted-call f m))))))
+   (fn [m k f] (lazymap/delay-assoc m k (delay (restricted-call f m)))))))
 
-#+clj ;; TODO: move out.
+#?(:clj ;; TODO: move out.
 (defn par-compile
   "Experimental.  Launches one future per node at startup; we probably woudln't
    use this in production, and will release more sophisticated parallel
@@ -235,7 +235,7 @@
    g
    true
    (fn [m] (into (lazymap/lazy-hash-map) m))
-   (fn [m k f] (lazymap/delay-assoc m k (future (restricted-call f m))))))
+   (fn [m k f] (lazymap/delay-assoc m k (future (restricted-call f m)))))))
 
 (defn compile
   "Compile graph specification g to a corresponding fnk using the a default
@@ -243,8 +243,8 @@
    Clojure: eager-compile
    ClojureScript: interpreted-eager-compile"
   [g]
-  #+clj  (eager-compile g)
-  #+cljs (interpreted-eager-compile g))
+  #?(:clj  (eager-compile g)
+     :cljs (interpreted-eager-compile g)))
 
 (defn run
   "Eagerly run a graph on an input by compiling and then executing on this input."
@@ -300,6 +300,7 @@
             node-fn))
         g)))))
 
+#?(:clj
 (defmacro instance
   "Experimental.
 
@@ -312,7 +313,7 @@
            {:z 10}))"
   ([g m] `(instance ~g [] ~m))
   ([g bind m]
-     `(comp-partial ~g (plumbing/fnk ~bind ~m))))
+     `(comp-partial ~g (plumbing/fnk ~bind ~m)))))
 
 (defn profiled
   "Modify graph spec g, producing a new graph spec with a new top-level key
@@ -326,11 +327,12 @@
              (pfnk/fn->fnk
               (fn [m]
                 (let [pm (plumbing/safe-get m profile-key)
-                      start #+clj (System/nanoTime) #+cljs (plumbing/millis)
+                      start #?(:clj (System/nanoTime)
+                               :cljs (plumbing/millis))
                       res (f (dissoc m profile-key))]
                   (swap! pm assoc-in ks
-                         #+clj  (/ (- (System/nanoTime) start) 1000000.0)
-                         #+cljs (- (plumbing/millis) start))
+                         #?(:clj  (/ (- (System/nanoTime) start) 1000000.0)
+                            :cljs (- (plumbing/millis) start)))
                   res))
               [(assoc (pfnk/input-schema f)
                  profile-key s/Any)
