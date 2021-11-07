@@ -2,23 +2,23 @@
   (:require
    [schema.core :as s]
    [schema.test :as schema-test]
-   [plumbing.core :as p :include-macros true]
+   [plumbing.core :as p #?@(:cljs [:include-macros true])]
    [plumbing.fnk.pfnk :as pfnk]
    [plumbing.fnk.schema :as fnk-schema]
-   #+clj [clojure.test :refer :all]
-   #+cljs [cljs.test :refer-macros [is are deftest testing use-fixtures]]))
+   #?(:clj [clojure.test :refer :all]
+      :cljs [cljs.test :refer-macros [is are deftest testing use-fixtures]])))
 
-#+cljs
+#?(:cljs
 (do
   (def Exception js/Error)
-  (def RuntimeException js/Error))
+  (def RuntimeException js/Error)))
 
-#+clj ;; the expression-munging doesn't play well with cljs.
+#?(:clj ;; the expression-munging doesn't play well with cljs.
 (deftest explicit-schema-key-map-test
   (is (= {:foo true :bar false :baz false}
          (fnk-schema/explicit-schema-key-map
           {:foo s/Any (s/optional-key :bar) s/Any s/Keyword s/Keyword
-           `(s/optional-key :baz) s/Any}))))
+           `(s/optional-key :baz) s/Any})))))
 
 (deftest split-schema-keys-test
   (is (= [[:foo :bar] [:baz :bat]]
@@ -130,13 +130,13 @@
         :o3 {:x s/Any (s/optional-key :y) s/Any :z s/Any :q {:r s/Any s/Keyword s/Any} s/Keyword s/Any}
         s/Keyword s/Any}
        (p/fnk [{o1 1} o2 [:o3 x {y 2} z [:q r]]]))
-  #+clj
+  #?(:clj
   (do
     (is (= [1 2] ((eval `(p/fnk [[:x ~'x] [:y ~'y]] [~'x ~'y])) {:x {:x 1} :y {:y 2}})))
     (is (thrown? Throwable (eval `(p/fnk [{:y ~'x} {:y ~'y}] [~'x ~'y]))))
     (is (thrown? Throwable (eval `(p/fnk [{:x ~'x} {:y ~'x}] [~'x]))))
     (is (thrown? Throwable (eval `(p/fnk [[:x ~'x] ~'x] [~'x]))))
-    (is (thrown? Throwable (eval `(p/fnk [{~'x 1} ~'x] [~'x]))))))
+    (is (thrown? Throwable (eval `(p/fnk [{~'x 1} ~'x] [~'x])))))))
 
 
 (deftest fnk-out-schemata-test
