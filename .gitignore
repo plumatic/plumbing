@@ -9,3 +9,4 @@ target/**
 out
 .lein-repl-history
 /doc/
+.cpcache/

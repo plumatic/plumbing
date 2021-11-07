@@ -28,7 +28,7 @@
   (.-output-schema s))
 
 (extend-type #?(:clj clojure.lang.Fn
-                 :cljs object)
+                :cljs object)
              PFnk
              (io-schemata [this]
                (assert (fn? this))
