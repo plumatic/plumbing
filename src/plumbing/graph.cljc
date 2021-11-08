@@ -140,7 +140,8 @@
                            (if (fn? g)
                              g
                              (let [g* (for [[k sub-g] (->graph g)]
-                                        [k (eager-compile sub-g)])]
+                                        (do (assert sub-g)
+                                            [k (eager-compile sub-g)]))]
                                (when (every? second g*)
                                  (let [g (->graph g*)]
                                    (when (or ignore-positional-limit
