@@ -6,7 +6,8 @@
    [schema.core :as s]
    [schema.test :as schema-test]
    [plumbing.fnk.pfnk :as pfnk]
-   #?(:clj [plumbing.fnk.impl :as fnk-impl])
+   #?@(:clj [[plumbing.fnk.impl :as fnk-impl]
+             [plumbing.graph.positional :as positional]])
    #?(:clj [clojure.test :refer :all]
       :cljs [cljs.test :refer-macros [is deftest testing use-fixtures]])))
 
@@ -183,6 +184,41 @@
     (is (not= {:x 2} o)))))
 
 #?(:clj
+(deftest large-eager-compile-test
+  ;; graphs equal or smaller than positional/max-graph-size, eager-compile returns records
+  (let [size positional/max-graph-size
+        o ((graph/eager-compile 
+             (apply
+               graph/graph
+               (mapcat (fn [i]
+                         (let [k (keyword (str "x" i))]
+                           [k (plumbing/fnk [b a] [k a b])]))
+                       (range size))))
+           {:a 1, :b 2})
+        expected-map (into {}
+                           (map #(let [k (keyword (str "x" %))]
+                                   [k [k 1 2]])
+                                (range size)))]
+    (is (= [:x0 1 2] (o :x0) (get o :x0) (:x0 o)))
+    (is (= expected-map (into {} o)))
+    (is (not= expected-map o)))
+  ;; above positional/max-graph-size, eager-compile returns ordinary maps
+  (let [size (inc positional/max-graph-size)
+        o ((graph/eager-compile
+             (apply
+               graph/graph
+               (mapcat (fn [i]
+                         (let [k (keyword (str "x" i))]
+                           [k (plumbing/fnk [b a] [k a b])]))
+                       (range size))))
+           {:a 1, :b 2})]
+    (is (= (into {}
+                 (map #(let [k (keyword (str "x" %))]
+                         [k [k 1 2]])
+                      (range size)))
+           o)))))
+
+#?(:clj
 (do ;; test defschema with eager-compile -- there were some issues previously
   (ns test (:require [schema.core :as s]))
   (s/defschema Foo {s/Keyword s/Num})
@@ -207,6 +243,21 @@
     (is (= 11 (:x (f fnk-impl/+none+ 3))))
     (is (thrown? Exception (f 1)))
     (is (thrown? Exception (f 3 fnk-impl/+none+))))))
+
+#?(:clj
+(deftest large-positional-eager-compile-test
+  (let [size (inc positional/max-graph-size) ;; make sure :ignore-positional-limit is respected
+        fields (vec (repeatedly size gensym))
+        f (graph/positional-eager-compile
+            (apply
+              graph/graph
+              (mapcat (fn [i]
+                        (let [k (keyword (str "x" i))]
+                          [k (plumbing/fnk [b a] [k a b])]))
+                      (range size)))
+            [:b :a])]
+    (is (= [:x0 :asdf 42]
+           (:x0 (f 42 :asdf)))))))
 
 #?(:clj
 (deftest lazy-compile-test

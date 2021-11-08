@@ -1,5 +1,6 @@
 (ns plumbing.graph.positional
-  "A compilation method for graphs that avoids maps for speed."
+  "A compilation method for graphs that avoids maps for speed.
+  Prone to failure for graphs larger than `max-graph-size`."
   (:use plumbing.core)
   (:require
    [schema.core :as s]
@@ -8,6 +9,10 @@
    [plumbing.fnk.impl :as fnk-impl])
   (:import
    clojure.lang.IFn))
+
+(def max-graph-size
+  "Maximum supported size for any one level the graph"
+  100)
 
 (defn def-graph-record
   "Define a record for the output of a graph. It is usable as a function to be
