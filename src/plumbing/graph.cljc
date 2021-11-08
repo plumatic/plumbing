@@ -133,8 +133,9 @@
    overhead of creating and destructuring maps, and the return value is a
    record, which is much faster to create and access than a map.  Compilation
    is relatively slow, however, due to internal calls to 'eval'."
-  ([g] (eager-compile g {:positional-limit graph-positional/max-graph-size}))
-  ([g {:keys [positional-limit]}]
+  ([g] (eager-compile g {}))
+  ([g {:keys [positional-limit]
+       :or {positional-limit graph-positional/max-graph-size}}]
    (let [eager-compile (fn eager-compile [g]
                          (when (some? g)
                            (if (fn? g)
