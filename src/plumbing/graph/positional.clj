@@ -11,7 +11,7 @@
    clojure.lang.IFn))
 
 (def max-graph-size
-  "Maximum supported size for any one level the graph"
+  "Maximum supported size for any one level the graph."
   100)
 
 (defn def-graph-record

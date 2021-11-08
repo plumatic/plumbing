@@ -133,8 +133,8 @@
    overhead of creating and destructuring maps, and the return value is a
    record, which is much faster to create and access than a map.  Compilation
    is relatively slow, however, due to internal calls to 'eval'."
-  ([g] (eager-compile g {}))
-  ([g {:keys [ignore-positional-limit]}]
+  ([g] (eager-compile g {:positional-limit graph-positional/max-graph-size}))
+  ([g {:keys [positional-limit]}]
    (let [eager-compile (fn eager-compile [g]
                          (when (some? g)
                            (if (fn? g)
@@ -144,9 +144,8 @@
                                             [k (eager-compile sub-g)]))]
                                (when (every? second g*)
                                  (let [g (->graph g*)]
-                                   (when (or ignore-positional-limit
-                                             (<= (-> g pfnk/output-schema count)
-                                                 graph-positional/max-graph-size))
+                                   (when (<= (-> g pfnk/output-schema count)
+                                             positional-limit)
                                      (graph-positional/positional-flat-compile g))))))))]
      (assert g)
      (or (eager-compile g)
@@ -163,7 +162,7 @@
   may fail. Do not use for arbitrarily large graphs."
   [g arg-ks]
   (assert (<= (count arg-ks) 20) (str "positional-eager-compile can compile up to 20 arguments"))
-  (fnk-impl/positional-fn (eager-compile g {:ignore-positional-limit true}) arg-ks)))
+  (fnk-impl/positional-fn (eager-compile g {:positional-limit Double/POSITIVE_INFINITY}) arg-ks)))
 
 (defn simple-flat-compile
   "Helper method for simple (non-nested) graph compilations that convert a graph
