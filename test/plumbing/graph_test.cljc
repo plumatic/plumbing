@@ -246,7 +246,7 @@
 
 #?(:clj
 (deftest large-positional-eager-compile-test
-  (let [size (inc positional/max-graph-size) ;; make sure :ignore-positional-limit is respected
+  (let [size (inc positional/max-graph-size) ;; make sure :positional-limit is respected
         fields (vec (repeatedly size gensym))
         f (graph/positional-eager-compile
             (apply
