@@ -127,7 +127,7 @@ We can also have higher-order functions on Graphs to wrap the behavior on each s
    @(::profile-data (profiled-stats {:xs (range 10000)})))
 ```
 
-… and so on.  For more examples and details about Graph, check out the [graph examples test](https://github.com/plumatic/plumbing/blob/master/test/plumbing/graph_examples_test.cljx).
+… and so on.  For more examples and details about Graph, check out the [graph examples test](https://github.com/plumatic/plumbing/blob/master/test/plumbing/graph_examples_test.cljc).
 
 <a name="fnk"/>
 
@@ -226,7 +226,7 @@ Ever wanted to conditionally do steps in a `->>` or `->`? Now you can with our
 	[1 3 5 7 9])
 ```
 
-Check out [`plumbing.core`](https://github.com/plumatic/plumbing/blob/master/src/plumbing/core.cljx) for many other useful functions.
+Check out [`plumbing.core`](https://github.com/plumatic/plumbing/blob/master/src/plumbing/core.cljc) for many other useful functions.
 
 ## ClojureScript
 
