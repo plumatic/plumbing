@@ -132,7 +132,11 @@
    speed. Wherever possible, fnks are called positionally, to reduce the
    overhead of creating and destructuring maps, and the return value is a
    record, which is much faster to create and access than a map.  Compilation
-   is relatively slow, however, due to internal calls to 'eval'."
+   is relatively slow, however, due to internal calls to 'eval'.
+  
+   positional-limit is used to decide when to switch to interpreted mode,
+   which does not compile positionally. If positional compilation is required,
+   bind as ##Inf (at the risk of method-too-large errors)."
   ([g] (eager-compile g {}))
   ([g {:keys [positional-limit]
        :or {positional-limit graph-positional/max-graph-size}}]
