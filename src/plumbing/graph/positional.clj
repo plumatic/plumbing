@@ -1,6 +1,6 @@
 (ns plumbing.graph.positional
   "A compilation method for graphs that avoids maps for speed.
-  Prone to failure for graphs larger than `max-graph-size`."
+  Prone to failure for graphs with more nodes than `max-graph-size`."
   (:use plumbing.core)
   (:require
    [schema.core :as s]
@@ -11,7 +11,12 @@
    clojure.lang.IFn))
 
 (def max-graph-size
-  "Maximum supported size for any one level the graph."
+  "The positional compilation algorithm provided by this namespace
+  reliably succeeds only with graphs with `max-graph-size` or less nodes.
+ 
+  The basic strategy is to generate a defrecord field for each node
+  (of which there is a limit of around 120) and then generate a constructor
+  function (whose code size grows linearly in the number of nodes)."
   100)
 
 (defn def-graph-record

@@ -137,18 +137,15 @@
   ([g {:keys [positional-limit]
        :or {positional-limit graph-positional/max-graph-size}}]
    (let [eager-compile (fn eager-compile [g]
-                         (when (some? g)
-                           (if (fn? g)
-                             g
-                             (let [g* (for [[k sub-g] (->graph g)]
-                                        (do (assert sub-g)
-                                            [k (eager-compile sub-g)]))]
-                               (when (every? second g*)
-                                 (let [g (->graph g*)]
-                                   (when (<= (-> g pfnk/output-schema count)
-                                             positional-limit)
-                                     (graph-positional/positional-flat-compile g))))))))]
-     (assert g)
+                         (if (fn? g)
+                           g
+                           (let [g* (for [[k sub-g] (->graph g)]
+                                      [k (eager-compile sub-g)])]
+                             (when (every? second g*)
+                               (let [g (->graph g*)]
+                                 (when (<= (-> g pfnk/output-schema count)
+                                           positional-limit)
+                                   (graph-positional/positional-flat-compile g)))))))]
      (or (eager-compile g)
          (interpreted-eager-compile g))))))
 
@@ -159,11 +156,18 @@
    and destructuring a top-level map.  This can yield a substantially faster
    fn for Graphs with very computationally inexpensive node fnks.
   
-  Warning: if any level of g exceeds `graph-positional/max-graph-size`, compilation
-  may fail. Do not use for arbitrarily large graphs."
+   Warning: if any level of g exceeds `graph-positional/max-graph-size`, compilation
+   may fail. Do not use for arbitrarily large graphs."
   [g arg-ks]
-  (assert (<= (count arg-ks) 20) (str "positional-eager-compile can compile up to 20 arguments"))
-  (fnk-impl/positional-fn (eager-compile g {:positional-limit Double/POSITIVE_INFINITY}) arg-ks)))
+  (fnk-impl/positional-fn
+    (eager-compile g
+                   ;; there is no interpreted mode (yet) for positional compilation,
+                   ;; but it is required by `positional-fn`. this forces eager-compile to 
+                   ;; always return a positional graph, even though compilation may fail
+                   ;; due to code size. when available, should be replaced with a scalable
+                   ;; positional compilation.
+                   {:positional-limit Double/POSITIVE_INFINITY})
+    arg-ks)))
 
 (defn simple-flat-compile
   "Helper method for simple (non-nested) graph compilations that convert a graph
