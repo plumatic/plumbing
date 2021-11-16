@@ -1,6 +1,7 @@
 ## NEXT
  * **BREAKING** Minimum supported Clojure version is now 1.8
  * migrate cljx => cljc
+ * Fix #138: Compile graphs bigger than 100 nodes with interpreted mode in Clojure
 
 ## 0.5.5 
  * Bump schema dependency to avoid issues with Clojure 1.9 out of the box.
