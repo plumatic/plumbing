@@ -134,12 +134,14 @@
    record, which is much faster to create and access than a map.  Compilation
    is relatively slow, however, due to internal calls to 'eval'.
   
-   positional-limit is used to decide when to switch to interpreted mode,
+   Options:
+   :positional-limit is used to decide when to switch to interpreted mode,
    which does not compile positionally. If positional compilation is required,
-   bind as ##Inf (at the risk of method-too-large errors)."
+   use option {:positional-limit ##Inf} (at the risk of method-too-large errors)."
   ([g] (eager-compile g {}))
   ([g {:keys [positional-limit]
-       :or {positional-limit graph-positional/max-graph-size}}]
+       :or {positional-limit graph-positional/max-graph-size}
+       :as _opts}]
    (let [eager-compile (fn eager-compile [g]
                          (if (fn? g)
                            g
