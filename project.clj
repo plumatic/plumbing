@@ -1,4 +1,4 @@
-(defproject prismatic/plumbing "0.6.0-SNAPSHOT"
+(defproject prismatic/plumbing "0.6.0"
   :description "Prismatic's Clojure utility belt."
   :url "https://github.com/plumatic/plumbing"
   :license {:name "Eclipse Public License - v 1.0"
