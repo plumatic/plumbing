@@ -49,10 +49,9 @@
   [m]
   (when m
     ((fn flatten-helper [keyseq m]
-       (when m
-         (if (map? m)
-           (mapcat (fn [[k v]] (flatten-helper (conj keyseq k) v)) m)
-           [[keyseq m]])))
+       (if (map? m)
+         (mapcat (fn [[k v]] (flatten-helper (conj keyseq k) v)) m)
+         [[keyseq m]]))
      [] m)))
 
 (defn unflatten
