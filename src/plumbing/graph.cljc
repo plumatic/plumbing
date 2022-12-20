@@ -22,7 +22,7 @@
    For more details and examples of Graphs, see test/plumbing/graph_examples_test.cljx."
   (:refer-clojure :exclude [compile])
   (:require
-   #?(:clj [lazymap.core :as lazymap])
+   #?(:clj [plumbing.lazymap :as lazymap])
    [schema.core :as s]
    #?(:clj [schema.macros :as schema-macros])
    [plumbing.fnk.schema :as schema #?@(:cljs [:include-macros true])]

@@ -1,5 +1,5 @@
 (ns plumbing.lazymap-test
-  (:use plumbing.core clojure.test lazymap.core))
+  (:use plumbing.core clojure.test plumbing.lazymap))
 
 (deftest lazy-map-entry-extend-test
   (is (= :a (get-key [:a 2])))

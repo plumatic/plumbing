@@ -5,8 +5,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"
             :distribution :repo}
 
-  :dependencies [[prismatic/schema "1.2.0"]
-                 [de.kotka/lazymap "3.1.0" :exclusions [org.clojure/clojure]]]
+  :dependencies [[prismatic/schema "1.2.0"]]
 
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.10.3"]
                                   [org.clojure/clojurescript "1.10.891"]
