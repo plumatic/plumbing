@@ -1,3 +1,2 @@
 {:paths ["src"]
- :deps {prismatic/schema {:mvn/version "1.2.0"}
-        de.kotka/lazymap {:mvn/version "3.1.0"}}}
+ :deps {prismatic/schema {:mvn/version "1.2.0"}}}
