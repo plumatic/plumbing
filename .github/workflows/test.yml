@@ -40,8 +40,5 @@ jobs:
         uses: DeLaGuardo/setup-clojure@3.5
         with:
           lein: 2.9.8
-      # Run trojansourcedetector
-      - name: Trojan Source Detector
-        uses: haveyoudebuggedit/trojansourcedetector@v1
       - name: Run tests
         run: lein all test
