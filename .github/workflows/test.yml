@@ -17,12 +17,12 @@ jobs:
   test:
     strategy:
       matrix:
-        java: ['8', '11', '17']
+        java: ['8', '11', '17', '21', '24']
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - uses: actions/cache@v2
+      - uses: actions/cache@v4
         with:
           path: ~/.m2/repository
           key: ${{ env.ACTION_CACHE_VERSION }}-${{ runner.os }}-maven-${{ hashFiles('**/project.clj') }}-${{ matrix.java }}
@@ -33,12 +33,12 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: ${{ matrix.java }}
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v4
         with:
           node-version: '10.13.0'
       - name: Install clojure tools
-        uses: DeLaGuardo/setup-clojure@3.5
+        uses: DeLaGuardo/setup-clojure@13.4
         with:
-          lein: 2.9.8
+          lein: 2.11.2
       - name: Run tests
         run: lein all test
