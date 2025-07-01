@@ -17,7 +17,7 @@
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
              :1.11 {:dependencies [[org.clojure/clojure "1.11.4"]]}
              :1.12 {:dependencies [[org.clojure/clojure "1.12.1"]]}
-             #_;;TODO central-snapshot not ready yet
+             #_#_;;TODO central-snapshot not ready yet
              :1.13 {:dependencies [[org.clojure/clojure "1.13.0-SNAPSHOT"]]
                     :repositories [["central-snapshot" {:url "https://central.sonatype.com/repository/maven-snapshots/"}]]}}
 
