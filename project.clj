@@ -15,10 +15,13 @@
                              [lein-doo "0.1.10"]]}
              :1.8 {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :1.9 {:dependencies [[org.clojure/clojure "1.9.0"]]}
-             :1.11 {:dependencies [[org.clojure/clojure "1.11.0-master-SNAPSHOT"]]
-                    :repositories [["sonatype-oss-public" {:url "https://oss.sonatype.org/content/groups/public"}]]}}
+             :1.11 {:dependencies [[org.clojure/clojure "1.11.4"]]}
+             :1.12 {:dependencies [[org.clojure/clojure "1.12.1"]]}
+             #_;;TODO central-snapshot not ready yet
+             :1.13 {:dependencies [[org.clojure/clojure "1.13.0-SNAPSHOT"]]
+                    :repositories [["central-snapshot" {:url "https://central.sonatype.com/repository/maven-snapshots/"}]]}}
 
-  :aliases {"all" ["with-profile" "+1.8:+1.9:+dev:+1.11"]
+  :aliases {"all" ["with-profile" "+1.8:+1.9:+dev:+1.11:+1.12"]
             "deploy" ["do" "deploy" "clojars"]
             "test" ["do" "test," "doo" "node" "test" "once"]}
 
